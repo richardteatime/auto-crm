@@ -160,7 +160,7 @@ Ahora puedes decirle a Claude: *"Muestrame mis leads calientes"* o *"Agrega un c
 | Base de datos | Appwrite (self-hosted) |
 | Drag & Drop | @dnd-kit |
 | Graficos | Recharts |
-| IA | Claude API (opcional) |
+| IA | OpenRouter (elegi modelo) / Claude API (fallback) |
 | MCP | Servidor integrado |
 | Contenedor | Docker |
 
@@ -210,7 +210,7 @@ auto-crm/
 | `APPWRITE_PROJECT_ID` | ID del proyecto en Appwrite |
 | `APPWRITE_API_KEY` | API key con permisos de base de datos |
 | `APPWRITE_DATABASE_ID` | ID de la base de datos (default: crm) |
-| `ANTHROPIC_API_KEY` | Clasificacion de leads con IA en la web (opcional) |
+| `OPENROUTER_API_KEY` | Clasificacion de leads con IA (elegi modelo). Fallback: `ANTHROPIC_API_KEY` |
 | `RESEND_API_KEY` | Email digest diario (resend.com, gratis) |
 | `DIGEST_EMAIL` | Email donde recibir el digest |
 | `DIGEST_FROM` | Email remitente del digest |
@@ -384,7 +384,7 @@ Now you can tell Claude: *"Show me my hot leads"* or *"Add a new contact"* from 
 | Database | Appwrite (self-hosted) |
 | Drag & Drop | @dnd-kit |
 | Charts | Recharts |
-| AI | Claude API (optional) |
+| AI | OpenRouter (choose model) / Claude API (fallback) |
 | MCP | Built-in server |
 | Container | Docker |
 
@@ -434,7 +434,7 @@ auto-crm/
 | `APPWRITE_PROJECT_ID` | Project ID in Appwrite |
 | `APPWRITE_API_KEY` | API key with database permissions |
 | `APPWRITE_DATABASE_ID` | Database ID (default: crm) |
-| `ANTHROPIC_API_KEY` | AI lead classification in the web UI (optional) |
+| `OPENROUTER_API_KEY` | AI lead classification (choose your model). Fallback: `ANTHROPIC_API_KEY` |
 | `RESEND_API_KEY` | Daily email digest (resend.com, free) |
 | `DIGEST_EMAIL` | Email address to receive digest |
 | `DIGEST_FROM` | Sender email for digest |

@@ -1,21 +1,66 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { Temperature, ActivityType } from "@/types";
 
-const apiKey = process.env.ANTHROPIC_API_KEY;
+// ---------------------------------------------------------------------------
+// AI provider: OpenRouter (default) → Anthropic (fallback) → nessuna IA
+// ---------------------------------------------------------------------------
 
-let client: Anthropic | null = null;
+const openRouterKey = process.env.OPENROUTER_API_KEY || "";
+const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
+const openRouterModel = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
 
-function getClient(): Anthropic | null {
-  if (!apiKey) return null;
-  if (!client) {
-    client = new Anthropic({ apiKey });
-  }
-  return client;
+function hasAI(): boolean {
+  return !!(openRouterKey || anthropicKey);
 }
 
-export function isAIEnabled(): boolean {
-  return !!apiKey;
+// ---------------------------------------------------------------------------
+// OpenRouter (OpenAI-compatible endpoint)
+// ---------------------------------------------------------------------------
+
+async function classifyViaOpenRouter(
+  prompt: string,
+): Promise<string | null> {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openRouterKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: openRouterModel,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 500,
+    }),
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Anthropic SDK (fallback)
+// ---------------------------------------------------------------------------
+
+async function classifyViaAnthropic(
+  prompt: string,
+): Promise<string | null> {
+  // Dynamic import so the SDK is only loaded when needed
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const client = new Anthropic({ apiKey: anthropicKey });
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6-20250514",
+    max_tokens: 500,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const block = response.content[0];
+  return block.type === "text" ? block.text : null;
+}
+
+// ---------------------------------------------------------------------------
+// Classify lead
+// ---------------------------------------------------------------------------
 
 interface ClassifyResult {
   temperature: Temperature;
@@ -24,7 +69,14 @@ interface ClassifyResult {
   reasoning: string;
 }
 
-export async function classifyLead(
+const DEFAULT_RESULT: ClassifyResult = {
+  temperature: "cold",
+  score: 25,
+  nextAction: "Inviare email di presentazione",
+  reasoning: "Classificazione predefinita (nessuna API key configurata)",
+};
+
+function buildPrompt(
   contactInfo: {
     name: string;
     company?: string;
@@ -35,29 +87,13 @@ export async function classifyLead(
     type: ActivityType;
     description: string;
     date: string;
-  }>
-): Promise<ClassifyResult> {
-  const anthropic = getClient();
-  if (!anthropic) {
-    return {
-      temperature: "cold",
-      score: 25,
-      nextAction: "Inviare email di presentazione",
-      reasoning: "Classificazione predefinita (nessuna API key configurata)",
-    };
-  }
-
+  }>,
+): string {
   const historyText = interactionHistory
     .map((i) => `- ${i.date}: [${i.type}] ${i.description}`)
     .join("\n");
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6-20250514",
-    max_tokens: 500,
-    messages: [
-      {
-        role: "user",
-        content: `Analizza questo lead e classifica la sua temperatura. Rispondi SOLO con JSON valido.
+  return `Analizza questo lead e classifica la sua temperatura. Rispondi SOLO con JSON valido.
 
 Contatto:
 - Nome: ${contactInfo.name}
@@ -74,20 +110,48 @@ Rispondi con questo formato JSON esatto:
   "score": <numero 0-100>,
   "nextAction": "<prossima azione consigliata in italiano>",
   "reasoning": "<motivazione della classificazione in italiano>"
-}`,
-      },
-    ],
-  });
+}`;
+}
 
+function parseResponse(text: string): ClassifyResult | null {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
   try {
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as ClassifyResult;
-    }
+    return JSON.parse(jsonMatch[0]) as ClassifyResult;
   } catch {
-    // Fall through to default
+    return null;
+  }
+}
+
+export async function classifyLead(
+  contactInfo: {
+    name: string;
+    company?: string;
+    source?: string;
+    notes?: string;
+  },
+  interactionHistory: Array<{
+    type: ActivityType;
+    description: string;
+    date: string;
+  }>,
+): Promise<ClassifyResult> {
+  if (!hasAI()) return DEFAULT_RESULT;
+
+  const prompt = buildPrompt(contactInfo, interactionHistory);
+
+  // Prefer OpenRouter if configured, else Anthropic
+  let responseText: string | null = null;
+
+  if (openRouterKey) {
+    responseText = await classifyViaOpenRouter(prompt);
+  } else if (anthropicKey) {
+    responseText = await classifyViaAnthropic(prompt);
+  }
+
+  if (responseText) {
+    const parsed = parseResponse(responseText);
+    if (parsed) return parsed;
   }
 
   return {
@@ -97,3 +161,5 @@ Rispondi con questo formato JSON esatto:
     reasoning: "Impossibile analizzare la risposta dell'IA",
   };
 }
+
+export { hasAI as isAIEnabled };
