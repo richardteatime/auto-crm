@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { contacts, deals, activities, pipelineStages } from "@/db/schema";
-import { eq, asc, isNull } from "drizzle-orm";
+import { listContacts } from "@/lib/db/contacts";
+import { listDeals } from "@/lib/db/deals";
+import { getPendingFollowups } from "@/lib/db/activities";
+import { getStages } from "@/lib/db/pipeline";
 import { formatCurrency } from "@/lib/constants";
 
 export async function POST() {
@@ -26,26 +27,12 @@ export async function POST() {
   }
 
   // Gather data
-  const allContacts = db.select().from(contacts).all();
-  const allDeals = db.select().from(deals).all();
-  const stages = db
-    .select()
-    .from(pipelineStages)
-    .orderBy(asc(pipelineStages.order))
-    .all();
-
-  const pendingActivities = db
-    .select({
-      id: activities.id,
-      type: activities.type,
-      description: activities.description,
-      scheduledAt: activities.scheduledAt,
-      contactName: contacts.name,
-    })
-    .from(activities)
-    .leftJoin(contacts, eq(activities.contactId, contacts.id))
-    .where(isNull(activities.completedAt))
-    .all();
+  const [allContacts, allDeals, stages, pendingActivities] = await Promise.all([
+    listContacts(),
+    listDeals(),
+    getStages(),
+    getPendingFollowups(),
+  ]);
 
   const now = Math.floor(Date.now() / 1000);
   const overdue = pendingActivities.filter(
@@ -62,7 +49,7 @@ export async function POST() {
   // Build HTML email
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #1e293b; font-size: 24px; margin-bottom: 4px;">Auto-CRM</h1>
+      <h1 style="color: #1e293b; font-size: 24px; margin-bottom: 4px;">SarconX CRM</h1>
       <p style="color: #64748b; margin-top: 0;">Resumen diario — ${new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}</p>
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
@@ -100,7 +87,7 @@ export async function POST() {
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
       <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-        Auto-CRM — Tu CRM local con IA
+        SarconX CRM — Il tuo CRM con IA
       </p>
     </div>
   `;
@@ -114,7 +101,7 @@ export async function POST() {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: process.env.DIGEST_FROM || "Auto-CRM <onboarding@resend.dev>",
+        from: process.env.DIGEST_FROM || "SarconX CRM <onboarding@resend.dev>",
         to: [email],
         subject: `CRM Digest: ${overdue.length > 0 ? `${overdue.length} vencidos` : `${activeDeals.length} deals activos`}`,
         html,

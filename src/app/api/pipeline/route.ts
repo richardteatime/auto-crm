@@ -1,40 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { pipelineStages, deals, contacts } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import {
+  getFullPipeline,
+  replaceStages,
+  updateDeal,
+  getDeal,
+  listDeals,
+  getStages,
+} from "@/lib/db";
 
 export async function GET() {
-  const stages = db
-    .select()
-    .from(pipelineStages)
-    .orderBy(asc(pipelineStages.order))
-    .all();
-
-  const allDeals = db
-    .select({
-      id: deals.id,
-      title: deals.title,
-      value: deals.value,
-      stageId: deals.stageId,
-      contactId: deals.contactId,
-      expectedClose: deals.expectedClose,
-      probability: deals.probability,
-      notes: deals.notes,
-      createdAt: deals.createdAt,
-      updatedAt: deals.updatedAt,
-      contactName: contacts.name,
-      contactTemperature: contacts.temperature,
-    })
-    .from(deals)
-    .leftJoin(contacts, eq(deals.contactId, contacts.id))
-    .all();
-
-  const pipeline = stages.map((stage) => ({
-    ...stage,
-    deals: allDeals.filter((d) => d.stageId === stage.id),
-  }));
-
-  return NextResponse.json(pipeline);
+  try {
+    const pipeline = await getFullPipeline();
+    return NextResponse.json(pipeline);
+  } catch (error) {
+    return NextResponse.json(
+      { error: `Errore nel recupero del pipeline: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
+    );
+  }
 }
 
 export async function PUT(request: NextRequest) {
@@ -47,57 +30,74 @@ export async function PUT(request: NextRequest) {
 
   // Update a single deal's stage (drag and drop)
   if (body.dealId && body.stageId) {
-    const existing = db.select().from(deals).where(eq(deals.id, body.dealId)).get();
-    if (!existing) {
-      return NextResponse.json({ error: "Deal no encontrado" }, { status: 404 });
+    try {
+      const existing = await getDeal(body.dealId);
+      if (!existing) {
+        return NextResponse.json(
+          { error: "Trattativa non trovata" },
+          { status: 404 }
+        );
+      }
+
+      // updateDeal handles wonAt/recurringStartDate logic internally
+      const result = await updateDeal(body.dealId, {
+        stageId: body.stageId,
+      });
+
+      return NextResponse.json(result);
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes("404") || error.message.includes("not found"))) {
+        return NextResponse.json(
+          { error: "Trattativa non trovata" },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json(
+        { error: `Errore nell'aggiornamento della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+        { status: 500 }
+      );
     }
-
-    const result = db
-      .update(deals)
-      .set({ stageId: body.stageId, updatedAt: new Date() })
-      .where(eq(deals.id, body.dealId))
-      .returning()
-      .get();
-
-    return NextResponse.json(result);
   }
 
   // Bulk update stages (from /setup or /customize)
   if (body.stages && Array.isArray(body.stages)) {
-    // Delete existing stages (only if no deals reference them)
-    const existingDeals = db.select().from(deals).all();
-    if (existingDeals.length > 0) {
-      return NextResponse.json(
-        {
-          error:
-            "No se pueden reemplazar etapas cuando hay deals activos. Elimina los deals primero.",
-        },
-        { status: 400 }
-      );
-    }
+    try {
+      // Check if any deals exist
+      const existingDeals = await listDeals();
+      if (existingDeals.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Non è possibile sostituire le fasi con trattative attive. Elimina prima le trattative.",
+          },
+          { status: 400 }
+        );
+      }
 
-    db.delete(pipelineStages).run();
-
-    for (const stage of body.stages) {
-      db.insert(pipelineStages)
-        .values({
+      await replaceStages(
+        body.stages.map((stage: { name: string; order: number; color?: string; isWon?: boolean; isLost?: boolean }) => ({
           name: stage.name,
           order: stage.order,
           color: stage.color || "#64748b",
           isWon: stage.isWon || false,
           isLost: stage.isLost || false,
-        })
-        .run();
+        }))
+      );
+
+      // Return stages sorted by order
+      const allStages = await getStages();
+      return NextResponse.json(allStages);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "sconosciuto";
+      if (msg.includes("Cannot replace stages")) {
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
+      return NextResponse.json(
+        { error: `Errore nell'aggiornamento delle fasi: ${msg}` },
+        { status: 500 }
+      );
     }
-
-    const updated = db
-      .select()
-      .from(pipelineStages)
-      .orderBy(asc(pipelineStages.order))
-      .all();
-
-    return NextResponse.json(updated);
   }
 
-  return NextResponse.json({ error: "Request invalido" }, { status: 400 });
+  return NextResponse.json({ error: "Richiesta non valida" }, { status: 400 });
 }

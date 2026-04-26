@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/lib/constants";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { RefreshCw } from "lucide-react";
 import type { Temperature } from "@/types";
 
 interface DealCardProps {
@@ -14,6 +15,8 @@ interface DealCardProps {
   contactName: string | null;
   contactTemperature: string | null;
   probability: number;
+  isRecurring?: boolean;
+  recurringMonths?: number | null;
 }
 
 export function DealCard({
@@ -23,6 +26,8 @@ export function DealCard({
   contactName,
   contactTemperature,
   probability,
+  isRecurring,
+  recurringMonths,
 }: DealCardProps) {
   const {
     attributes,
@@ -48,10 +53,18 @@ export function DealCard({
       className="p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
     >
       <div className="space-y-2">
-        <p className="text-sm font-medium leading-tight">{title}</p>
+        <div className="flex items-start justify-between gap-1">
+          <p className="text-sm font-medium leading-tight flex-1">{title}</p>
+          {isRecurring && (
+            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium shrink-0">
+              <RefreshCw className="h-2.5 w-2.5" />
+              {recurringMonths ?? 12}m
+            </span>
+          )}
+        </div>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-primary">
-            {formatCurrency(value)}
+            {formatCurrency(value)}{isRecurring ? "/mo" : ""}
           </span>
           {contactTemperature && (
             <StatusBadge
@@ -61,7 +74,7 @@ export function DealCard({
           )}
         </div>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{contactName || "Sin contacto"}</span>
+          <span>{contactName || "Senza contatto"}</span>
           <span>{probability}%</span>
         </div>
       </div>

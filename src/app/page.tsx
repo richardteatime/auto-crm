@@ -1,6 +1,4 @@
-import { db } from "@/db";
-import { contacts, deals, activities, pipelineStages } from "@/db/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { listContacts, listDeals, getStages, listActivities } from "@/lib/db";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { PipelineChart } from "@/components/dashboard/PipelineChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
@@ -9,14 +7,12 @@ import type { DashboardStats } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
-  const allContacts = db.select().from(contacts).all();
-  const allDeals = db.select().from(deals).all();
-  const stages = db
-    .select()
-    .from(pipelineStages)
-    .orderBy(asc(pipelineStages.order))
-    .all();
+export default async function DashboardPage() {
+  const [allContacts, allDeals, stages] = await Promise.all([
+    listContacts(),
+    listDeals(),
+    getStages(),
+  ]);
 
   const activeDeals = allDeals.filter((d) => {
     const stage = stages.find((s) => s.id === d.stageId);
@@ -51,19 +47,7 @@ export default function DashboardPage() {
       color: stage.color,
     }));
 
-  const recentActivities = db
-    .select({
-      id: activities.id,
-      type: activities.type,
-      description: activities.description,
-      contactName: contacts.name,
-      createdAt: activities.createdAt,
-    })
-    .from(activities)
-    .leftJoin(contacts, eq(activities.contactId, contacts.id))
-    .orderBy(desc(activities.createdAt))
-    .limit(5)
-    .all();
+  const recentActivities = await listActivities();
 
   const isFirstRun = allContacts.length === 0 && allDeals.length === 0;
 
@@ -72,35 +56,35 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Resumen de tu pipeline de ventas
+          Riepilogo del tuo pipeline di vendita
         </p>
       </div>
 
       {isFirstRun && (
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
           <h2 className="text-lg font-semibold mb-2">
-            Bienvenido a Auto-CRM
+            Benvenuto in SarconX CRM
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Tu CRM esta listo. Aqui tienes como comenzar:
+            Il tuo CRM è pronto. Ecco come iniziare:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div className="p-3 rounded-lg bg-card border">
-              <p className="font-medium">1. Personaliza tu CRM</p>
+              <p className="font-medium">1. Personalizza il tuo CRM</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Ejecuta <code className="bg-muted px-1 rounded">/setup</code> en Claude Code
+                Esegui <code className="bg-muted px-1 rounded">/setup</code> in Claude Code
               </p>
             </div>
             <div className="p-3 rounded-lg bg-card border">
-              <p className="font-medium">2. Agrega contactos</p>
+              <p className="font-medium">2. Aggiungi contatti</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Ve a Contactos o usa <code className="bg-muted px-1 rounded">/add-lead</code>
+                Vai su Contatti o usa <code className="bg-muted px-1 rounded">/add-lead</code>
               </p>
             </div>
             <div className="p-3 rounded-lg bg-card border">
-              <p className="font-medium">3. Carga datos demo</p>
+              <p className="font-medium">3. Carica dati demo</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Ejecuta <code className="bg-muted px-1 rounded">npm run seed</code> en terminal
+                Esegui <code className="bg-muted px-1 rounded">npm run seed</code> nel terminale
               </p>
             </div>
           </div>
@@ -117,15 +101,13 @@ export default function DashboardPage() {
         </div>
         <div>
           <RecentActivity
-            activities={
-              recentActivities as Array<{
-                id: string;
-                type: string;
-                description: string;
-                contactName: string | null;
-                createdAt: number | Date;
-              }>
-            }
+            activities={recentActivities.slice(0, 5).map((a) => ({
+              id: a.id,
+              type: a.type,
+              description: a.description,
+              contactName: a.contactName ?? null,
+              createdAt: a.createdAt,
+            }))}
           />
         </div>
       </div>

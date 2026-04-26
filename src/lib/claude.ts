@@ -42,8 +42,8 @@ export async function classifyLead(
     return {
       temperature: "cold",
       score: 25,
-      nextAction: "Enviar email de introduccion",
-      reasoning: "Clasificacion por defecto (sin API key configurada)",
+      nextAction: "Inviare email di presentazione",
+      reasoning: "Classificazione predefinita (nessuna API key configurata)",
     };
   }
 
@@ -57,23 +57,23 @@ export async function classifyLead(
     messages: [
       {
         role: "user",
-        content: `Analiza este lead y clasifica su temperatura. Responde SOLO con JSON valido.
+        content: `Analizza questo lead e classifica la sua temperatura. Rispondi SOLO con JSON valido.
 
-Contacto:
-- Nombre: ${contactInfo.name}
-- Empresa: ${contactInfo.company || "No especificada"}
-- Fuente: ${contactInfo.source || "No especificada"}
-- Notas: ${contactInfo.notes || "Sin notas"}
+Contatto:
+- Nome: ${contactInfo.name}
+- Azienda: ${contactInfo.company || "Non specificata"}
+- Fonte: ${contactInfo.source || "Non specificata"}
+- Note: ${contactInfo.notes || "Nessuna nota"}
 
-Historial de interacciones:
-${historyText || "Sin interacciones registradas"}
+Storico interazioni:
+${historyText || "Nessuna interazione registrata"}
 
-Responde con este formato JSON exacto:
+Rispondi con questo formato JSON esatto:
 {
   "temperature": "cold" | "warm" | "hot",
   "score": <numero 0-100>,
-  "nextAction": "<siguiente accion recomendada en espanol>",
-  "reasoning": "<razon de la clasificacion en espanol>"
+  "nextAction": "<prossima azione consigliata in italiano>",
+  "reasoning": "<motivazione della classificazione in italiano>"
 }`,
       },
     ],
@@ -93,7 +93,7 @@ Responde con este formato JSON exacto:
   return {
     temperature: "cold",
     score: 25,
-    nextAction: "Revisar manualmente",
-    reasoning: "No se pudo analizar la respuesta de la IA",
+    nextAction: "Rivedere manualmente",
+    reasoning: "Impossibile analizzare la risposta dell'IA",
   };
 }

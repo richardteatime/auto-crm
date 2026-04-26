@@ -9,16 +9,24 @@ import {
   Activity,
   Settings,
   Briefcase,
+  MessageSquare,
+  ClipboardList,
+  FileText,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pipeline", label: "Pipeline", icon: Kanban },
-  { href: "/contacts", label: "Contactos", icon: Users },
-  { href: "/deals", label: "Deals", icon: Briefcase },
-  { href: "/activities", label: "Actividades", icon: Activity },
-  { href: "/settings", label: "Configuracion", icon: Settings },
+  { href: "/contacts", label: "Contatti", icon: Users },
+  { href: "/deals", label: "Trattative", icon: Briefcase },
+  { href: "/activities", label: "Attività", icon: Activity },
+  { href: "/messages", label: "Chat Team", icon: MessageSquare },
+  { href: "/tasks", label: "Task", icon: ClipboardList },
+  { href: "/preventivi", label: "Preventivi", icon: FileText },
+  { href: "/finance", label: "Finance", icon: TrendingUp },
+  { href: "/settings", label: "Impostazioni", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -28,7 +36,7 @@ export function Sidebar() {
     <aside className="hidden md:flex md:w-64 md:flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] min-h-screen">
       <div className="flex h-16 items-center gap-2 px-6 border-b border-[var(--sidebar-border)]">
         <Briefcase className="h-6 w-6 text-[var(--sidebar-primary)]" />
-        <span className="text-lg font-bold tracking-tight">Auto-CRM</span>
+        <span className="text-lg font-bold tracking-tight whitespace-nowrap">SarconX CRM</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
@@ -56,10 +64,10 @@ export function Sidebar() {
 
       <div className="px-4 py-4 border-t border-[var(--sidebar-border)]">
         <p className="text-xs text-[var(--sidebar-foreground)]/50">
-          Auto-CRM v1.0
+          SarconX CRM v1.0
         </p>
         <p className="text-xs text-[var(--sidebar-foreground)]/50">
-          Powered by Claude
+          by SarconX
         </p>
       </div>
     </aside>

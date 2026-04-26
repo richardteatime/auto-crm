@@ -6,6 +6,7 @@ import { ContactForm } from "@/components/contacts/ContactForm";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import type { Contact } from "@/types";
+import { ReportDialog } from "@/components/shared/ReportDialog";
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -34,15 +35,18 @@ export default function ContactsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contactos</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Contatti</h1>
           <p className="text-muted-foreground">
-            Gestiona tus leads y prospectos
+            Gestisci i tuoi lead e prospect
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Contacto
-        </Button>
+        <div className="flex gap-2">
+          <ReportDialog section="contacts" />
+          <Button onClick={() => setShowForm(true)} className="cursor-pointer">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo Contatto
+          </Button>
+        </div>
       </div>
 
       {loading ? (

@@ -1,17 +1,18 @@
 # CLAUDE.md — Auto-CRM
 
-> Este es un CRM completo y local que se personaliza a cada negocio.
+> Este es un CRM completo que se personaliza a cada negocio, con backend Appwrite self-hosted.
 > Cuando un usuario abre este proyecto con Claude Code, tu trabajo es ayudarle a configurarlo,
-> usarlo, y expandirlo segun sus necesidades. Todo corre en su maquina — sin servicios externos.
+> usarlo, y expandirlo segun sus necesidades.
 
 ## Inicio rapido para el usuario
 
 Si es la primera vez que el usuario abre el proyecto, guialo con estos pasos:
 
 1. `npm install` — Instalar dependencias
-2. `npm run init:seed` — Inicializar base de datos con datos demo
-3. `npm run dev` — Iniciar servidor en http://localhost:3000
-4. Ejecutar `/setup` para personalizar el CRM a su negocio
+2. `npm run setup` — Inicializar base de datos Appwrite
+3. `npm run seed` — Cargar datos demo
+4. `npm run dev` — Iniciar servidor en http://localhost:3000
+5. Ejecutar `/setup` para personalizar el CRM a su negocio
 
 ## Comandos
 
@@ -19,10 +20,8 @@ Si es la primera vez que el usuario abre el proyecto, guialo con estos pasos:
 npm run dev          # Servidor de desarrollo (http://localhost:3000)
 npm run build        # Build de produccion
 npm start            # Servidor de produccion
-npm run local        # Build + init + start (despliegue local en un comando)
-npm run init         # Inicializar base de datos
-npm run init:seed    # Inicializar + datos demo
-npm run seed         # Solo datos demo
+npm run setup        # Inicializar base de datos Appwrite (colecciones, indexes)
+npm run seed         # Cargar datos demo
 npm run lint         # ESLint
 npm run mcp          # Iniciar servidor MCP (para Claude Desktop/Web)
 ```
@@ -42,9 +41,9 @@ npm run mcp          # Iniciar servidor MCP (para Claude Desktop/Web)
 
 ## Arquitectura
 
-**Stack**: Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind CSS v4 · shadcn/ui · SQLite + Drizzle ORM · @dnd-kit (kanban)
+**Stack**: Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind CSS v4 · shadcn/ui · Appwrite (self-hosted) · @dnd-kit (kanban)
 
-**100% local**: SQLite como base de datos (archivo en `data/crm.db`). No requiere ningun servicio externo.
+**Self-hosted**: Appwrite como base de datos. Requiere una instancia Appwrite (local o remota).
 
 **Alias**: `@/*` → `./src/*`
 
@@ -52,12 +51,12 @@ npm run mcp          # Iniciar servidor MCP (para Claude Desktop/Web)
 
 - `src/app/` — Paginas y API routes (App Router)
 - `src/components/` — Componentes React organizados por feature
-- `src/db/` — Schema Drizzle, cliente DB, seeder
+- `src/lib/db/` — Capa de datos Appwrite (colecciones, queries, CRUD)
 - `src/lib/` — Utilidades: claude.ts (AI), scoring.ts, constants.ts
 - `src/types/` — TypeScript types para entidades CRM
 - `.claude/commands/` — Comandos interactivos (los de la tabla arriba)
 - `mcp/` — Servidor MCP para integracion con Claude Desktop/Web
-- `scripts/` — Scripts de inicializacion y utilidades
+- `scripts/` — Setup de Appwrite y seed de datos
 
 ### Modelo de datos
 
@@ -98,7 +97,7 @@ El archivo en `public/crm-config.json` es la copia por defecto (template).
 - **Max ~300 lineas por componente**. Dividir si crece mas
 - **No emojis como iconos** — usar Lucide React (SVG)
 - **Valores monetarios**: Centavos (integer). Usar `formatCurrency()` para mostrar
-- **Fechas**: `date-fns` para formateo. SQLite almacena como integer timestamps
+- **Fechas**: `date-fns` para formateo. Appwrite almacena como ISO 8601 datetime
 - **Forms**: react-hook-form + zod
 - **Drag & drop**: @dnd-kit (NO react-beautiful-dnd)
 - **Estilos**: Tailwind CSS v4 (config via CSS, no tailwind.config.ts)
@@ -123,14 +122,14 @@ El archivo en `public/crm-config.json` es la copia por defecto (template).
 npm run dev
 ```
 
-### Local (produccion)
+### Produccion
 ```bash
-npm run local  # build + init + start en puerto 3000
+npm run build && npm start
 ```
 
 ### Docker
 ```bash
-docker compose up -d  # Corre en puerto 3000, datos persisten en ./data/
+docker compose up -d  # Corre en puerto 3000, datos persisten en Appwrite
 ```
 
 ### MCP (Claude Desktop/Web)
@@ -147,6 +146,15 @@ Agregar a `~/.claude/claude_desktop_config.json`:
 ```
 
 ## Variables de entorno
+
+### Appwrite (requeridas para el backend)
+
+- `NEXT_PUBLIC_APPWRITE_ENDPOINT` — URL de tu instancia Appwrite (ej: http://localhost:80/v1)
+- `APPWRITE_PROJECT_ID` — ID del proyecto en Appwrite
+- `APPWRITE_API_KEY` — API key con permisos de base de datos (server-side)
+- `APPWRITE_DATABASE_ID` — ID de la base de datos (default: crm)
+
+### Opcionales
 
 - `ANTHROPIC_API_KEY` — Opcional. Para IA en la interfaz web (clasificacion de leads)
 - `RESEND_API_KEY` — Opcional. Para enviar digest diario por email (resend.com, gratis)

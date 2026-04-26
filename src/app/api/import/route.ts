@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { contacts } from "@/db/schema";
+import { createContact } from "@/lib/db/contacts";
 
 export async function POST(request: NextRequest) {
   let body;
@@ -24,8 +23,6 @@ export async function POST(request: NextRequest) {
     errors: [] as string[],
   };
 
-  const now = new Date();
-
   for (const contact of contactList) {
     if (!contact.name) {
       results.failed++;
@@ -34,20 +31,16 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      db.insert(contacts)
-        .values({
-          name: contact.name,
-          email: contact.email || null,
-          phone: contact.phone || null,
-          company: contact.company || null,
-          source: contact.source || "import",
-          temperature: contact.temperature || "cold",
-          score: contact.score || 0,
-          notes: contact.notes || null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
+      await createContact({
+        name: contact.name,
+        email: contact.email || null,
+        phone: contact.phone || null,
+        company: contact.company || null,
+        source: contact.source || "import",
+        temperature: contact.temperature || "cold",
+        score: contact.score || 0,
+        notes: contact.notes || null,
+      });
       results.imported++;
     } catch (error) {
       results.failed++;

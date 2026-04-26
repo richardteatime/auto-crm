@@ -38,8 +38,38 @@ export interface Deal {
   expectedClose: Date | null;
   probability: number; // 0-100
   notes: string | null;
+  attachments?: string | null;
+  isRecurring?: boolean;
+  recurringMonths?: number | null;
+  recurringStartDate?: Date | null;
+  wonAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface Expense {
+  id: string;
+  type: string;
+  category: string;
+  description: string;
+  amount: number; // in cents
+  date: Date | number;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FinanceSummary {
+  periodStart: string;
+  periodEnd: string;
+  oneTimeRevenue: number;
+  recurringRevenue: number;
+  totalRevenue: number;
+  mrr: number;
+  totalExpenses: number;
+  cashFlow: number;
+  expenseByCategory: Record<string, number>;
+  monthly: Array<{ month: string; oneTime: number; recurring: number; expenses: number }>;
 }
 
 export interface PipelineStage {

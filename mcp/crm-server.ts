@@ -6,6 +6,8 @@
  * Exposes CRM data as MCP tools so Claude (Desktop, Web, or Code)
  * can read and write CRM data directly — no API key needed.
  *
+ * Uses Appwrite as the database backend.
+ *
  * Add to your Claude Desktop config (claude_desktop_config.json):
  * {
  *   "mcpServers": {
@@ -13,30 +15,65 @@
  *       "command": "npx",
  *       "args": ["tsx", "/path/to/auto-crm/mcp/crm-server.ts"],
  *       "env": {
- *         "CRM_DB_PATH": "/path/to/auto-crm/data/crm.db"
+ *         "NEXT_PUBLIC_APPWRITE_ENDPOINT": "http://localhost:80/v1",
+ *         "APPWRITE_PROJECT_ID": "...",
+ *         "APPWRITE_API_KEY": "...",
+ *         "APPWRITE_DATABASE_ID": "crm"
  *       }
  *     }
  *   }
  * }
  */
 
-import crypto from "crypto";
-import Database from "better-sqlite3";
-import path from "path";
-import fs from "fs";
+import { Client, Databases, ID, Query, type Models } from "node-appwrite";
 
-const DB_PATH = process.env.CRM_DB_PATH || path.join(process.cwd(), "data", "crm.db");
+// ---------------------------------------------------------------------------
+// Appwrite client setup (independent from the Next.js app)
+// ---------------------------------------------------------------------------
 
-if (!fs.existsSync(DB_PATH)) {
-  process.stderr.write(`Database not found at ${DB_PATH}. Run 'npm run init' first.\n`);
-  process.exit(1);
+const APPWRITE_ENDPOINT =
+  process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
+const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
+const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
+
+const DB_ID = process.env.APPWRITE_DATABASE_ID || "crm";
+const COLLECTIONS = {
+  contacts: "contacts",
+  pipelineStages: "pipeline_stages",
+  deals: "deals",
+  activities: "activities",
+} as const;
+
+const client = new Client()
+  .setEndpoint(APPWRITE_ENDPOINT)
+  .setProject(APPWRITE_PROJECT_ID)
+  .setKey(APPWRITE_API_KEY);
+
+const databases = new Databases(client);
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Strip Appwrite metadata and normalise to plain objects with `id`. */
+function fromDoc(doc: Models.Document): Record<string, unknown> {
+  const { $id, $createdAt, $updatedAt, ...rest } = doc;
+  return {
+    id: $id,
+    createdAt: $createdAt,
+    updatedAt: $updatedAt,
+    ...rest,
+  };
 }
 
-const db = new Database(DB_PATH, { readonly: false, timeout: 5000 });
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+function fromDocs(docs: Models.Document[]): Record<string, unknown>[] {
+  return docs.map(fromDoc);
+}
 
-// MCP Protocol implementation over stdio
+// ---------------------------------------------------------------------------
+// MCP Protocol types
+// ---------------------------------------------------------------------------
+
 interface MCPMessage {
   jsonrpc: "2.0";
   id?: number | string;
@@ -45,6 +82,10 @@ interface MCPMessage {
   result?: unknown;
   error?: { code: number; message: string };
 }
+
+// ---------------------------------------------------------------------------
+// Tool definitions
+// ---------------------------------------------------------------------------
 
 const tools = [
   {
@@ -181,223 +222,448 @@ const tools = [
   },
 ];
 
-// Tool handlers
-function handleTool(name: string, args: Record<string, unknown>): unknown {
+// ---------------------------------------------------------------------------
+// Tool handlers (async — all Appwrite ops are promise-based)
+// ---------------------------------------------------------------------------
+
+async function handleTool(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
   switch (name) {
+    // -----------------------------------------------------------------------
+    // 1. crm_list_contacts
+    // -----------------------------------------------------------------------
     case "crm_list_contacts": {
-      let sql = "SELECT * FROM contacts";
-      const params: unknown[] = [];
-      const conditions: string[] = [];
+      const queries: string[] = [
+        Query.limit(Number(args.limit) || 50),
+        Query.orderDesc("$createdAt"),
+      ];
 
       if (args.search) {
-        conditions.push("(name LIKE ? OR email LIKE ? OR company LIKE ?)");
-        const search = `%${args.search}%`;
-        params.push(search, search, search);
+        queries.push(Query.search("name", args.search as string));
       }
       if (args.temperature) {
-        conditions.push("temperature = ?");
-        params.push(args.temperature);
+        queries.push(Query.equal("temperature", args.temperature as string));
       }
-      if (conditions.length > 0) {
-        sql += " WHERE " + conditions.join(" AND ");
-      }
-      sql += " ORDER BY created_at DESC";
-      sql += ` LIMIT ${Number(args.limit) || 50}`;
 
-      return db.prepare(sql).all(...params);
+      const res = await databases.listDocuments(
+        DB_ID,
+        COLLECTIONS.contacts,
+        queries,
+      );
+      return fromDocs(res.documents);
     }
 
+    // -----------------------------------------------------------------------
+    // 2. crm_get_contact
+    // -----------------------------------------------------------------------
     case "crm_get_contact": {
-      const contact = db.prepare("SELECT * FROM contacts WHERE id = ?").get(args.id);
-      if (!contact) return { error: "Contacto no encontrado" };
-
-      const deals = db
-        .prepare(
-          `SELECT d.*, ps.name as stage_name, ps.color as stage_color
-           FROM deals d LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
-           WHERE d.contact_id = ?`
-        )
-        .all(args.id);
-
-      const activities = db
-        .prepare("SELECT * FROM activities WHERE contact_id = ? ORDER BY created_at DESC")
-        .all(args.id);
-
-      return { ...(contact as object), deals, activities };
-    }
-
-    case "crm_create_contact": {
-      const now = Math.floor(Date.now() / 1000);
-      const id = crypto.randomUUID();
-
-      db.prepare(
-        `INSERT INTO contacts (id, name, email, phone, company, source, temperature, score, notes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
-      ).run(
-        id,
-        args.name,
-        args.email || null,
-        args.phone || null,
-        args.company || null,
-        args.source || "otro",
-        args.temperature || "cold",
-        args.notes || null,
-        now,
-        now
-      );
-
-      return { id, message: `Contacto "${args.name}" creado exitosamente` };
-    }
-
-    case "crm_list_deals": {
-      let sql = `
-        SELECT d.*, c.name as contact_name, c.temperature as contact_temperature,
-               ps.name as stage_name, ps.color as stage_color, ps."order" as stage_order
-        FROM deals d
-        LEFT JOIN contacts c ON d.contact_id = c.id
-        LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
-      `;
-      const params: unknown[] = [];
-
-      if (args.stageId) {
-        sql += " WHERE d.stage_id = ?";
-        params.push(args.stageId);
-      }
-      sql += ' ORDER BY ps."order", d.created_at DESC';
-
-      return db.prepare(sql).all(...params);
-    }
-
-    case "crm_create_deal": {
-      const now = Math.floor(Date.now() / 1000);
-      const id = crypto.randomUUID();
-
-      let stageId = args.stageId as string;
-      if (!stageId) {
-        const firstStage = db
-          .prepare('SELECT id FROM pipeline_stages ORDER BY "order" LIMIT 1')
-          .get() as { id: string } | undefined;
-        if (!firstStage) return { error: "No hay etapas de pipeline" };
-        stageId = firstStage.id;
+      let contact: Models.Document;
+      try {
+        contact = await databases.getDocument(
+          DB_ID,
+          COLLECTIONS.contacts,
+          args.id as string,
+        );
+      } catch {
+        return { error: "Contacto no encontrado" };
       }
 
-      db.prepare(
-        `INSERT INTO deals (id, title, value, stage_id, contact_id, probability, notes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(
-        id,
-        args.title,
-        Number(args.value) || 0,
-        stageId,
-        args.contactId,
-        Number(args.probability) || 0,
-        args.notes || null,
-        now,
-        now
-      );
-
-      return { id, message: `Deal "${args.title}" creado exitosamente` };
-    }
-
-    case "crm_move_deal": {
-      const now = Math.floor(Date.now() / 1000);
-      db.prepare("UPDATE deals SET stage_id = ?, updated_at = ? WHERE id = ?").run(
-        args.stageId,
-        now,
-        args.dealId
-      );
-      return { message: "Deal movido exitosamente" };
-    }
-
-    case "crm_log_activity": {
-      const now = Math.floor(Date.now() / 1000);
-      const id = crypto.randomUUID();
-      const scheduledAt = args.scheduledAt
-        ? Math.floor(new Date(args.scheduledAt as string).getTime() / 1000)
-        : null;
-
-      db.prepare(
-        `INSERT INTO activities (id, type, description, contact_id, deal_id, scheduled_at, completed_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, NULL, ?)`
-      ).run(id, args.type, args.description, args.contactId, args.dealId || null, scheduledAt, now);
-
-      return { id, message: "Actividad registrada exitosamente" };
-    }
-
-    case "crm_get_pipeline": {
-      const stages = db
-        .prepare('SELECT * FROM pipeline_stages ORDER BY "order"')
-        .all() as Array<Record<string, unknown>>;
-
-      const deals = db
-        .prepare(
-          `SELECT d.*, c.name as contact_name, c.temperature as contact_temperature
-           FROM deals d LEFT JOIN contacts c ON d.contact_id = c.id`
-        )
-        .all() as Array<Record<string, unknown>>;
-
-      return stages.map((stage) => ({
-        ...stage,
-        deals: deals.filter((d) => d.stage_id === stage.id),
-      }));
-    }
-
-    case "crm_get_followups": {
-      const pending = db
-        .prepare(
-          `SELECT a.*, c.name as contact_name, c.company as contact_company
-           FROM activities a
-           LEFT JOIN contacts c ON a.contact_id = c.id
-           WHERE a.completed_at IS NULL
-           ORDER BY a.scheduled_at ASC`
-        )
-        .all() as Array<Record<string, unknown>>;
-
-      const now = Math.floor(Date.now() / 1000);
-      const startOfDay = Math.floor(now / 86400) * 86400;
-      const endOfDay = startOfDay + 86400;
+      const [dealsRes, activitiesRes] = await Promise.all([
+        databases.listDocuments(DB_ID, COLLECTIONS.deals, [
+          Query.equal("contactId", args.id as string),
+          Query.limit(200),
+        ]),
+        databases.listDocuments(DB_ID, COLLECTIONS.activities, [
+          Query.equal("contactId", args.id as string),
+          Query.orderDesc("$createdAt"),
+          Query.limit(200),
+        ]),
+      ]);
 
       return {
-        overdue: pending.filter((f) => f.scheduled_at && (f.scheduled_at as number) < startOfDay),
-        today: pending.filter(
-          (f) => f.scheduled_at && (f.scheduled_at as number) >= startOfDay && (f.scheduled_at as number) < endOfDay
-        ),
-        upcoming: pending.filter((f) => f.scheduled_at && (f.scheduled_at as number) >= endOfDay),
-        unscheduled: pending.filter((f) => !f.scheduled_at),
+        ...fromDoc(contact),
+        deals: fromDocs(dealsRes.documents),
+        activities: fromDocs(activitiesRes.documents),
       };
     }
 
-    case "crm_get_stats": {
-      const totalContacts = (
-        db.prepare("SELECT COUNT(*) as count FROM contacts").get() as { count: number }
-      ).count;
+    // -----------------------------------------------------------------------
+    // 3. crm_create_contact
+    // -----------------------------------------------------------------------
+    case "crm_create_contact": {
+      const now = new Date().toISOString();
 
-      const stages = db.prepare("SELECT * FROM pipeline_stages").all() as Array<
-        Record<string, unknown>
-      >;
-      const wonStageIds = stages.filter((s) => s.is_won).map((s) => s.id);
-      const lostStageIds = stages.filter((s) => s.is_lost).map((s) => s.id);
-      const closedIds = [...wonStageIds, ...lostStageIds];
-
-      const allDeals = db.prepare("SELECT * FROM deals").all() as Array<Record<string, unknown>>;
-      const activeDeals = allDeals.filter((d) => !closedIds.includes(d.stage_id as string));
-      const wonDeals = allDeals.filter((d) => wonStageIds.includes(d.stage_id as string));
-
-      const hotLeads = (
-        db
-          .prepare("SELECT COUNT(*) as count FROM contacts WHERE temperature = 'hot'")
-          .get() as { count: number }
-      ).count;
+      const doc = await databases.createDocument(
+        DB_ID,
+        COLLECTIONS.contacts,
+        ID.unique(),
+        {
+          name: args.name,
+          email: (args.email as string) || null,
+          phone: (args.phone as string) || null,
+          company: (args.company as string) || null,
+          source: (args.source as string) || "otro",
+          temperature: (args.temperature as string) || "cold",
+          score: 0,
+          notes: (args.notes as string) || null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      );
 
       return {
-        totalContacts,
+        id: doc.$id,
+        message: `Contacto "${args.name}" creado exitosamente`,
+      };
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. crm_list_deals
+    // -----------------------------------------------------------------------
+    case "crm_list_deals": {
+      const queries: string[] = [
+        Query.limit(500),
+        Query.orderDesc("$createdAt"),
+      ];
+
+      if (args.stageId) {
+        queries.push(Query.equal("stageId", args.stageId as string));
+      }
+
+      const res = await databases.listDocuments(
+        DB_ID,
+        COLLECTIONS.deals,
+        queries,
+      );
+
+      // Deals have denormalized contactName, contactTemperature,
+      // stageName, stageColor stored directly — no joins needed.
+      return fromDocs(res.documents);
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. crm_create_deal
+    // -----------------------------------------------------------------------
+    case "crm_create_deal": {
+      const now = new Date().toISOString();
+
+      // Resolve stage: use provided or fall back to first stage
+      let stageId = args.stageId as string;
+      if (!stageId) {
+        const stagesRes = await databases.listDocuments(
+          DB_ID,
+          COLLECTIONS.pipelineStages,
+          [Query.orderAsc("order"), Query.limit(1)],
+        );
+        if (stagesRes.documents.length === 0) {
+          return { error: "No hay etapas de pipeline" };
+        }
+        stageId = stagesRes.documents[0].$id;
+      }
+
+      // Resolve contact for denormalized fields
+      let contactName: string | null = null;
+      let contactTemperature: string | null = null;
+      try {
+        const contact = await databases.getDocument(
+          DB_ID,
+          COLLECTIONS.contacts,
+          args.contactId as string,
+        );
+        contactName = (contact as Record<string, unknown>).name as string;
+        contactTemperature = (contact as Record<string, unknown>).temperature as string;
+      } catch {
+        // Contact not found — leave denorm fields null
+      }
+
+      // Resolve stage for denormalized fields
+      let stageName: string | null = null;
+      let stageColor: string | null = null;
+      let wonAt: string | undefined;
+      try {
+        const stage = await databases.getDocument(
+          DB_ID,
+          COLLECTIONS.pipelineStages,
+          stageId,
+        );
+        stageName = (stage as Record<string, unknown>).name as string;
+        stageColor = (stage as Record<string, unknown>).color as string;
+        if ((stage as Record<string, unknown>).isWon) {
+          wonAt = now;
+        }
+      } catch {
+        // Stage not found — leave denorm fields null
+      }
+
+      const doc = await databases.createDocument(
+        DB_ID,
+        COLLECTIONS.deals,
+        ID.unique(),
+        {
+          title: args.title,
+          value: Number(args.value) || 0,
+          stageId,
+          contactId: args.contactId,
+          contactName,
+          contactTemperature,
+          stageName,
+          stageColor,
+          probability: Number(args.probability) || 0,
+          notes: (args.notes as string) || null,
+          expectedClose: null,
+          attachments: null,
+          isRecurring: false,
+          recurringMonths: null,
+          recurringStartDate: null,
+          wonAt: wonAt ?? null,
+          createdAt: now,
+          updatedAt: now,
+        },
+      );
+
+      return {
+        id: doc.$id,
+        message: `Deal "${args.title}" creado exitosamente`,
+      };
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. crm_move_deal
+    // -----------------------------------------------------------------------
+    case "crm_move_deal": {
+      const now = new Date().toISOString();
+      const dealId = args.dealId as string;
+      const newStageId = args.stageId as string;
+
+      // Resolve new stage for denormalized fields
+      let stageName: string | null = null;
+      let stageColor: string | null = null;
+      let wonAt: string | null | undefined = undefined; // undefined = don't update
+      try {
+        const stage = await databases.getDocument(
+          DB_ID,
+          COLLECTIONS.pipelineStages,
+          newStageId,
+        );
+        stageName = (stage as Record<string, unknown>).name as string;
+        stageColor = (stage as Record<string, unknown>).color as string;
+
+        if ((stage as Record<string, unknown>).isWon) {
+          // Check if deal already has wonAt
+          try {
+            const existingDeal = await databases.getDocument(
+              DB_ID,
+              COLLECTIONS.deals,
+              dealId,
+            );
+            if (!(existingDeal as Record<string, unknown>).wonAt) {
+              wonAt = now;
+            }
+          } catch {
+            wonAt = now;
+          }
+        } else {
+          // Moved away from won — clear wonAt
+          wonAt = null;
+        }
+      } catch {
+        // Stage not found — proceed with just the stageId update
+      }
+
+      const payload: Record<string, unknown> = {
+        stageId: newStageId,
+        stageName,
+        stageColor,
+        updatedAt: now,
+      };
+
+      if (wonAt !== undefined) {
+        payload.wonAt = wonAt;
+      }
+
+      await databases.updateDocument(DB_ID, COLLECTIONS.deals, dealId, payload);
+
+      return { message: "Deal movido exitosamente" };
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. crm_log_activity
+    // -----------------------------------------------------------------------
+    case "crm_log_activity": {
+      const now = new Date().toISOString();
+
+      // Resolve contact for contactName denorm
+      let contactName: string | null = null;
+      try {
+        const contact = await databases.getDocument(
+          DB_ID,
+          COLLECTIONS.contacts,
+          args.contactId as string,
+        );
+        contactName = (contact as Record<string, unknown>).name as string;
+      } catch {
+        // Contact not found — leave contactName null
+      }
+
+      const doc = await databases.createDocument(
+        DB_ID,
+        COLLECTIONS.activities,
+        ID.unique(),
+        {
+          type: args.type,
+          description: args.description,
+          contactId: args.contactId,
+          contactName,
+          dealId: (args.dealId as string) || null,
+          scheduledAt: args.scheduledAt
+            ? new Date(args.scheduledAt as string).toISOString()
+            : null,
+          completedAt: null,
+          isCompleted: false,
+          startAt: null,
+          endAt: null,
+          notes: null,
+          attachments: null,
+          createdAt: now,
+        },
+      );
+
+      return {
+        id: doc.$id,
+        message: "Actividad registrada exitosamente",
+      };
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. crm_get_pipeline
+    // -----------------------------------------------------------------------
+    case "crm_get_pipeline": {
+      const [stagesRes, dealsRes] = await Promise.all([
+        databases.listDocuments(DB_ID, COLLECTIONS.pipelineStages, [
+          Query.orderAsc("order"),
+          Query.limit(100),
+        ]),
+        databases.listDocuments(DB_ID, COLLECTIONS.deals, [
+          Query.limit(500),
+        ]),
+      ]);
+
+      const stages = fromDocs(stagesRes.documents);
+      const deals = fromDocs(dealsRes.documents);
+
+      return stages.map((stage) => ({
+        ...stage,
+        deals: deals.filter((d) => d.stageId === stage.id),
+      }));
+    }
+
+    // -----------------------------------------------------------------------
+    // 9. crm_get_followups
+    // -----------------------------------------------------------------------
+    case "crm_get_followups": {
+      const res = await databases.listDocuments(
+        DB_ID,
+        COLLECTIONS.activities,
+        [
+          Query.equal("isCompleted", false),
+          Query.orderAsc("scheduledAt"),
+          Query.limit(500),
+        ],
+      );
+
+      const pending = fromDocs(res.documents);
+
+      const now = new Date();
+      const startOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+      );
+      const endOfDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+      );
+
+      return {
+        overdue: pending.filter(
+          (f) =>
+            f.scheduledAt &&
+            new Date(f.scheduledAt as string) < startOfDay,
+        ),
+        today: pending.filter((f) => {
+          if (!f.scheduledAt) return false;
+          const d = new Date(f.scheduledAt as string);
+          return d >= startOfDay && d < endOfDay;
+        }),
+        upcoming: pending.filter(
+          (f) =>
+            f.scheduledAt &&
+            new Date(f.scheduledAt as string) >= endOfDay,
+        ),
+        unscheduled: pending.filter((f) => !f.scheduledAt),
+      };
+    }
+
+    // -----------------------------------------------------------------------
+    // 10. crm_get_stats
+    // -----------------------------------------------------------------------
+    case "crm_get_stats": {
+      const [contactsRes, stagesRes, dealsRes, hotLeadsRes] =
+        await Promise.all([
+          databases.listDocuments(DB_ID, COLLECTIONS.contacts, [
+            Query.limit(1),
+          ]),
+          databases.listDocuments(DB_ID, COLLECTIONS.pipelineStages, [
+            Query.limit(100),
+          ]),
+          databases.listDocuments(DB_ID, COLLECTIONS.deals, [
+            Query.limit(500),
+          ]),
+          databases.listDocuments(DB_ID, COLLECTIONS.contacts, [
+            Query.equal("temperature", "hot"),
+            Query.limit(1),
+          ]),
+        ]);
+
+      const stages = fromDocs(stagesRes.documents);
+      const allDeals = fromDocs(dealsRes.documents);
+
+      const wonStageIds = stages
+        .filter((s) => s.isWon === true)
+        .map((s) => s.id as string);
+      const lostStageIds = stages
+        .filter((s) => s.isLost === true)
+        .map((s) => s.id as string);
+      const closedIds = [...wonStageIds, ...lostStageIds];
+
+      const activeDeals = allDeals.filter(
+        (d) => !closedIds.includes(d.stageId as string),
+      );
+      const wonDeals = allDeals.filter((d) =>
+        wonStageIds.includes(d.stageId as string),
+      );
+
+      return {
+        totalContacts: contactsRes.total,
         activeDeals: activeDeals.length,
-        totalPipelineValue: activeDeals.reduce((sum, d) => sum + (d.value as number), 0),
-        wonDealsValue: wonDeals.reduce((sum, d) => sum + (d.value as number), 0),
+        totalPipelineValue: activeDeals.reduce(
+          (sum, d) => sum + ((d.value as number) || 0),
+          0,
+        ),
+        wonDealsValue: wonDeals.reduce(
+          (sum, d) => sum + ((d.value as number) || 0),
+          0,
+        ),
         wonDealsCount: wonDeals.length,
         totalDeals: allDeals.length,
-        conversionRate: allDeals.length > 0 ? Math.round((wonDeals.length / allDeals.length) * 100) : 0,
-        hotLeads,
+        conversionRate:
+          allDeals.length > 0
+            ? Math.round((wonDeals.length / allDeals.length) * 100)
+            : 0,
+        hotLeads: hotLeadsRes.total,
       };
     }
 
@@ -406,7 +672,10 @@ function handleTool(name: string, args: Record<string, unknown>): unknown {
   }
 }
 
+// ---------------------------------------------------------------------------
 // MCP stdio transport
+// ---------------------------------------------------------------------------
+
 let buffer = "";
 
 process.stdin.setEncoding("utf-8");
@@ -421,22 +690,19 @@ process.stdin.on("data", (chunk: string) => {
     if (!line.trim()) continue;
     try {
       const msg: MCPMessage = JSON.parse(line);
-      const response = handleMessage(msg);
-      if (response) {
-        process.stdout.write(JSON.stringify(response) + "\n");
-      }
+      handleMessage(msg);
     } catch (e) {
       process.stderr.write(`Error parsing message: ${e}\n`);
     }
   }
 });
 
-function handleMessage(msg: MCPMessage): MCPMessage | null {
-  if (!msg.method) return null;
+function handleMessage(msg: MCPMessage): void {
+  if (!msg.method) return;
 
   switch (msg.method) {
     case "initialize":
-      return {
+      send({
         jsonrpc: "2.0",
         id: msg.id,
         result: {
@@ -447,58 +713,70 @@ function handleMessage(msg: MCPMessage): MCPMessage | null {
             version: "1.0.0",
           },
         },
-      };
+      });
+      break;
 
     case "notifications/initialized":
-      return null;
+      // No response needed
+      break;
 
     case "tools/list":
-      return {
+      send({
         jsonrpc: "2.0",
         id: msg.id,
         result: { tools },
-      };
+      });
+      break;
 
     case "tools/call": {
-      const params = msg.params as { name: string; arguments?: Record<string, unknown> };
-      try {
-        const result = handleTool(params.name, params.arguments || {});
-        return {
-          jsonrpc: "2.0",
-          id: msg.id,
-          result: {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(result, null, 2),
-              },
-            ],
-          },
-        };
-      } catch (e) {
-        return {
-          jsonrpc: "2.0",
-          id: msg.id,
-          result: {
-            content: [
-              {
-                type: "text",
-                text: `Error: ${e instanceof Error ? e.message : String(e)}`,
-              },
-            ],
-            isError: true,
-          },
-        };
-      }
+      const params = msg.params as {
+        name: string;
+        arguments?: Record<string, unknown>;
+      };
+      handleTool(params.name, params.arguments || {})
+        .then((result) => {
+          send({
+            jsonrpc: "2.0",
+            id: msg.id,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            },
+          });
+        })
+        .catch((e) => {
+          send({
+            jsonrpc: "2.0",
+            id: msg.id,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: `Error: ${e instanceof Error ? e.message : String(e)}`,
+                },
+              ],
+              isError: true,
+            },
+          });
+        });
+      break;
     }
 
     default:
-      return {
+      send({
         jsonrpc: "2.0",
         id: msg.id,
         error: { code: -32601, message: `Method not found: ${msg.method}` },
-      };
+      });
   }
 }
 
-process.stderr.write("Auto-CRM MCP Server running\n");
+function send(msg: MCPMessage): void {
+  process.stdout.write(JSON.stringify(msg) + "\n");
+}
+
+process.stderr.write("Auto-CRM MCP Server running (Appwrite)\n");

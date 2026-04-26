@@ -1,36 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { contacts } from "@/db/schema";
-import { eq, like, or, desc } from "drizzle-orm";
+import { listContacts, createContact } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const search = searchParams.get("search");
-  const temperature = searchParams.get("temperature");
-  const source = searchParams.get("source");
+  const search = searchParams.get("search") || undefined;
+  const temperature = searchParams.get("temperature") || undefined;
+  const source = searchParams.get("source") || undefined;
 
-  let query = db.select().from(contacts);
-
-  if (search) {
-    query = query.where(
-      or(
-        like(contacts.name, `%${search}%`),
-        like(contacts.email, `%${search}%`),
-        like(contacts.company, `%${search}%`)
-      )
-    ) as typeof query;
+  try {
+    const results = await listContacts({ search, temperature, source });
+    return NextResponse.json(results);
+  } catch (error) {
+    return NextResponse.json(
+      { error: `Errore nel recupero dei contatti: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
+    );
   }
-
-  if (temperature) {
-    query = query.where(eq(contacts.temperature, temperature)) as typeof query;
-  }
-
-  if (source) {
-    query = query.where(eq(contacts.source, source)) as typeof query;
-  }
-
-  const results = query.orderBy(desc(contacts.createdAt)).all();
-  return NextResponse.json(results);
 }
 
 export async function POST(request: NextRequest) {
@@ -46,34 +31,27 @@ export async function POST(request: NextRequest) {
 
   if (!name) {
     return NextResponse.json(
-      { error: "El nombre es requerido" },
+      { error: "Il nome è obbligatorio" },
       { status: 400 }
     );
   }
 
   try {
-    const now = new Date();
-    const result = db
-      .insert(contacts)
-      .values({
-        name,
-        email: email || null,
-        phone: phone || null,
-        company: company || null,
-        source: source || "otro",
-        temperature: temperature || "cold",
-        score: score || 0,
-        notes: notes || null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-      .get();
+    const result = await createContact({
+      name,
+      email: email || null,
+      phone: phone || null,
+      company: company || null,
+      source: source || "otro",
+      temperature: temperature || "cold",
+      score: score || 0,
+      notes: notes || null,
+    });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { error: `Error al crear contacto: ${error instanceof Error ? error.message : "Unknown"}` },
+      { error: `Errore nella creazione del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
       { status: 500 }
     );
   }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { contacts, activities } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { getContact, updateContact } from "@/lib/db/contacts";
+import { listActivities } from "@/lib/db/activities";
 import { classifyLead, isAIEnabled } from "@/lib/claude";
 import { calculateLeadScore, suggestTemperature } from "@/lib/scoring";
 
@@ -16,29 +15,21 @@ export async function POST(request: NextRequest) {
 
   if (!contactId) {
     return NextResponse.json(
-      { error: "contactId es requerido" },
+      { error: "contactId è obbligatorio" },
       { status: 400 }
     );
   }
 
-  const contact = db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.id, contactId))
-    .get();
+  const contact = await getContact(contactId);
 
   if (!contact) {
     return NextResponse.json(
-      { error: "Contacto no encontrado" },
+      { error: "Contatto non trovato" },
       { status: 404 }
     );
   }
 
-  const contactActivities = db
-    .select()
-    .from(activities)
-    .where(eq(activities.contactId, contactId))
-    .all();
+  const contactActivities = await listActivities({ contactId });
 
   if (isAIEnabled()) {
     try {
@@ -62,15 +53,10 @@ export async function POST(request: NextRequest) {
         }))
       );
 
-      // Update contact with AI classification
-      db.update(contacts)
-        .set({
-          temperature: result.temperature,
-          score: result.score,
-          updatedAt: new Date(),
-        })
-        .where(eq(contacts.id, contactId))
-      .run();
+      await updateContact(contactId, {
+        temperature: result.temperature,
+        score: result.score,
+      });
 
       return NextResponse.json({
         ...result,
@@ -117,16 +103,13 @@ export async function POST(request: NextRequest) {
 
   const temperature = suggestTemperature(score);
 
-  db.update(contacts)
-    .set({ temperature, score, updatedAt: new Date() })
-    .where(eq(contacts.id, contactId))
-    .run();
+  await updateContact(contactId, { temperature, score });
 
   return NextResponse.json({
     temperature,
     score,
-    nextAction: "Revisar manualmente y dar seguimiento",
-    reasoning: "Clasificacion basada en reglas (sin API key)",
+    nextAction: "Rivedere manualmente e fare follow-up",
+    reasoning: "Classificazione basata su regole (senza API key)",
     mode: "rules",
   });
 }

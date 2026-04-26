@@ -6,7 +6,7 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-Local-003B57?logo=sqlite)](https://www.sqlite.org/)
+[![Appwrite](https://img.shields.io/badge/Appwrite-Self--Hosted-F02E65?logo=appwrite)](https://appwrite.io/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss)](https://tailwindcss.com/)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Ready-DA7756)](https://claude.ai/code)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -29,7 +29,7 @@ Auto-CRM es un CRM open-source que se personaliza automaticamente a tu negocio. 
 
 ## Por que Auto-CRM?
 
-- **100% local** — Base de datos SQLite en tu computadora. Cero servicios externos. Tus datos son tuyos.
+- **Autoadministrado** — Base de datos Appwrite en tu servidor. Sin SaaS. Tus datos son tuyos.
 - **Se personaliza solo** — Ejecuta `/setup` y Claude adapta el pipeline, fuentes de leads, idioma y tema a tu negocio.
 - **IA incluida** — Clasifica leads, analiza tu pipeline, sugiere proximos pasos. Sin necesidad de API key.
 - **Gratis para siempre** — Open source. Sin suscripciones. Sin limites de contactos o deals.
@@ -46,8 +46,9 @@ npm run dev
 Abre **http://localhost:3000** — tu CRM esta listo.
 
 ```bash
-# Opcional: cargar datos demo para explorar
-npm run init:seed
+# Opcional: configurar Appwrite y cargar datos demo
+npm run setup
+npm run seed
 ```
 
 ## Personalizar con Claude Code
@@ -156,7 +157,7 @@ Ahora puedes decirle a Claude: *"Muestrame mis leads calientes"* o *"Agrega un c
 |-----------|-----------|
 | Frontend | Next.js 16 + React 19 + TypeScript |
 | Estilos | Tailwind CSS v4 + shadcn/ui |
-| Base de datos | SQLite + Drizzle ORM |
+| Base de datos | Appwrite (self-hosted) |
 | Drag & Drop | @dnd-kit |
 | Graficos | Recharts |
 | IA | Claude API (opcional) |
@@ -170,9 +171,9 @@ Ahora puedes decirle a Claude: *"Muestrame mis leads calientes"* o *"Agrega un c
 npm run dev
 ```
 
-### Opcion 2 — Produccion local
+### Opcion 2 — Produccion
 ```bash
-npm run local
+npm run build && npm start
 ```
 
 ### Opcion 3 — Docker
@@ -190,25 +191,26 @@ auto-crm/
 ├── CLAUDE.md                # Instrucciones para Claude Code
 ├── .claude/commands/        # 8 comandos interactivos
 ├── mcp/crm-server.ts        # Servidor MCP (10 herramientas)
-├── scripts/init.ts          # Inicializacion de base de datos
+├── scripts/                 # Setup de Appwrite + seed de datos
 ├── src/
-│   ├── app/                 # Paginas y 13 API routes
-│   ├── components/          # 28 componentes React + 21 shadcn/ui
-│   ├── db/                  # Schema SQLite + Drizzle ORM
+│   ├── app/                 # Paginas y 18 API routes
+│   ├── components/          # Componentes React + shadcn/ui
+│   ├── lib/db/              # Capa de datos Appwrite
 │   ├── lib/                 # Utilidades (scoring, AI, constants)
 │   └── types/               # TypeScript types
-├── data/crm.db              # Base de datos (auto-generada)
 ├── Dockerfile               # Contenedor Docker
-└── docker-compose.yml       # Docker Compose
+└── docker-compose.yml       # Docker Compose + Appwrite
 ```
 
 ## Variables de Entorno
 
-Todas son **opcionales**. El CRM funciona completamente sin ninguna.
-
 | Variable | Descripcion |
 |----------|-------------|
-| `ANTHROPIC_API_KEY` | Clasificacion de leads con IA en la web |
+| `NEXT_PUBLIC_APPWRITE_ENDPOINT` | URL de tu instancia Appwrite |
+| `APPWRITE_PROJECT_ID` | ID del proyecto en Appwrite |
+| `APPWRITE_API_KEY` | API key con permisos de base de datos |
+| `APPWRITE_DATABASE_ID` | ID de la base de datos (default: crm) |
+| `ANTHROPIC_API_KEY` | Clasificacion de leads con IA en la web (opcional) |
 | `RESEND_API_KEY` | Email digest diario (resend.com, gratis) |
 | `DIGEST_EMAIL` | Email donde recibir el digest |
 | `DIGEST_FROM` | Email remitente del digest |
@@ -225,13 +227,11 @@ Todas son **opcionales**. El CRM funciona completamente sin ninguna.
 
 ```bash
 npm run dev        # Servidor de desarrollo
-npm run local      # Build + produccion en un comando
-npm run init       # Inicializar base de datos
-npm run init:seed  # Inicializar + datos demo
-npm run seed       # Solo datos demo
-npm run mcp        # Servidor MCP para Claude Desktop
 npm run build      # Build de produccion
 npm start          # Servidor de produccion
+npm run setup      # Inicializar base de datos Appwrite
+npm run seed       # Cargar datos demo
+npm run mcp        # Servidor MCP para Claude Desktop
 npm run lint       # Verificar codigo
 ```
 
@@ -253,7 +253,7 @@ Auto-CRM is an open-source CRM that automatically customizes itself to your busi
 
 ## Why Auto-CRM?
 
-- **100% local** — SQLite database on your computer. Zero external services. Your data stays yours.
+- **Self-hosted** — Appwrite database on your server. No SaaS. Your data stays yours.
 - **Self-customizing** — Run `/setup` and Claude adapts the pipeline, lead sources, language, and theme to your business.
 - **AI included** — Classifies leads, analyzes your pipeline, suggests next steps. No API key required.
 - **Free forever** — Open source. No subscriptions. No limits on contacts or deals.
@@ -270,8 +270,9 @@ npm run dev
 Open **http://localhost:3000** — your CRM is ready.
 
 ```bash
-# Optional: load demo data to explore
-npm run init:seed
+# Optional: set up Appwrite and load demo data
+npm run setup
+npm run seed
 ```
 
 ## Customize with Claude Code
@@ -380,7 +381,7 @@ Now you can tell Claude: *"Show me my hot leads"* or *"Add a new contact"* from 
 |-----------|-----------|
 | Frontend | Next.js 16 + React 19 + TypeScript |
 | Styling | Tailwind CSS v4 + shadcn/ui |
-| Database | SQLite + Drizzle ORM |
+| Database | Appwrite (self-hosted) |
 | Drag & Drop | @dnd-kit |
 | Charts | Recharts |
 | AI | Claude API (optional) |
@@ -394,9 +395,9 @@ Now you can tell Claude: *"Show me my hot leads"* or *"Add a new contact"* from 
 npm run dev
 ```
 
-### Option 2 — Local production
+### Option 2 — Production
 ```bash
-npm run local
+npm run build && npm start
 ```
 
 ### Option 3 — Docker
@@ -414,25 +415,26 @@ auto-crm/
 ├── CLAUDE.md                # Instructions for Claude Code
 ├── .claude/commands/        # 8 interactive commands
 ├── mcp/crm-server.ts        # MCP server (10 tools)
-├── scripts/init.ts          # Database initialization
+├── scripts/                 # Appwrite setup + data seed
 ├── src/
-│   ├── app/                 # Pages and 13 API routes
-│   ├── components/          # 28 React components + 21 shadcn/ui
-│   ├── db/                  # SQLite schema + Drizzle ORM
+│   ├── app/                 # Pages and 18 API routes
+│   ├── components/          # React components + shadcn/ui
+│   ├── lib/db/              # Appwrite data access layer
 │   ├── lib/                 # Utilities (scoring, AI, constants)
 │   └── types/               # TypeScript types
-├── data/crm.db              # Database (auto-generated)
 ├── Dockerfile               # Docker container
-└── docker-compose.yml       # Docker Compose
+└── docker-compose.yml       # Docker Compose + Appwrite
 ```
 
 ## Environment Variables
 
-All are **optional**. The CRM works completely without any of them.
-
 | Variable | Description |
 |----------|-------------|
-| `ANTHROPIC_API_KEY` | AI lead classification in the web UI |
+| `NEXT_PUBLIC_APPWRITE_ENDPOINT` | URL of your Appwrite instance |
+| `APPWRITE_PROJECT_ID` | Project ID in Appwrite |
+| `APPWRITE_API_KEY` | API key with database permissions |
+| `APPWRITE_DATABASE_ID` | Database ID (default: crm) |
+| `ANTHROPIC_API_KEY` | AI lead classification in the web UI (optional) |
 | `RESEND_API_KEY` | Daily email digest (resend.com, free) |
 | `DIGEST_EMAIL` | Email address to receive digest |
 | `DIGEST_FROM` | Sender email for digest |
@@ -449,13 +451,11 @@ All are **optional**. The CRM works completely without any of them.
 
 ```bash
 npm run dev        # Development server
-npm run local      # Build + production in one command
-npm run init       # Initialize database
-npm run init:seed  # Initialize + demo data
-npm run seed       # Demo data only
-npm run mcp        # MCP server for Claude Desktop
 npm run build      # Production build
 npm start          # Production server
+npm run setup      # Initialize Appwrite database
+npm run seed       # Load demo data
+npm run mcp        # MCP server for Claude Desktop
 npm run lint       # Check code
 ```
 

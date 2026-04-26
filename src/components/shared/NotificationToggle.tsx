@@ -1,52 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
 
-function getInitialState() {
-  if (typeof window === "undefined") return { supported: false, enabled: false };
-  if (!("Notification" in window)) return { supported: false, enabled: false };
-  return {
-    supported: true,
-    enabled: localStorage.getItem("crm-notifications") === "true",
-  };
-}
-
 export function NotificationToggle() {
-  const initial = getInitialState();
-  const [enabled, setEnabled] = useState(initial.enabled);
-  const supported = initial.supported;
+  const [mounted, setMounted] = useState(false);
+  const [supported, setSupported] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if ("Notification" in window) {
+      setSupported(true);
+      setEnabled(localStorage.getItem("crm-notifications") === "true");
+    }
+  }, []);
 
   const toggle = async () => {
-    if (!supported) {
-      toast.error("Tu navegador no soporta notificaciones");
-      return;
-    }
 
     if (!enabled) {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
         localStorage.setItem("crm-notifications", "true");
         setEnabled(true);
-        toast.success("Notificaciones activadas");
+        toast.success("Notifiche attivate");
 
         // Show test notification
-        new Notification("Auto-CRM", {
-          body: "Las notificaciones estan activas. Te avisaremos de seguimientos pendientes.",
+        new Notification("SarconX CRM", {
+          body: "Le notifiche sono attive. Ti avviseremo dei follow-up in sospeso.",
         });
       } else {
-        toast.error("Permiso de notificaciones denegado");
+        toast.error("Permesso notifiche negato");
       }
     } else {
       localStorage.setItem("crm-notifications", "false");
       setEnabled(false);
-      toast.success("Notificaciones desactivadas");
+      toast.success("Notifiche disattivate");
     }
   };
 
-  if (!supported) return null;
+  if (!mounted || !supported) return null;
 
   return (
     <div className="flex items-center justify-between p-3 rounded-lg border">
@@ -58,12 +53,12 @@ export function NotificationToggle() {
         )}
         <div>
           <p className="text-sm font-medium">
-            Notificaciones del navegador
+            Notifiche del browser
           </p>
           <p className="text-xs text-muted-foreground">
             {enabled
-              ? "Recibiras alertas de seguimientos vencidos"
-              : "Activa para recibir alertas de seguimientos"}
+              ? "Riceverai avvisi per i follow-up scaduti"
+              : "Attiva per ricevere avvisi sui follow-up"}
           </p>
         </div>
       </div>
@@ -73,7 +68,7 @@ export function NotificationToggle() {
         onClick={toggle}
         className="cursor-pointer"
       >
-        {enabled ? "Desactivar" : "Activar"}
+        {enabled ? "Disattiva" : "Attiva"}
       </Button>
     </div>
   );

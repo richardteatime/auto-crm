@@ -15,6 +15,8 @@ interface Deal {
   contactName: string | null;
   contactTemperature: string | null;
   probability: number;
+  isRecurring?: boolean;
+  recurringMonths?: number | null;
 }
 
 interface KanbanColumnProps {

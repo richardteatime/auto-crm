@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { contacts, deals, activities } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  getContactWithRelations,
+  getContact,
+  updateContact,
+  deleteContact,
+} from "@/lib/db";
 
 export async function GET(
   _request: NextRequest,
@@ -9,36 +12,23 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const contact = db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.id, id))
-    .get();
+  try {
+    const contact = await getContactWithRelations(id);
 
-  if (!contact) {
+    if (!contact) {
+      return NextResponse.json(
+        { error: "Contatto non trovato" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(contact);
+  } catch (error) {
     return NextResponse.json(
-      { error: "Contacto no encontrado" },
-      { status: 404 }
+      { error: `Errore nel recupero del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
     );
   }
-
-  const contactDeals = db
-    .select()
-    .from(deals)
-    .where(eq(deals.contactId, id))
-    .all();
-
-  const contactActivities = db
-    .select()
-    .from(activities)
-    .where(eq(activities.contactId, id))
-    .all();
-
-  return NextResponse.json({
-    ...contact,
-    deals: contactDeals,
-    activities: contactActivities,
-  });
 }
 
 export async function PUT(
@@ -54,38 +44,37 @@ export async function PUT(
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const existing = db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.id, id))
-    .get();
+  try {
+    const existing = await getContact(id);
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Contatto non trovato" },
+        { status: 404 }
+      );
+    }
 
-  if (!existing) {
+    const updateData: Record<string, unknown> = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.company !== undefined) updateData.company = body.company;
+    if (body.source !== undefined) updateData.source = body.source;
+    if (body.temperature !== undefined) updateData.temperature = body.temperature;
+    if (body.score !== undefined) updateData.score = Math.max(0, Math.min(100, body.score));
+    if (body.notes !== undefined) updateData.notes = body.notes;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(existing);
+    }
+
+    const result = await updateContact(id, updateData);
+    return NextResponse.json(result);
+  } catch (error) {
     return NextResponse.json(
-      { error: "Contacto no encontrado" },
-      { status: 404 }
+      { error: `Errore nell'aggiornamento del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
     );
   }
-
-  // Only allow updating specific fields
-  const updateData: Record<string, unknown> = { updatedAt: new Date() };
-  if (body.name !== undefined) updateData.name = body.name;
-  if (body.email !== undefined) updateData.email = body.email;
-  if (body.phone !== undefined) updateData.phone = body.phone;
-  if (body.company !== undefined) updateData.company = body.company;
-  if (body.source !== undefined) updateData.source = body.source;
-  if (body.temperature !== undefined) updateData.temperature = body.temperature;
-  if (body.score !== undefined) updateData.score = Math.max(0, Math.min(100, body.score));
-  if (body.notes !== undefined) updateData.notes = body.notes;
-
-  const result = db
-    .update(contacts)
-    .set(updateData)
-    .where(eq(contacts.id, id))
-    .returning()
-    .get();
-
-  return NextResponse.json(result);
 }
 
 export async function DELETE(
@@ -94,19 +83,21 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const existing = db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.id, id))
-    .get();
+  try {
+    const existing = await getContact(id);
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Contatto non trovato" },
+        { status: 404 }
+      );
+    }
 
-  if (!existing) {
+    await deleteContact(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
     return NextResponse.json(
-      { error: "Contacto no encontrado" },
-      { status: 404 }
+      { error: `Errore nell'eliminazione del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
     );
   }
-
-  db.delete(contacts).where(eq(contacts.id, id)).run();
-  return NextResponse.json({ success: true });
 }

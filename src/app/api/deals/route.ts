@@ -1,37 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { deals, contacts, pipelineStages } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { listDeals, createDeal, getStages } from "@/lib/db";
 
 export async function GET() {
-  const results = db
-    .select({
-      id: deals.id,
-      title: deals.title,
-      value: deals.value,
-      stageId: deals.stageId,
-      contactId: deals.contactId,
-      expectedClose: deals.expectedClose,
-      probability: deals.probability,
-      notes: deals.notes,
-      createdAt: deals.createdAt,
-      updatedAt: deals.updatedAt,
-      contactName: contacts.name,
-      contactEmail: contacts.email,
-      contactTemperature: contacts.temperature,
-      stageName: pipelineStages.name,
-      stageColor: pipelineStages.color,
-      stageOrder: pipelineStages.order,
-      stageIsWon: pipelineStages.isWon,
-      stageIsLost: pipelineStages.isLost,
-    })
-    .from(deals)
-    .leftJoin(contacts, eq(deals.contactId, contacts.id))
-    .leftJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
-    .orderBy(desc(deals.createdAt))
-    .all();
-
-  return NextResponse.json(results);
+  try {
+    const results = await listDeals();
+    return NextResponse.json(results);
+  } catch (error) {
+    return NextResponse.json(
+      { error: `Errore nel recupero delle trattative: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -41,11 +20,12 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
-  const { title, value, stageId, contactId, expectedClose, probability, notes } = body;
+
+  const { title, value, stageId, contactId, expectedClose, probability, notes, attachments, isRecurring, recurringMonths } = body;
 
   if (!title || !contactId) {
     return NextResponse.json(
-      { error: "Titulo y contacto son requeridos" },
+      { error: "Titolo e contatto sono obbligatori" },
       { status: 400 }
     );
   }
@@ -53,51 +33,42 @@ export async function POST(request: NextRequest) {
   // Get first stage if none provided
   let finalStageId = stageId;
   if (!finalStageId) {
-    const firstStage = db
-      .select()
-      .from(pipelineStages)
-      .orderBy(pipelineStages.order)
-      .limit(1)
-      .get();
-    finalStageId = firstStage?.id;
+    const stages = await getStages();
+    finalStageId = stages[0]?.id;
   }
 
   if (!finalStageId) {
     return NextResponse.json(
-      { error: "No hay etapas de pipeline configuradas" },
+      { error: "Nessuna fase del pipeline configurata" },
       { status: 400 }
     );
   }
 
   try {
-    const now = new Date();
-    const result = db
-      .insert(deals)
-      .values({
-        title,
-        value: value || 0,
-        stageId: finalStageId,
-        contactId,
-        expectedClose: expectedClose ? new Date(expectedClose) : null,
-        probability: Math.max(0, Math.min(100, Number(probability) || 0)),
-        notes: notes || null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-      .get();
+    const result = await createDeal({
+      title,
+      value: value || 0,
+      stageId: finalStageId,
+      contactId,
+      expectedClose: expectedClose ? new Date(expectedClose) : null,
+      probability: Math.max(0, Math.min(100, Number(probability) || 0)),
+      notes: notes || null,
+      attachments: attachments ? JSON.stringify(attachments) : "[]",
+      isRecurring: !!isRecurring,
+      recurringMonths: isRecurring ? (Number(recurringMonths) || 12) : null,
+    });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown";
-    if (msg.includes("FOREIGN KEY")) {
+    if (msg.includes("not found") || msg.includes("NOT_FOUND")) {
       return NextResponse.json(
-        { error: "Contacto no encontrado" },
+        { error: "Contatto non trovato" },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { error: `Error al crear deal: ${msg}` },
+      { error: `Errore nella creazione della trattativa: ${msg}` },
       { status: 500 }
     );
   }

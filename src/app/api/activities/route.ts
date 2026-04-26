@@ -1,38 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { activities, contacts } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { listActivities, createActivity } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const contactId = searchParams.get("contactId");
-  const dealId = searchParams.get("dealId");
+  const contactId = searchParams.get("contactId") || undefined;
+  const dealId = searchParams.get("dealId") || undefined;
 
-  let query = db
-    .select({
-      id: activities.id,
-      type: activities.type,
-      description: activities.description,
-      contactId: activities.contactId,
-      dealId: activities.dealId,
-      scheduledAt: activities.scheduledAt,
-      completedAt: activities.completedAt,
-      createdAt: activities.createdAt,
-      contactName: contacts.name,
-    })
-    .from(activities)
-    .leftJoin(contacts, eq(activities.contactId, contacts.id));
-
-  if (contactId) {
-    query = query.where(eq(activities.contactId, contactId)) as typeof query;
+  try {
+    const results = await listActivities({ contactId, dealId });
+    return NextResponse.json(results);
+  } catch (error) {
+    return NextResponse.json(
+      { error: `Errore nel recupero delle attività: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
+    );
   }
-
-  if (dealId) {
-    query = query.where(eq(activities.dealId, dealId)) as typeof query;
-  }
-
-  const results = query.orderBy(desc(activities.createdAt)).all();
-  return NextResponse.json(results);
 }
 
 export async function POST(request: NextRequest) {
@@ -42,35 +24,32 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
+
   const { type, description, contactId, dealId, scheduledAt } = body;
 
   if (!type || !description || !contactId) {
     return NextResponse.json(
-      { error: "Tipo, descripcion y contacto son requeridos" },
+      { error: "Tipo, descrizione e contatto sono obbligatori" },
       { status: 400 }
     );
   }
 
   try {
-    const result = db
-      .insert(activities)
-      .values({
-        type,
-        description,
-        contactId,
-        dealId: dealId || null,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        completedAt: null,
-        createdAt: new Date(),
-      })
-      .returning()
-      .get();
+    const result = await createActivity({
+      type,
+      description,
+      contactId,
+      dealId: dealId || null,
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      completedAt: null,
+      isCompleted: false,
+    });
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown";
     return NextResponse.json(
-      { error: `Error al crear actividad: ${msg}` },
+      { error: `Errore nella creazione dell'attività: ${msg}` },
       { status: 500 }
     );
   }

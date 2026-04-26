@@ -12,28 +12,28 @@ interface KPICardsProps {
 export function KPICards({ stats }: KPICardsProps) {
   const cards = [
     {
-      title: "Total Contactos",
+      title: "Totale Contatti",
       value: stats.totalContacts.toString(),
       icon: Users,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
     },
     {
-      title: "Deals Activos",
+      title: "Trattative Attive",
       value: stats.activeDeals.toString(),
       icon: Briefcase,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
     },
     {
-      title: "Valor en Pipeline",
+      title: "Valore nel Pipeline",
       value: formatCurrency(stats.totalPipelineValue),
       icon: DollarSign,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
     {
-      title: "Leads Calientes",
+      title: "Lead Caldi",
       value: stats.hotLeads.toString(),
       icon: Flame,
       color: "text-red-600",

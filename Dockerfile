@@ -1,32 +1,34 @@
-FROM node:22-slim
+FROM node:22-slim AS base
 
 WORKDIR /app
 
-# Install build dependencies for better-sqlite3
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
-
-# Copy package files
+# Install dependencies only when needed
+FROM base AS deps
 COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
+# Rebuild the source code only when needed
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Create data directory
-RUN mkdir -p data
-
-# Initialize database
-RUN npx tsx scripts/init.ts
-
-# Expose port
-EXPOSE 3000
-
+# Production image
+FROM base AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["npm", "start"]
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]

@@ -4,40 +4,65 @@ export const TEMPERATURE_CONFIG: Record<
   Temperature,
   { label: string; color: string; bgColor: string }
 > = {
-  cold: { label: "Frio", color: "#64748b", bgColor: "#f1f5f9" },
-  warm: { label: "Tibio", color: "#ea580c", bgColor: "#fff7ed" },
-  hot: { label: "Caliente", color: "#dc2626", bgColor: "#fef2f2" },
+  cold: { label: "Freddo", color: "#64748b", bgColor: "#f1f5f9" },
+  warm: { label: "Tiepido", color: "#ea580c", bgColor: "#fff7ed" },
+  hot: { label: "Caldo", color: "#dc2626", bgColor: "#fef2f2" },
 };
 
 export const SOURCE_LABELS: Record<LeadSource, string> = {
-  website: "Sitio web",
+  website: "Sito web",
   whatsapp: "WhatsApp",
-  referido: "Referido",
-  redes_sociales: "Redes sociales",
-  llamada_fria: "Llamada fria",
+  referido: "Referral",
+  redes_sociales: "Social media",
+  llamada_fria: "Chiamata a freddo",
   email: "Email",
-  formulario: "Formulario",
+  formulario: "Modulo",
   evento: "Evento",
-  import: "Importado",
+  import: "Importato",
   webhook: "Webhook",
-  otro: "Otro",
+  otro: "Altro",
 };
 
 export const ACTIVITY_TYPE_CONFIG: Record<
   ActivityType,
   { label: string; icon: string }
 > = {
-  call: { label: "Llamada", icon: "Phone" },
+  call: { label: "Chiamata", icon: "Phone" },
   email: { label: "Email", icon: "Mail" },
-  meeting: { label: "Reunion", icon: "Users" },
+  meeting: { label: "Riunione", icon: "Users" },
   note: { label: "Nota", icon: "FileText" },
-  follow_up: { label: "Seguimiento", icon: "Clock" },
+  follow_up: { label: "Follow-up", icon: "Clock" },
+};
+
+export type ActivityStatus = "completed" | "overdue" | "open";
+
+export function getActivityStatus(activity: {
+  completedAt: number | Date | null | undefined;
+  startAt?: number | Date | null;
+  scheduledAt?: number | Date | null;
+}): ActivityStatus {
+  if (activity.completedAt) return "completed";
+  const dueRaw = activity.startAt ?? activity.scheduledAt;
+  if (dueRaw) {
+    const ms = dueRaw instanceof Date ? dueRaw.getTime() : dueRaw < 1e12 ? dueRaw * 1000 : dueRaw;
+    if (ms < Date.now()) return "overdue";
+  }
+  return "open";
+}
+
+export const ACTIVITY_STATUS_STYLE: Record<
+  ActivityStatus,
+  { iconBg: string; iconColor: string; label: string }
+> = {
+  completed: { iconBg: "bg-green-100",  iconColor: "text-green-600",  label: "Completata" },
+  overdue:   { iconBg: "bg-red-100",    iconColor: "text-red-600",    label: "Scaduta"    },
+  open:      { iconBg: "bg-yellow-100", iconColor: "text-yellow-600", label: "Aperta"     },
 };
 
 export function formatCurrency(cents: number): string {
-  return new Intl.NumberFormat("es-MX", {
+  return new Intl.NumberFormat("it-IT", {
     style: "currency",
-    currency: "MXN",
+    currency: "EUR",
   }).format(cents / 100);
 }
 
@@ -55,7 +80,7 @@ function toDate(date: Date | number): Date {
 export function formatDate(date: Date | number | null): string {
   if (!date) return "-";
   const d = toDate(date);
-  return new Intl.DateTimeFormat("es-MX", {
+  return new Intl.DateTimeFormat("it-IT", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -68,9 +93,9 @@ export function formatRelativeDate(date: Date | number): string {
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "Hoy";
-  if (diffDays === 1) return "Ayer";
-  if (diffDays < 7) return `Hace ${diffDays} dias`;
-  if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} semanas`;
+  if (diffDays === 0) return "Oggi";
+  if (diffDays === 1) return "Ieri";
+  if (diffDays < 7) return `${diffDays} giorni fa`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} settimane fa`;
   return formatDate(date);
 }

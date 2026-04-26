@@ -15,8 +15,8 @@ export function NotificationChecker() {
       const overdueCount = data.overdue?.length || 0;
 
       if (overdueCount > 0) {
-        new Notification("Auto-CRM", {
-          body: `Tienes ${overdueCount} seguimiento${overdueCount > 1 ? "s" : ""} vencido${overdueCount > 1 ? "s" : ""}`,
+        new Notification("SarconX CRM", {
+          body: `Hai ${overdueCount} follow-up scadut${overdueCount > 1 ? "i" : "o"}`,
           icon: "/favicon.ico",
           tag: "crm-followup", // Prevents duplicate notifications
         });

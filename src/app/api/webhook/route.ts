@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { contacts, activities, crmSettings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { createContact } from "@/lib/db/contacts";
+import { createActivity } from "@/lib/db/activities";
+import { getSetting } from "@/lib/db/settings";
 
 // Field name mapping: common variations → standard field
 const FIELD_MAP: Record<string, string> = {
@@ -77,17 +77,13 @@ function extractFields(
 
 export async function POST(request: NextRequest) {
   // Auth check: if a webhook secret is stored, require it in the header
-  const stored = db
-    .select()
-    .from(crmSettings)
-    .where(eq(crmSettings.key, "webhook_secret"))
-    .get();
+  const stored = await getSetting("webhook_secret");
 
   if (stored) {
     const secretHeader = request.headers.get("x-webhook-secret");
-    if (!secretHeader || secretHeader !== stored.value) {
+    if (!secretHeader || secretHeader !== stored) {
       return NextResponse.json(
-        { error: "Secret invalido o faltante" },
+        { error: "Secret non valido o mancante" },
         { status: 401 }
       );
     }
@@ -105,42 +101,32 @@ export async function POST(request: NextRequest) {
   if (!fields.name) {
     return NextResponse.json(
       {
-        error: "Campo 'name' o 'nombre' es requerido",
+        error: "Il campo 'name' o 'nombre' è obbligatorio",
         received: Object.keys(payload),
-        hint: "Campos soportados: name, nombre, full_name, email, correo, phone, telefono, company, empresa, notes, notas, message",
+        hint: "Campi supportati: name, nombre, full_name, email, correo, phone, telefono, company, empresa, notes, notas, message",
       },
       { status: 400 }
     );
   }
 
   try {
-    const now = new Date();
-    const contact = db
-      .insert(contacts)
-      .values({
-        name: fields.name,
-        email: fields.email || null,
-        phone: fields.phone || null,
-        company: fields.company || null,
-        source: "webhook",
-        temperature: "cold",
-        score: 0,
-        notes: fields.notes || null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-      .get();
+    const contact = await createContact({
+      name: fields.name,
+      email: fields.email || null,
+      phone: fields.phone || null,
+      company: fields.company || null,
+      source: "webhook",
+      temperature: "cold",
+      score: 0,
+      notes: fields.notes || null,
+    });
 
     // Log activity for the new lead
-    db.insert(activities)
-      .values({
-        type: "note",
-        description: `Lead recibido via webhook${fields.company ? ` (${fields.company})` : ""}`,
-        contactId: contact.id,
-        createdAt: now,
-      })
-      .run();
+    await createActivity({
+      type: "note",
+      description: `Lead ricevuto via webhook${fields.company ? ` (${fields.company})` : ""}`,
+      contactId: contact.id,
+    });
 
     return NextResponse.json(
       {
@@ -157,7 +143,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: `Error al crear contacto: ${error instanceof Error ? error.message : "Unknown"}`,
+        error: `Errore nella creazione del contatto: ${error instanceof Error ? error.message : "sconosciuto"}`,
       },
       { status: 500 }
     );

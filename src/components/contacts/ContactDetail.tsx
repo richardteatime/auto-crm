@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ContactForm } from "./ContactForm";
 import { ActivityForm } from "@/components/activities/ActivityForm";
+import { DealForm } from "@/components/deals/DealForm";
 import {
   ArrowLeft,
   Mail,
@@ -23,8 +24,10 @@ import {
   MessageCircle,
   Copy,
   Check,
+  Paperclip,
+  CalendarDays,
 } from "lucide-react";
-import { formatCurrency, formatDate, formatRelativeDate, cleanPhoneForWhatsApp } from "@/lib/constants";
+import { formatCurrency, formatDate, formatRelativeDate, cleanPhoneForWhatsApp, getActivityStatus, ACTIVITY_STATUS_STYLE } from "@/lib/constants";
 import { ACTIVITY_TYPE_CONFIG, SOURCE_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 import type { Temperature, ActivityType, LeadSource } from "@/types";
@@ -63,6 +66,10 @@ interface ContactDetailClientProps {
     id: string;
     type: string;
     description: string;
+    startAt?: number | Date | null;
+    endAt?: number | Date | null;
+    notes?: string | null;
+    attachments?: string | null;
     scheduledAt: number | Date | null;
     completedAt: number | Date | null;
     createdAt: number | Date;
@@ -77,31 +84,32 @@ export function ContactDetailClient({
   const router = useRouter();
   const [showEditForm, setShowEditForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
+  const [showDealForm, setShowDealForm] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const handleCopy = async (value: string, field: string) => {
     try {
       await navigator.clipboard.writeText(value);
       setCopiedField(field);
-      toast.success("Copiado");
+      toast.success("Copiato");
       setTimeout(() => setCopiedField(null), 2000);
     } catch {
-      toast.error("Error al copiar");
+      toast.error("Errore durante la copia");
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Estas seguro de eliminar este contacto? Esta accion no se puede deshacer.")) {
+    if (!confirm("Sei sicuro di voler eliminare questo contatto? Questa azione non può essere annullata.")) {
       return;
     }
 
     try {
       const res = await fetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Error al eliminar");
-      toast.success("Contacto eliminado");
+      if (!res.ok) throw new Error("Errore durante l'eliminazione");
+      toast.success("Contatto eliminato");
       router.push("/contacts");
     } catch {
-      toast.error("Error al eliminar el contacto");
+      toast.error("Errore durante l'eliminazione del contatto");
     }
   };
 
@@ -112,11 +120,11 @@ export function ContactDetailClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completedAt: new Date().toISOString() }),
       });
-      if (!res.ok) throw new Error("Error");
-      toast.success("Actividad completada");
+      if (!res.ok) throw new Error("Errore");
+      toast.success("Attività completata");
       router.refresh();
     } catch {
-      toast.error("Error al completar la actividad");
+      toast.error("Errore durante il completamento dell'attività");
     }
   };
 
@@ -128,7 +136,7 @@ export function ContactDetailClient({
           size="icon"
           onClick={() => router.push("/contacts")}
           className="cursor-pointer"
-          aria-label="Volver a contactos"
+          aria-label="Torna ai contatti"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -150,7 +158,7 @@ export function ContactDetailClient({
             className="cursor-pointer"
           >
             <Pencil className="h-4 w-4 mr-1" />
-            Editar
+            Modifica
           </Button>
           <Button
             variant="outline"
@@ -159,7 +167,7 @@ export function ContactDetailClient({
             className="cursor-pointer text-destructive hover:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-1" />
-            Eliminar
+            Elimina
           </Button>
         </div>
       </div>
@@ -168,7 +176,7 @@ export function ContactDetailClient({
         {/* Contact info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Informacion</CardTitle>
+            <CardTitle className="text-base">Informazioni</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {contact.email && (
@@ -180,7 +188,7 @@ export function ContactDetailClient({
                 <button
                   onClick={() => handleCopy(contact.email!, "email")}
                   className="p-1 rounded hover:bg-muted cursor-pointer"
-                  title="Copiar email"
+                  title="Copia email"
                 >
                   {copiedField === "email" ? (
                     <Check className="h-3.5 w-3.5 text-green-600" />
@@ -200,21 +208,21 @@ export function ContactDetailClient({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1 rounded hover:bg-green-50 cursor-pointer"
-                    title="Abrir WhatsApp"
+                    title="Apri WhatsApp"
                   >
                     <MessageCircle className="h-3.5 w-3.5 text-green-600" />
                   </a>
                   <a
                     href={`tel:${contact.phone}`}
                     className="p-1 rounded hover:bg-blue-50 cursor-pointer"
-                    title="Llamar"
+                    title="Chiama"
                   >
                     <Phone className="h-3.5 w-3.5 text-blue-600" />
                   </a>
                   <button
                     onClick={() => handleCopy(contact.phone!, "phone")}
                     className="p-1 rounded hover:bg-muted cursor-pointer"
-                    title="Copiar telefono"
+                    title="Copia telefono"
                   >
                     {copiedField === "phone" ? (
                       <Check className="h-3.5 w-3.5 text-green-600" />
@@ -233,7 +241,7 @@ export function ContactDetailClient({
             )}
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>Creado {formatDate(contact.createdAt)}</span>
+              <span>Creato il {formatDate(contact.createdAt)}</span>
             </div>
             {contact.notes && (
               <div className="pt-2 border-t">
@@ -246,13 +254,24 @@ export function ContactDetailClient({
         {/* Deals */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
-              Deals ({deals.length})
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">
+                Trattative ({deals.length})
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDealForm(true)}
+                className="cursor-pointer"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Nuova
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {deals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sin deals</p>
+              <p className="text-sm text-muted-foreground">Nessuna trattativa</p>
             ) : (
               <div className="space-y-3">
                 {deals.map((deal) => (
@@ -287,7 +306,7 @@ export function ContactDetailClient({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">
-              Actividades ({activities.length})
+              Attività ({activities.length})
             </CardTitle>
             <Button
               variant="ghost"
@@ -296,41 +315,82 @@ export function ContactDetailClient({
               className="cursor-pointer"
             >
               <Plus className="h-4 w-4 mr-1" />
-              Registrar
+              Registra
             </Button>
           </CardHeader>
           <CardContent>
             {activities.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Sin actividades. Registra una llamada, email o nota.
+                Nessuna attività. Registra una chiamata, email o nota.
               </p>
             ) : (
               <div className="space-y-4">
                 {activities.map((activity) => {
                   const Icon = activityIcons[activity.type] || FileText;
                   const config = ACTIVITY_TYPE_CONFIG[activity.type as ActivityType];
-                  const isPending = !activity.completedAt && activity.scheduledAt;
+                  const status = getActivityStatus(activity);
+                  const style = ACTIVITY_STATUS_STYLE[status];
+                  let attachmentList: { name: string; url: string }[] = [];
+                  try { attachmentList = JSON.parse(activity.attachments || "[]"); } catch { /* */ }
                   return (
                     <div key={activity.id} className="flex gap-3">
-                      <div className="rounded-full bg-muted p-2 h-fit shrink-0">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                      <div className={`rounded-full p-2 h-fit shrink-0 ${style.iconBg}`}>
+                        <Icon className={`h-3.5 w-3.5 ${style.iconColor}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant="secondary" className="text-xs">
                             {config?.label || activity.type}
                           </Badge>
-                          {isPending && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-orange-600 border-orange-600 cursor-pointer"
+                          <span className={`text-xs font-medium ${
+                            status === "completed" ? "text-green-600" :
+                            status === "overdue"   ? "text-red-600"   :
+                                                     "text-yellow-600"
+                          }`}>
+                            {style.label}
+                          </span>
+                          {status !== "completed" && (
+                            <button
+                              className="text-xs text-muted-foreground underline cursor-pointer hover:text-foreground"
                               onClick={() => handleCompleteActivity(activity.id)}
                             >
-                              Completar
-                            </Badge>
+                              Segna completata
+                            </button>
+                          )}
+                          {attachmentList.length > 0 && (
+                            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                              <Paperclip className="h-3 w-3" />
+                              {attachmentList.length}
+                            </span>
                           )}
                         </div>
-                        <p className="text-sm mt-1">{activity.description}</p>
+                        <p className="text-sm font-medium mt-1">{activity.description}</p>
+                        {activity.startAt && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <CalendarDays className="h-3 w-3" />
+                            {formatDate(activity.startAt as number | Date)}
+                            {activity.endAt ? ` → ${formatDate(activity.endAt as number | Date)}` : ""}
+                          </p>
+                        )}
+                        {activity.notes && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{activity.notes}</p>
+                        )}
+                        {attachmentList.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {attachmentList.map((a) => (
+                              <a
+                                key={a.url}
+                                href={a.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                              >
+                                <Paperclip className="h-3 w-3" />
+                                {a.name}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {formatRelativeDate(activity.createdAt)}
                         </p>
@@ -366,6 +426,15 @@ export function ContactDetailClient({
         open={showActivityForm}
         onClose={() => {
           setShowActivityForm(false);
+          router.refresh();
+        }}
+        preselectedContactId={contact.id}
+      />
+
+      <DealForm
+        open={showDealForm}
+        onClose={() => {
+          setShowDealForm(false);
           router.refresh();
         }}
         preselectedContactId={contact.id}

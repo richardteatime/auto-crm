@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { deals } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { getDeal, updateDeal, deleteDeal } from "@/lib/db";
 
 export async function GET(
   _request: NextRequest,
@@ -9,16 +7,23 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const deal = db.select().from(deals).where(eq(deals.id, id)).get();
+  try {
+    const deal = await getDeal(id);
 
-  if (!deal) {
+    if (!deal) {
+      return NextResponse.json(
+        { error: "Trattativa non trovata" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(deal);
+  } catch (error) {
     return NextResponse.json(
-      { error: "Deal no encontrado" },
-      { status: 404 }
+      { error: `Errore nel recupero della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
     );
   }
-
-  return NextResponse.json(deal);
 }
 
 export async function PUT(
@@ -34,37 +39,44 @@ export async function PUT(
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const existing = db.select().from(deals).where(eq(deals.id, id)).get();
+  try {
+    const existing = await getDeal(id);
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Trattativa non trovata" },
+        { status: 404 }
+      );
+    }
 
-  if (!existing) {
+    const updateData: Record<string, unknown> = {};
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.value !== undefined) updateData.value = body.value;
+    if (body.stageId !== undefined) updateData.stageId = body.stageId;
+    if (body.contactId !== undefined) updateData.contactId = body.contactId;
+    if (body.expectedClose !== undefined) {
+      updateData.expectedClose = body.expectedClose ? new Date(body.expectedClose) : null;
+    }
+    if (body.probability !== undefined) {
+      updateData.probability = Math.max(0, Math.min(100, Number(body.probability)));
+    }
+    if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.attachments !== undefined) updateData.attachments = JSON.stringify(body.attachments ?? []);
+    if (body.isRecurring !== undefined) updateData.isRecurring = !!body.isRecurring;
+    if (body.recurringMonths !== undefined) updateData.recurringMonths = Number(body.recurringMonths) || 12;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(existing);
+    }
+
+    // updateDeal handles wonAt/recurringStartDate logic internally
+    const result = await updateDeal(id, updateData);
+    return NextResponse.json(result);
+  } catch (error) {
     return NextResponse.json(
-      { error: "Deal no encontrado" },
-      { status: 404 }
+      { error: `Errore nell'aggiornamento della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
     );
   }
-
-  // Only allow updating specific fields
-  const updateData: Record<string, unknown> = { updatedAt: new Date() };
-  if (body.title !== undefined) updateData.title = body.title;
-  if (body.value !== undefined) updateData.value = body.value;
-  if (body.stageId !== undefined) updateData.stageId = body.stageId;
-  if (body.contactId !== undefined) updateData.contactId = body.contactId;
-  if (body.expectedClose !== undefined) {
-    updateData.expectedClose = body.expectedClose ? new Date(body.expectedClose) : null;
-  }
-  if (body.probability !== undefined) {
-    updateData.probability = Math.max(0, Math.min(100, Number(body.probability)));
-  }
-  if (body.notes !== undefined) updateData.notes = body.notes;
-
-  const result = db
-    .update(deals)
-    .set(updateData)
-    .where(eq(deals.id, id))
-    .returning()
-    .get();
-
-  return NextResponse.json(result);
 }
 
 export async function DELETE(
@@ -73,15 +85,21 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const existing = db.select().from(deals).where(eq(deals.id, id)).get();
+  try {
+    const existing = await getDeal(id);
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Trattativa non trovata" },
+        { status: 404 }
+      );
+    }
 
-  if (!existing) {
+    await deleteDeal(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
     return NextResponse.json(
-      { error: "Deal no encontrado" },
-      { status: 404 }
+      { error: `Errore nell'eliminazione della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { status: 500 }
     );
   }
-
-  db.delete(deals).where(eq(deals.id, id)).run();
-  return NextResponse.json({ success: true });
 }

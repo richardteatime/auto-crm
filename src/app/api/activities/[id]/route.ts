@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { activities } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { updateActivity, deleteActivity } from "@/lib/db";
+
+function isNotFoundError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message;
+  return msg.includes("404") || msg.includes("not found") || msg.includes("NOT_FOUND");
+}
 
 export async function PUT(
   request: NextRequest,
@@ -13,83 +17,70 @@ export async function PUT(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
+    return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  try {
-    const existing = db
-      .select()
-      .from(activities)
-      .where(eq(activities.id, id))
-      .get();
+  const updateData: Record<string, unknown> = {};
 
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Actividad no encontrada" },
-        { status: 404 }
-      );
-    }
-
-    const updateData: Record<string, unknown> = {};
-
-    if (body.completedAt !== undefined) {
-      if (body.completedAt === null || body.completedAt === true) {
-        updateData.completedAt = new Date();
-      } else if (typeof body.completedAt === "string") {
-        const parsed = new Date(body.completedAt);
-        if (isNaN(parsed.getTime())) {
-          return NextResponse.json(
-            { error: "completedAt debe ser una fecha valida" },
-            { status: 400 }
-          );
-        }
-        updateData.completedAt = parsed;
-      }
-    }
-
-    if (body.description !== undefined) {
-      if (typeof body.description !== "string" || !body.description.trim()) {
+  if (body.completedAt !== undefined) {
+    if (body.completedAt === null || body.completedAt === true) {
+      updateData.completedAt = new Date();
+      updateData.isCompleted = true;
+    } else if (typeof body.completedAt === "string") {
+      const parsed = new Date(body.completedAt);
+      if (isNaN(parsed.getTime())) {
         return NextResponse.json(
-          { error: "description debe ser un texto no vacio" },
+          { error: "completedAt deve essere una data valida" },
           { status: 400 }
         );
       }
-      updateData.description = body.description;
+      updateData.completedAt = parsed;
+      updateData.isCompleted = true;
     }
+  }
 
-    if (body.scheduledAt !== undefined) {
-      if (body.scheduledAt === null) {
-        updateData.scheduledAt = null;
-      } else if (typeof body.scheduledAt === "string") {
-        const parsed = new Date(body.scheduledAt);
-        if (isNaN(parsed.getTime())) {
-          return NextResponse.json(
-            { error: "scheduledAt debe ser una fecha valida" },
-            { status: 400 }
-          );
-        }
-        updateData.scheduledAt = parsed;
-      }
-    }
-
-    if (Object.keys(updateData).length === 0) {
+  if (body.description !== undefined) {
+    if (typeof body.description !== "string" || !body.description.trim()) {
       return NextResponse.json(
-        { error: "No hay campos para actualizar" },
+        { error: "description deve essere un testo non vuoto" },
         { status: 400 }
       );
     }
+    updateData.description = body.description;
+  }
 
-    const result = db
-      .update(activities)
-      .set(updateData)
-      .where(eq(activities.id, id))
-      .returning()
-      .get();
+  if (body.scheduledAt !== undefined) {
+    if (body.scheduledAt === null) {
+      updateData.scheduledAt = null;
+    } else if (typeof body.scheduledAt === "string") {
+      const parsed = new Date(body.scheduledAt);
+      if (!isNaN(parsed.getTime())) updateData.scheduledAt = parsed;
+    }
+  }
 
+  if (body.type !== undefined) updateData.type = body.type;
+  if (body.contactId !== undefined) updateData.contactId = body.contactId;
+  if (body.dealId !== undefined) updateData.dealId = body.dealId;
+
+  if (Object.keys(updateData).length === 0) {
+    return NextResponse.json(
+      { error: "Nessun campo da aggiornare" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const result = await updateActivity(id, updateData);
     return NextResponse.json(result);
   } catch (error) {
+    if (isNotFoundError(error)) {
+      return NextResponse.json(
+        { error: "Attività non trovata" },
+        { status: 404 }
+      );
+    }
     return NextResponse.json(
-      { error: `Error al actualizar: ${error instanceof Error ? error.message : "Unknown"}` },
+      { error: `Errore nell'aggiornamento: ${error instanceof Error ? error.message : "sconosciuto"}` },
       { status: 500 }
     );
   }
@@ -102,24 +93,17 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    const existing = db
-      .select()
-      .from(activities)
-      .where(eq(activities.id, id))
-      .get();
-
-    if (!existing) {
+    await deleteActivity(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (isNotFoundError(error)) {
       return NextResponse.json(
-        { error: "Actividad no encontrada" },
+        { error: "Attività non trovata" },
         { status: 404 }
       );
     }
-
-    db.delete(activities).where(eq(activities.id, id)).run();
-    return NextResponse.json({ success: true });
-  } catch (error) {
     return NextResponse.json(
-      { error: `Error al eliminar: ${error instanceof Error ? error.message : "Unknown"}` },
+      { error: `Errore nell'eliminazione: ${error instanceof Error ? error.message : "sconosciuto"}` },
       { status: 500 }
     );
   }

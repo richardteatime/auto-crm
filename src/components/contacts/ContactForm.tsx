@@ -24,8 +24,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const contactSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido"),
-  email: z.string().email("Email invalido").or(z.literal("")),
+  name: z.string().min(1, "Il nome è obbligatorio"),
+  email: z.string().email("Email non valida").or(z.literal("")),
   phone: z.string(),
   company: z.string(),
   source: z.string(),
@@ -81,13 +81,13 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
       if (!res.ok) throw new Error("Error al guardar");
 
       toast.success(
-        isEditing ? "Contacto actualizado" : "Contacto creado"
+        isEditing ? "Contatto aggiornato" : "Contatto creato"
       );
       reset();
       onClose();
       router.refresh();
     } catch {
-      toast.error("Error al guardar el contacto");
+      toast.error("Errore durante il salvataggio del contatto");
     }
   };
 
@@ -96,14 +96,14 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Editar Contacto" : "Nuevo Contacto"}
+            {isEditing ? "Modifica Contatto" : "Nuovo Contatto"}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre *</Label>
-            <Input id="name" {...register("name")} placeholder="Nombre completo" />
+            <Label htmlFor="name">Nome *</Label>
+            <Input id="name" {...register("name")} placeholder="Nome completo" />
             {errors.name && (
               <p className="text-xs text-destructive">{errors.name.message}</p>
             )}
@@ -112,22 +112,22 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...register("email")} placeholder="correo@ejemplo.com" />
+              <Input id="email" type="email" {...register("email")} placeholder="email@esempio.com" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Telefono</Label>
-              <Input id="phone" {...register("phone")} placeholder="+52 55 1234 5678" />
+              <Input id="phone" {...register("phone")} placeholder="+39 02 1234 5678" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="company">Empresa</Label>
-            <Input id="company" {...register("company")} placeholder="Nombre de la empresa" />
+            <Label htmlFor="company">Azienda</Label>
+            <Input id="company" {...register("company")} placeholder="Nome dell'azienda" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Fuente</Label>
+              <Label>Fonte</Label>
               <Select
                 value={watch("source")}
                 onValueChange={(v) => v && setValue("source", v)}
@@ -136,17 +136,17 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="website">Sitio web</SelectItem>
+                  <SelectItem value="website">Sito web</SelectItem>
                   <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                  <SelectItem value="referido">Referido</SelectItem>
-                  <SelectItem value="redes_sociales">Redes sociales</SelectItem>
-                  <SelectItem value="llamada_fria">Llamada fria</SelectItem>
+                  <SelectItem value="referido">Referral</SelectItem>
+                  <SelectItem value="redes_sociales">Social media</SelectItem>
+                  <SelectItem value="llamada_fria">Chiamata a freddo</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="formulario">Formulario</SelectItem>
+                  <SelectItem value="formulario">Modulo</SelectItem>
                   <SelectItem value="evento">Evento</SelectItem>
-                  <SelectItem value="import">Importado</SelectItem>
+                  <SelectItem value="import">Importato</SelectItem>
                   <SelectItem value="webhook">Webhook</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
+                  <SelectItem value="otro">Altro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -162,25 +162,25 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cold">Frio</SelectItem>
-                  <SelectItem value="warm">Tibio</SelectItem>
-                  <SelectItem value="hot">Caliente</SelectItem>
+                  <SelectItem value="cold">Freddo</SelectItem>
+                  <SelectItem value="warm">Tiepido</SelectItem>
+                  <SelectItem value="hot">Caldo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notas</Label>
-            <Textarea id="notes" {...register("notes")} placeholder="Notas sobre el contacto..." rows={3} />
+            <Label htmlFor="notes">Note</Label>
+            <Textarea id="notes" {...register("notes")} placeholder="Note sul contatto..." rows={3} />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose} className="cursor-pointer">
-              Cancelar
+              Annulla
             </Button>
             <Button type="submit" disabled={isSubmitting} className="cursor-pointer">
-              {isSubmitting ? "Guardando..." : isEditing ? "Actualizar" : "Crear"}
+              {isSubmitting ? "Salvataggio..." : isEditing ? "Aggiorna" : "Crea"}
             </Button>
           </div>
         </form>

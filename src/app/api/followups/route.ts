@@ -1,27 +1,9 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { activities, contacts } from "@/db/schema";
-import { eq, isNull, asc } from "drizzle-orm";
+import { listActivities } from "@/lib/db/activities";
 
 export async function GET() {
-  const pendingFollowups = db
-    .select({
-      id: activities.id,
-      type: activities.type,
-      description: activities.description,
-      contactId: activities.contactId,
-      dealId: activities.dealId,
-      scheduledAt: activities.scheduledAt,
-      completedAt: activities.completedAt,
-      createdAt: activities.createdAt,
-      contactName: contacts.name,
-      contactCompany: contacts.company,
-    })
-    .from(activities)
-    .leftJoin(contacts, eq(activities.contactId, contacts.id))
-    .where(isNull(activities.completedAt))
-    .orderBy(asc(activities.scheduledAt))
-    .all();
+  // Get all incomplete activities with scheduled dates
+  const pendingFollowups = await listActivities({ isCompleted: false });
 
   const now = Date.now() / 1000;
 
