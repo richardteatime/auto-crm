@@ -30,18 +30,21 @@ import {
   AlertCircle,
   Clock,
   FileDown,
+  Pencil,
   Search,
   X,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { ReportDialog } from "@/components/shared/ReportDialog";
+import { QuoteForm, type QuoteInitialData } from "@/components/quotes/QuoteForm";
 
 interface QuoteRow {
   id: string;
   number: string;
   title: string;
   items: string;
+  notes: string | null;
   status: string;
   vatRate: number;
   validUntil: number | Date | null;
@@ -50,6 +53,26 @@ interface QuoteRow {
   dealTitle: string | null;
   contactName: string | null;
   contactCompany: string | null;
+}
+
+function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
+  try {
+    return (JSON.parse(itemsJson) as { id: string; description: string; quantity: number; unitPrice: number; billingType?: "one_time" | "recurring" }[]).map((i) => ({
+      id: i.id,
+      description: i.description,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice / 100,
+      billingType: i.billingType ?? "one_time",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function toDateInputValue(val: number | Date | null | undefined): string {
+  if (!val) return "";
+  const d = val instanceof Date ? val : new Date(typeof val === "number" && val < 1e12 ? val * 1000 : val);
+  return d.toISOString().split("T")[0];
 }
 
 function calcTotal(itemsJson: string, vatRate: number): number {
@@ -90,15 +113,35 @@ export default function PreventiviPage() {
   const [filterValueMin, setFilterValueMin] = useState("");
   const [filterValueMax, setFilterValueMax] = useState("");
   const [filterOverdue, setFilterOverdue] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<QuoteInitialData | undefined>(undefined);
+  const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
+  const loadQuotes = () => {
     fetch("/api/quotes")
       .then((r) => r.json())
       .then((data) => {
         setQuotes(data);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadQuotes();
   }, []);
+
+  const openEdit = (e: React.MouseEvent, q: QuoteRow) => {
+    e.stopPropagation();
+    setEditingQuote({
+      id: q.id,
+      title: q.title,
+      items: parseItemsForForm(q.items),
+      notes: q.notes,
+      status: q.status,
+      vatRate: q.vatRate,
+      validUntil: toDateInputValue(q.validUntil),
+    });
+    setShowForm(true);
+  };
 
   const kpi = useMemo(() => {
     let acceptedValue = 0;
@@ -425,16 +468,28 @@ export default function PreventiviPage() {
                         {formatDate(q.validUntil)}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="cursor-pointer h-8 w-8"
-                          onClick={() => window.open(`/api/quotes/${q.id}/pdf`, "_blank")}
-                          aria-label="Scarica PDF"
-                          title="Scarica PDF"
-                        >
-                          <FileDown className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="cursor-pointer h-8 w-8"
+                            onClick={(e) => openEdit(e, q)}
+                            aria-label="Modifica preventivo"
+                            title="Modifica"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="cursor-pointer h-8 w-8"
+                            onClick={() => window.open(`/api/quotes/${q.id}/pdf`, "_blank")}
+                            aria-label="Scarica PDF"
+                            title="Scarica PDF"
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -444,6 +499,16 @@ export default function PreventiviPage() {
           )}
         </CardContent>
       </Card>
+      <QuoteForm
+        open={showForm}
+        onClose={() => {
+          setShowForm(false);
+          setEditingQuote(undefined);
+          loadQuotes();
+        }}
+        dealId={editingQuote ? quotes.find((q) => q.id === editingQuote.id)?.dealId ?? "" : ""}
+        initialData={editingQuote}
+      />
     </div>
   );
 }
