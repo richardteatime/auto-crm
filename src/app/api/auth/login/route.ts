@@ -30,6 +30,24 @@ export async function POST(request: NextRequest) {
     const message =
       error instanceof Error ? error.message : "Errore durante il login";
 
+    console.error("[LOGIN ERROR]", message);
+
+    // Email verification required
+    if (message.includes("verification") || message.includes("verif")) {
+      return NextResponse.json(
+        { success: false, error: "Email non verificato. Controlla la tua email e verifica l'account." },
+        { status: 403 }
+      );
+    }
+
+    // Connection failure
+    if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("fetch failed") || message.includes("ETIMEDOUT")) {
+      return NextResponse.json(
+        { success: false, error: "Impossibile connettersi al server. Controlla la configurazione Appwrite." },
+        { status: 503 }
+      );
+    }
+
     // Appwrite returns 401 for invalid credentials.
     if (message.includes("Invalid credentials") || message.includes("401")) {
       return NextResponse.json(
