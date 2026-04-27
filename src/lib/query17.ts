@@ -1,69 +1,78 @@
 /**
- * Query wrapper that generates Appwrite 1.7.4-compatible JSON queries.
+ * Query wrapper for Appwrite 1.7.4.
  *
- * Appwrite 1.7.4 expects queries as JSON objects: {"method":"limit","values":[10]}
- * NOT as strings like "limit(10)".
+ * 1.7.4 uses two JSON formats depending on the method:
+ *   - "limit" / "offset" / "cursorAfter":  {"method":"...","values":[...]}
+ *   - all others (equal, orderDesc, etc.):  {"method":"...","attribute":"...","values":[...]}
  */
+
+function q(method: string, values: unknown[]): string {
+  return JSON.stringify({ method, values });
+}
+
+function qAttr(method: string, attribute: string, values: unknown[]): string {
+  return JSON.stringify({ method, attribute, values });
+}
 
 export const Query = {
   limit(n: number): string {
-    return JSON.stringify({ method: "limit", values: [n] });
+    return q("limit", [n]);
   },
 
   offset(n: number): string {
-    return JSON.stringify({ method: "offset", values: [n] });
+    return q("offset", [n]);
   },
 
   orderDesc(attribute: string): string {
-    return JSON.stringify({ method: "orderDesc", values: [attribute] });
+    return qAttr("orderDesc", attribute, []);
   },
 
   orderAsc(attribute: string): string {
-    return JSON.stringify({ method: "orderAsc", values: [attribute] });
+    return qAttr("orderAsc", attribute, []);
   },
 
   equal(attribute: string, value: string | number | boolean | string[]): string {
-    const values = Array.isArray(value) ? value : [value];
-    return JSON.stringify({ method: "equal", values: [attribute, values] });
+    const v = Array.isArray(value) ? value : [value];
+    return qAttr("equal", attribute, v);
   },
 
   notEqual(attribute: string, value: string | number | boolean): string {
-    return JSON.stringify({ method: "notEqual", values: [attribute, [value]] });
+    return qAttr("notEqual", attribute, [value]);
   },
 
   greaterThan(attribute: string, value: number | string): string {
-    return JSON.stringify({ method: "greaterThan", values: [attribute, [value]] });
+    return qAttr("greaterThan", attribute, [value]);
   },
 
   greaterThanEqual(attribute: string, value: number | string): string {
-    return JSON.stringify({ method: "greaterThanEqual", values: [attribute, [value]] });
+    return qAttr("greaterThanEqual", attribute, [value]);
   },
 
   lessThan(attribute: string, value: number | string): string {
-    return JSON.stringify({ method: "lessThan", values: [attribute, [value]] });
+    return qAttr("lessThan", attribute, [value]);
   },
 
   lessThanEqual(attribute: string, value: number | string): string {
-    return JSON.stringify({ method: "lessThanEqual", values: [attribute, [value]] });
+    return qAttr("lessThanEqual", attribute, [value]);
   },
 
   isNotNull(attribute: string): string {
-    return JSON.stringify({ method: "isNotNull", values: [attribute] });
+    return qAttr("isNotNull", attribute, []);
   },
 
   isNull(attribute: string): string {
-    return JSON.stringify({ method: "isNull", values: [attribute] });
+    return qAttr("isNull", attribute, []);
   },
 
   startsWith(attribute: string, value: string): string {
-    return JSON.stringify({ method: "startsWith", values: [attribute, value] });
+    return qAttr("startsWith", attribute, [value]);
   },
 
   search(attribute: string, value: string): string {
-    return JSON.stringify({ method: "search", values: [attribute, value] });
+    return qAttr("search", attribute, [value]);
   },
 
   cursorAfter(id: string): string {
-    return JSON.stringify({ method: "cursorAfter", values: [id] });
+    return q("cursorAfter", [id]);
   },
 };
