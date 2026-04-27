@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Immediately create a session so the user is logged in after registration.
-    const { secret } = await createSession(email, password);
+    const { userId, sessionId } = await createSession(email, password);
 
     const isFirst = await isFirstUser();
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
 
-    setSessionCookie(response, secret);
+    setSessionCookie(response, userId, sessionId);
     return response;
   } catch (error: unknown) {
     const message =

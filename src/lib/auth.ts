@@ -1,11 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 
 const APPWRITE_ENDPOINT =
   process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
+const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
 
 const SESSION_COOKIE = "appwrite-session";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year, matching Appwrite default
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+
+// ---------------------------------------------------------------------------
+// Signed session token (HMAC-SHA256)
+// Cookie format: userId.sessionId.hmac
+// This avoids depending on Appwrite's session secret, which is empty in 1.7.4.
+// ---------------------------------------------------------------------------
+
+function signToken(userId: string, sessionId: string): string {
+  const payload = `${userId}.${sessionId}`;
+  const hmac = createHmac("sha256", APPWRITE_API_KEY)
+    .update(payload)
+    .digest("hex");
+  return `${payload}.${hmac}`;
+}
+
+export function verifyToken(
+  token: string
+): { userId: string; sessionId: string } | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [userId, sessionId, signature] = parts;
+  const expected = createHmac("sha256", APPWRITE_API_KEY)
+    .update(`${userId}.${sessionId}`)
+    .digest("hex");
+  try {
+    if (
+      !timingSafeEqual(
+        Buffer.from(signature, "hex"),
+        Buffer.from(expected, "hex")
+      )
+    )
+      return null;
+  } catch {
+    return null;
+  }
+  return { userId, sessionId };
+}
 
 // ---------------------------------------------------------------------------
 // Cookie helpers
@@ -13,9 +52,11 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year, matching Appwrite default
 
 export function setSessionCookie(
   response: NextResponse,
-  sessionSecret: string
+  userId: string,
+  sessionId: string
 ) {
-  response.cookies.set(SESSION_COOKIE, sessionSecret, {
+  const token = signToken(userId, sessionId);
+  response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -51,22 +92,25 @@ export type AuthUser = {
 };
 
 /**
- * Get the current user from the session cookie.
- * Uses direct REST call to bypass SDK v24 header incompatibility with 1.7.4.
+ * Get the current user from the signed session cookie.
+ * Uses Admin API (API key) to fetch user details — no session secret needed.
  */
 export async function getCurrentUser(
   request: NextRequest
 ): Promise<AuthUser | null> {
-  const token = getSessionToken(request);
-  if (!token) return null;
+  const raw = getSessionToken(request);
+  if (!raw) return null;
+
+  const parsed = verifyToken(raw);
+  if (!parsed) return null;
 
   try {
     const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");
-    const res = await fetch(`${baseUrl}/v1/account`, {
+    const res = await fetch(`${baseUrl}/v1/users/${parsed.userId}`, {
       headers: {
         "Content-Type": "application/json",
         "X-Appwrite-Project": APPWRITE_PROJECT_ID,
-        "X-Appwrite-Session": token,
+        "X-Appwrite-Key": APPWRITE_API_KEY,
       },
     });
     if (!res.ok) return null;
@@ -83,11 +127,6 @@ export async function getCurrentUser(
 
 /**
  * Require authentication. Returns either the user or a 401 NextResponse.
- * Use this in API routes:
- *
- *   const result = await requireAuth(request);
- *   if (result.error) return result.error;
- *   const user = result.user;
  */
 export async function requireAuth(
   request: NextRequest
@@ -108,17 +147,14 @@ export async function requireAuth(
 
 /**
  * Check whether any users have been registered yet.
- * Useful for the first-time setup flow.
  */
 export async function isFirstUser(): Promise<boolean> {
   try {
-    // Direct REST call to bypass SDK v24 query format (incompatible with 1.7.4)
-    const endpoint = APPWRITE_ENDPOINT;
-    const url = endpoint.replace(/\/v1\/?$/, "") + "/v1/users";
-    const res = await fetch(url, {
+    const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");
+    const res = await fetch(`${baseUrl}/v1/users`, {
       headers: {
         "X-Appwrite-Project": APPWRITE_PROJECT_ID,
-        "X-Appwrite-Key": process.env.APPWRITE_API_KEY || "",
+        "X-Appwrite-Key": APPWRITE_API_KEY,
       },
     });
     if (res.ok) {
@@ -132,13 +168,13 @@ export async function isFirstUser(): Promise<boolean> {
 }
 
 /**
- * Server-side login: create an email+password session via direct REST call
- * (bypass SDK v24 which sends incompatible headers to Appwrite 1.7.4).
+ * Server-side login: create an email+password session via REST to verify
+ * credentials, then return userId and sessionId for our signed cookie.
  */
 export async function createSession(
   email: string,
   password: string
-): Promise<{ secret: string; userId: string }> {
+): Promise<{ userId: string; sessionId: string }> {
   const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");
   const res = await fetch(`${baseUrl}/v1/account/sessions/email`, {
     method: "POST",
@@ -155,22 +191,26 @@ export async function createSession(
   }
 
   const data = await res.json();
-  return { secret: data.secret, userId: data.userId };
+  return {
+    userId: data.userId,
+    sessionId: data.$id,
+  };
 }
 
 /**
- * Server-side logout: delete the session via direct REST call.
+ * Server-side logout: delete the session via Admin API.
  */
 export async function deleteSession(
-  sessionToken: string
+  userId: string,
+  sessionId: string
 ): Promise<void> {
   const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");
-  await fetch(`${baseUrl}/v1/account/sessions/current`, {
+  await fetch(`${baseUrl}/v1/users/${userId}/sessions/${sessionId}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
       "X-Appwrite-Project": APPWRITE_PROJECT_ID,
-      "X-Appwrite-Session": sessionToken,
+      "X-Appwrite-Key": APPWRITE_API_KEY,
     },
   });
 }

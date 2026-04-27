@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { secret, userId } = await createSession(email, password);
+    const { userId, sessionId } = await createSession(email, password);
 
     // Fetch user details from the server SDK to return to the client.
     const { users } = await import("@/lib/appwrite");
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       user: { id: user.$id, email: user.email, name: user.name },
     });
 
-    setSessionCookie(response, secret);
+    setSessionCookie(response, userId, sessionId);
     return response;
   } catch (error: unknown) {
     const message =

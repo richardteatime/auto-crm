@@ -3,17 +3,20 @@ import {
   deleteSession,
   getSessionToken,
   clearSessionCookie,
+  verifyToken,
 } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
-  const token = getSessionToken(request);
+  const raw = getSessionToken(request);
 
-  if (token) {
-    try {
-      await deleteSession(token);
-    } catch {
-      // Session may already be expired or invalid — that's fine.
-      // We still clear the cookie on our side.
+  if (raw) {
+    const parsed = verifyToken(raw);
+    if (parsed) {
+      try {
+        await deleteSession(parsed.userId, parsed.sessionId);
+      } catch {
+        // Session may already be expired or invalid — that's fine.
+      }
     }
   }
 
