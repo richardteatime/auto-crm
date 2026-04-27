@@ -58,6 +58,8 @@ export async function PUT(
     if (body.email !== undefined) updateData.email = body.email;
     if (body.phone !== undefined) updateData.phone = body.phone;
     if (body.company !== undefined) updateData.company = body.company;
+    if (body.vatNumber !== undefined) updateData.vatNumber = body.vatNumber;
+    if (body.address !== undefined) updateData.address = body.address;
     if (body.source !== undefined) updateData.source = body.source;
     if (body.temperature !== undefined) updateData.temperature = body.temperature;
     if (body.score !== undefined) updateData.score = Math.max(0, Math.min(100, body.score));

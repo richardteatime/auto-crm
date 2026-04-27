@@ -28,6 +28,8 @@ const contactSchema = z.object({
   email: z.string().email("Email non valida").or(z.literal("")),
   phone: z.string(),
   company: z.string(),
+  vatNumber: z.string(),
+  address: z.string(),
   source: z.string(),
   temperature: z.enum(["cold", "warm", "hot"]),
   notes: z.string(),
@@ -59,6 +61,8 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
       email: initialData?.email || "",
       phone: initialData?.phone || "",
       company: initialData?.company || "",
+      vatNumber: initialData?.vatNumber || "",
+      address: initialData?.address || "",
       source: initialData?.source || "otro",
       temperature: initialData?.temperature || "cold",
       notes: initialData?.notes || "",
@@ -123,6 +127,17 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
           <div className="space-y-2">
             <Label htmlFor="company">Azienda</Label>
             <Input id="company" {...register("company")} placeholder="Nome dell'azienda" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="vatNumber">P.IVA</Label>
+              <Input id="vatNumber" {...register("vatNumber")} placeholder="es. 02163050186" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Sede legale / Indirizzo</Label>
+              <Input id="address" {...register("address")} placeholder="es. Via Roma 1, 20100 Milano (MI)" />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

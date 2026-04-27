@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { name, email, phone, company, source, temperature, score, notes } =
+  const { name, email, phone, company, vatNumber, address, source, temperature, score, notes } =
     body;
 
   if (!name) {
@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       email: email || null,
       phone: phone || null,
       company: company || null,
+      vatNumber: vatNumber || null,
+      address: address || null,
       source: source || "otro",
       temperature: temperature || "cold",
       score: score || 0,

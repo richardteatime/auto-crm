@@ -64,6 +64,8 @@ export async function createContact(data: {
   email?: string | null;
   phone?: string | null;
   company?: string | null;
+  vatNumber?: string | null;
+  address?: string | null;
   source?: string;
   temperature?: string;
   score?: number;
@@ -78,6 +80,8 @@ export async function createContact(data: {
       email: data.email ?? null,
       phone: data.phone ?? null,
       company: data.company ?? null,
+      vatNumber: data.vatNumber ?? null,
+      address: data.address ?? null,
       source: data.source ?? "otro",
       temperature: data.temperature ?? "cold",
       score: data.score ?? 0,
@@ -98,6 +102,8 @@ export async function updateContact(
     email: string | null;
     phone: string | null;
     company: string | null;
+    vatNumber: string | null;
+    address: string | null;
     source: string;
     temperature: string;
     score: number;

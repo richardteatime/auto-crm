@@ -172,28 +172,34 @@ export async function GET(
   <div class="header">
     <div>
       <div class="brand-name">SarconX</div>
-      <div class="brand-sub">Gestione Commerciale</div>
+      <div class="brand-sub" style="font-size:11px;color:#64748b;margin-top:4px;line-height:1.6">
+        Via Vigentina 15, 27100 Pavia<br>
+        P.IVA: 02838240188<br>
+        Tel: +39 334 134 0272
+      </div>
     </div>
     <div>
       <div class="doc-label">Preventivo</div>
       <div class="doc-number">${esc(quote.number)}</div>
       <div class="doc-date">Data: ${formatDateIt(quote.createdAt)}</div>
+      <div class="doc-date">Valido fino al: ${formatDateIt(quote.validUntil)}</div>
+      <div style="margin-top:6px"><span class="status-pill" style="${statusStyle}">${statusLabel}</span></div>
     </div>
   </div>
 
   <div class="grid2">
     <div>
       <div class="info-label">Destinatario</div>
-      <div class="info-name">${esc(contact?.name)}</div>
-      ${contact?.company ? `<div class="info-detail">${esc(contact.company)}</div>` : ""}
+      <div class="info-name">${esc(contact?.company || contact?.name)}</div>
+      ${contact?.company && contact.company !== contact?.name ? `<div class="info-detail">${esc(contact.name)}</div>` : ""}
+      ${(contact as (typeof contact & { address?: string | null }))?.address ? `<div class="info-detail">${esc((contact as (typeof contact & { address?: string | null }))!.address)}</div>` : ""}
+      ${(contact as (typeof contact & { vatNumber?: string | null }))?.vatNumber ? `<div class="info-detail"><strong>P.IVA:</strong> ${esc((contact as (typeof contact & { vatNumber?: string | null }))!.vatNumber)}</div>` : ""}
+      ${contact?.phone ? `<div class="info-detail">Tel: ${esc(contact.phone)}</div>` : ""}
       ${contact?.email ? `<div class="info-detail">${esc(contact.email)}</div>` : ""}
-      ${contact?.phone ? `<div class="info-detail">${esc(contact.phone)}</div>` : ""}
     </div>
     <div>
       <div class="info-label">Dettagli documento</div>
-      ${deal ? `<div class="info-detail"><strong>Trattativa:</strong> ${esc(deal.title)}</div>` : ""}
-      <div class="info-detail" style="margin-top:4px"><strong>Valido fino al:</strong> ${formatDateIt(quote.validUntil)}</div>
-      <div><span class="status-pill" style="${statusStyle}">${statusLabel}</span></div>
+      ${deal ? `<div class="info-detail"><strong>Oggetto:</strong> ${esc(deal.title)}</div>` : ""}
     </div>
   </div>
 
@@ -234,6 +240,20 @@ export async function GET(
   </div>`
       : ""
   }
+
+  <div style="margin-bottom:28px;font-size:13px">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;font-weight:600;margin-bottom:8px">Modalità di Pagamento</div>
+    <div style="color:#1a1a1a">Bonifico Bancario</div>
+    <div style="color:#64748b;margin-top:3px">Intestatario C/C: Ricardo Consuegra &amp; Leonardo Sartori</div>
+    <div style="color:#64748b">IBAN: LT783250090360011881</div>
+    <div style="color:#64748b">Scadenza: 30 giorni data fattura (o come da accordi commerciali)</div>
+  </div>
+
+  <div style="margin-bottom:28px;display:flex;justify-content:flex-end">
+    <div style="font-size:12px;color:#64748b;text-align:right">
+      Per accettazione: Firma ________________________ &nbsp;&nbsp; Data _______________
+    </div>
+  </div>
 
   <div class="footer">
     <div class="footer-brand">SarconX</div>

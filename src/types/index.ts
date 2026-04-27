@@ -21,6 +21,8 @@ export interface Contact {
   email: string | null;
   phone: string | null;
   company: string | null;
+  vatNumber: string | null;
+  address: string | null;
   source: LeadSource;
   temperature: Temperature;
   score: number;
