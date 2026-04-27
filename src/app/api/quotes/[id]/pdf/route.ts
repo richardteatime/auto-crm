@@ -30,23 +30,12 @@ function formatEur(cents: number): string {
 
 function formatDateIt(date: Date | number | string | null | undefined): string {
   if (!date) return "—";
-  const d = date instanceof Date ? date : new Date(typeof date === "number" ? (date < 1e12 ? date * 1000 : date) : date);
+  const d =
+    date instanceof Date
+      ? date
+      : new Date(typeof date === "number" ? (date < 1e12 ? date * 1000 : date) : date);
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  bozza: "Bozza",
-  inviato: "Inviato",
-  accettato: "Accettato",
-  rifiutato: "Rifiutato",
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  bozza: "background:#f1f5f9;color:#64748b",
-  inviato: "background:#dbeafe;color:#2563eb",
-  accettato: "background:#dcfce7;color:#16a34a",
-  rifiutato: "background:#fee2e2;color:#dc2626",
-};
 
 export async function GET(
   _req: NextRequest,
@@ -69,197 +58,256 @@ export async function GET(
     items = [];
   }
 
-  const oneTimeSub = items.filter((i) => i.billingType !== "recurring").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const recurringSub = items.filter((i) => i.billingType === "recurring").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const oneTimeSub = items
+    .filter((i) => i.billingType !== "recurring")
+    .reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const recurringSub = items
+    .filter((i) => i.billingType === "recurring")
+    .reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const subtotal = oneTimeSub + recurringSub;
   const vatAmount = Math.round((subtotal * quote.vatRate) / 100);
   const total = subtotal + vatAmount;
   const hasRecurring = recurringSub > 0;
   const hasOneTime = oneTimeSub > 0;
 
-  const statusStyle = STATUS_STYLES[quote.status] ?? STATUS_STYLES.bozza;
-  const statusLabel = STATUS_LABELS[quote.status] ?? quote.status;
-
   const itemRows = items
     .map(
       (item, idx) => {
         const isRecurring = item.billingType === "recurring";
-        const typeBadge = isRecurring
-          ? `<span style="display:inline-block;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;background:#dbeafe;color:#2563eb">↻ /mese</span>`
-          : `<span style="display:inline-block;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:600;background:#f1f5f9;color:#64748b">Una tantum</span>`;
+        const tipo = isRecurring ? "Ricorrente/mese" : "Una tantum";
+        const importo = isRecurring
+          ? `${formatEur(item.unitPrice)}/mese`
+          : formatEur(item.unitPrice * item.quantity);
         return `
-    <tr>
-      <td style="width:28px;color:#94a3b8;font-size:11px;padding:10px 8px;">${idx + 1}</td>
-      <td style="padding:10px 12px;">${esc(item.description) || "—"}</td>
-      <td style="padding:10px 12px;width:100px;">${typeBadge}</td>
-      <td style="text-align:right;padding:10px 12px;width:56px;">${item.quantity}</td>
-      <td style="text-align:right;padding:10px 12px;width:110px;">${formatEur(item.unitPrice)}${isRecurring ? "<span style='font-size:10px;color:#2563eb'>/mese</span>" : ""}</td>
-      <td style="text-align:right;padding:10px 12px;width:110px;font-weight:600;">${formatEur(item.quantity * item.unitPrice)}${isRecurring ? "<span style='font-size:10px;color:#2563eb'>/mese</span>" : ""}</td>
-    </tr>`;
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${esc(item.description) || "—"}</td>
+            <td>${tipo}</td>
+            <td>${item.quantity}</td>
+            <td>${importo}</td>
+          </tr>`;
       }
     )
     .join("");
 
+  const vociDettaglio = items
+    .map(
+      (item, idx) => `
+        <div class="voce">
+          <strong>${idx + 1}. ${esc(item.description)}</strong>
+        </div>`
+    )
+    .join("");
+
+  const totaliRows = `
+    ${hasOneTime ? `<tr><td>Subtotale (Una tantum)</td><td class="importo">${formatEur(oneTimeSub)}</td></tr>` : ""}
+    ${hasRecurring ? `<tr><td>Canone mensile ricorrente</td><td class="importo">${formatEur(recurringSub)}/mese</td></tr>` : ""}
+    ${!hasOneTime && !hasRecurring ? `<tr><td>Subtotale</td><td class="importo">${formatEur(subtotal)}</td></tr>` : ""}
+    <tr><td>IVA (${quote.vatRate}% / Regime applicabile)</td><td class="importo">${formatEur(vatAmount)}</td></tr>
+    <tr>
+      <td><strong>TOTALE DA CORRISPONDERE</strong></td>
+      <td class="importo"><strong>${
+        hasOneTime && hasRecurring
+          ? `${formatEur(oneTimeSub)} + ${formatEur(recurringSub)}/mese`
+          : formatEur(total)
+      }</strong></td>
+    </tr>`;
+
   const html = `<!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Preventivo ${esc(quote.number)}</title>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;font-size:13px;line-height:1.6;background:#f1f5f9}
-  .page{background:#fff;max-width:800px;margin:24px auto;padding:52px 60px;border-radius:4px;box-shadow:0 2px 20px rgba(0,0,0,.08)}
-  @page{margin:12mm 16mm;size:A4}
-  @media print{
-    body{background:#fff}
-    .page{margin:0;padding:0;box-shadow:none;border-radius:0}
-    .no-print{display:none!important}
-    *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
-  }
-  .no-print{position:fixed;top:16px;right:16px;z-index:999;display:flex;gap:8px}
-  .btn{border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
-  .btn-dark{background:#0f172a;color:#fff}
-  .btn-dark:hover{background:#1e293b}
-  .btn-ghost{background:#e2e8f0;color:#334155}
-  .btn-ghost:hover{background:#cbd5e1}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preventivo - ${esc(contact?.company || contact?.name || "Cliente")}</title>
+    <style>
+        /* === STILI BASE === */
+        :root {
+            --colore-primario: #2c3e50;
+            --colore-sfondo: #f8f9fa;
+            --bordo: #e0e0e0;
+            --testo: #333333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--testo);
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .preventivo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
 
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:24px;border-bottom:3px solid #0f172a}
-  .brand-name{font-size:30px;font-weight:900;color:#0f172a;letter-spacing:-1px}
-  .brand-sub{font-size:10px;color:#94a3b8;margin-top:3px;letter-spacing:1.5px;text-transform:uppercase}
-  .doc-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;font-weight:600;text-align:right}
-  .doc-number{font-size:20px;font-weight:800;color:#0f172a;margin-top:4px;text-align:right}
-  .doc-date{font-size:12px;color:#64748b;margin-top:3px;text-align:right}
+        /* === INTESTAZIONE === */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--colore-primario);
+        }
+        .fornitore h1 { margin: 0; font-size: 22px; color: var(--colore-primario); }
+        .fornitore p { margin: 2px 0; font-size: 13px; color: #555; }
+        .dati-preventivo { text-align: right; }
+        .dati-preventivo h2 { margin: 0 0 8px; font-size: 18px; color: var(--colore-primario); }
+        .dati-preventivo p { margin: 2px 0; font-size: 13px; }
 
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px}
-  .info-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;font-weight:600;margin-bottom:8px}
-  .info-name{font-size:15px;font-weight:700;color:#0f172a}
-  .info-detail{font-size:12px;color:#64748b;margin-top:2px}
-  .status-pill{display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:8px}
+        /* === CLIENTE === */
+        .cliente {
+            background: var(--colore-sfondo);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+        }
+        .cliente h3 { margin: 0 0 8px; font-size: 15px; border-bottom: 1px solid var(--bordo); padding-bottom: 5px; }
+        .cliente p { margin: 3px 0; font-size: 13px; }
 
-  .quote-title{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:20px}
+        /* === TABELLA === */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 10px 12px; border: 1px solid var(--bordo); text-align: left; }
+        th { background-color: var(--colore-sfondo); font-weight: 600; text-align: center; font-size: 13px; }
+        td:nth-child(2) { width: 45%; }
+        td:nth-child(3), td:nth-child(4) { text-align: center; width: 12%; }
+        td:nth-child(5) { text-align: right; width: 18%; font-weight: 500; }
 
-  table{width:100%;border-collapse:collapse;margin-bottom:4px}
-  thead tr{background:#0f172a}
-  thead th{color:#fff;padding:10px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
-  thead th:nth-child(4),thead th:nth-child(5),thead th:nth-child(6){text-align:right}
-  tbody tr:nth-child(even){background:#f8fafc}
-  tbody td{border-bottom:1px solid #e2e8f0;font-size:13px;vertical-align:middle}
+        /* === TOTALI === */
+        .totali { margin-left: auto; width: 45%; margin-bottom: 25px; }
+        .totali table { border: none; margin: 0; }
+        .totali td { border: none; padding: 6px 10px; }
+        .totali tr:last-child { font-size: 1.15em; font-weight: bold; border-top: 2px solid var(--colore-primario); }
+        .totali .importo { text-align: right; }
 
-  .totals{display:flex;justify-content:flex-end;margin:12px 0 28px}
-  .totals-box{width:260px}
-  .t-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-top:1px solid #f1f5f9}
-  .t-label{color:#64748b}
-  .t-val{font-weight:600}
-  .t-total{background:#0f172a;color:#fff;border-radius:8px;padding:11px 14px;margin-top:10px;display:flex;justify-content:space-between;font-weight:800;font-size:15px}
+        /* === DESCRIZIONI FORMALI === */
+        .descrizioni { margin-bottom: 25px; }
+        .descrizioni h3 { margin: 0 0 12px; font-size: 15px; color: var(--colore-primario); }
+        .voce { margin-bottom: 12px; }
+        .voce strong { display: block; margin-bottom: 2px; }
+        .voce p { margin: 0; font-size: 13px; color: #444; }
 
-  .notes-box{background:#f8fafc;border-left:4px solid #0f172a;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:28px}
-  .notes-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;font-weight:600;margin-bottom:6px}
-  .notes-text{font-size:13px;color:#1a1a1a;white-space:pre-line}
+        /* === PAGAMENTO E NOTE === */
+        .pagamento, .note { margin-bottom: 20px; font-size: 13px; }
+        .pagamento p, .note p { margin: 4px 0; }
 
-  .footer{padding-top:18px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
-  .footer-brand{font-weight:800;font-size:13px;color:#0f172a}
-  .footer-info{font-size:11px;color:#94a3b8}
-</style>
+        /* === FOOTER === */
+        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid var(--bordo); padding-top: 15px; }
+
+        /* === STAMPA === */
+        .btn-stampa {
+            display: block; width: fit-content; margin: 20px auto; padding: 10px 20px;
+            background: var(--colore-primario); color: #fff; border: none; border-radius: 4px;
+            cursor: pointer; font-size: 14px;
+        }
+        .btn-stampa:hover { opacity: 0.9; }
+
+        /* === MODALITÀ MODIFICA === */
+        [contenteditable="true"]:hover { outline: 1px dashed #aaa; border-radius: 2px; cursor: text; }
+        [contenteditable="true"]:focus { outline: 2px solid var(--colore-primario); border-radius: 2px; }
+        @media print {
+            body { background: #fff; padding: 0; margin: 0; }
+            .preventivo-container { box-shadow: none; padding: 0; max-width: 100%; }
+            @page { size: A4 portrait; margin: 2cm; }
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; }
+            .btn-stampa, .no-print { display: none !important; }
+            .preventivo-container { border: none; }
+        }
+    </style>
 </head>
 <body>
-<div class="no-print">
-  <button class="btn btn-ghost" onclick="window.close()">✕ Chiudi</button>
-  <button class="btn btn-dark" onclick="window.print()">⬇ Scarica / Stampa PDF</button>
+
+<div class="preventivo-container" contenteditable="true">
+    <!-- INTESTAZIONE -->
+    <header class="header">
+        <div class="fornitore">
+            <h1>SarconX</h1>
+            <p>Via Vigentina 15, 27100 Pavia</p>
+            <p>P.IVA: 02838240188</p>
+            <p>Tel: +39 334 134 0272</p>
+        </div>
+        <div class="dati-preventivo">
+            <h2>PREVENTIVO</h2>
+            <p><strong>N° Doc:</strong> ${esc(quote.number)}</p>
+            <p><strong>Data:</strong> ${formatDateIt(quote.createdAt)}</p>
+            <p><strong>Valido fino al:</strong> ${formatDateIt(quote.validUntil)}</p>
+            <p><strong>Oggetto:</strong> ${esc(quote.title)}</p>
+        </div>
+    </header>
+
+    <!-- DATI CLIENTE -->
+    <section class="cliente">
+        <h3>DESTINATARIO</h3>
+        <p><strong>${esc(contact?.company || contact?.name || "—")}</strong></p>
+        ${contact?.address ? `<p>${esc(contact.address)}</p>` : ""}
+        ${contact?.vatNumber ? `<p><strong>P.IVA:</strong> ${esc(contact.vatNumber)}</p>` : ""}
+        ${contact?.phone ? `<p><strong>Tel:</strong> ${esc(contact.phone)}</p>` : ""}
+        ${contact?.email ? `<p>${esc(contact.email)}</p>` : ""}
+    </section>
+
+    <!-- TABELLA SERVIZI -->
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>DESCRIZIONE</th>
+                <th>TIPO</th>
+                <th>QTA</th>
+                <th>IMPORTO</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${itemRows || `<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">Nessuna voce inserita</td></tr>`}
+        </tbody>
+    </table>
+
+    <!-- TOTALI -->
+    <div class="totali">
+        <table>
+            ${totaliRows}
+        </table>
+    </div>
+
+    <!-- DESCRIZIONI FORMALI -->
+    ${vociDettaglio ? `
+    <section class="descrizioni">
+        <h3>Dettaglio delle Voci di Offerta</h3>
+        ${vociDettaglio}
+    </section>` : ""}
+
+    <!-- NOTE -->
+    ${quote.notes ? `
+    <section class="note">
+        <p>${esc(quote.notes).replace(/\n/g, "<br>")}</p>
+    </section>` : ""}
+
+    <!-- MODALITÀ DI PAGAMENTO -->
+    <section class="pagamento">
+        <strong>Modalità di Pagamento:</strong> Bonifico Bancario
+        <p>Intestatario C/C: Ricardo Consuegra &amp; Leonardo Sartori</p>
+        <p>IBAN: LT783250090360011881</p>
+        <p>Scadenza: 30 giorni data fattura (o come da accordi commerciali)</p>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>SarconX | Via Vigentina 15, 27100 Pavia | P.IVA 02838240188</p>
+        <p>Documento generato il ${formatDateIt(new Date())} | Rif. ${esc(quote.number)}</p>
+        <p style="font-size:11px; color:#999; margin-top:5px;">Per accettazione: Firma ________________________ Data _______________</p>
+    </footer>
 </div>
 
-<div class="page">
-  <div class="header">
-    <div>
-      <div class="brand-name">SarconX</div>
-      <div class="brand-sub" style="font-size:11px;color:#64748b;margin-top:4px;line-height:1.6">
-        Via Vigentina 15, 27100 Pavia<br>
-        P.IVA: 02838240188<br>
-        Tel: +39 334 134 0272
-      </div>
-    </div>
-    <div>
-      <div class="doc-label">Preventivo</div>
-      <div class="doc-number">${esc(quote.number)}</div>
-      <div class="doc-date">Data: ${formatDateIt(quote.createdAt)}</div>
-      <div class="doc-date">Valido fino al: ${formatDateIt(quote.validUntil)}</div>
-      <div style="margin-top:6px"><span class="status-pill" style="${statusStyle}">${statusLabel}</span></div>
-    </div>
-  </div>
-
-  <div class="grid2">
-    <div>
-      <div class="info-label">Destinatario</div>
-      <div class="info-name">${esc(contact?.company || contact?.name)}</div>
-      ${contact?.company && contact.company !== contact?.name ? `<div class="info-detail">${esc(contact.name)}</div>` : ""}
-      ${(contact as (typeof contact & { address?: string | null }))?.address ? `<div class="info-detail">${esc((contact as (typeof contact & { address?: string | null }))!.address)}</div>` : ""}
-      ${(contact as (typeof contact & { vatNumber?: string | null }))?.vatNumber ? `<div class="info-detail"><strong>P.IVA:</strong> ${esc((contact as (typeof contact & { vatNumber?: string | null }))!.vatNumber)}</div>` : ""}
-      ${contact?.phone ? `<div class="info-detail">Tel: ${esc(contact.phone)}</div>` : ""}
-      ${contact?.email ? `<div class="info-detail">${esc(contact.email)}</div>` : ""}
-    </div>
-    <div>
-      <div class="info-label">Dettagli documento</div>
-      ${deal ? `<div class="info-detail"><strong>Oggetto:</strong> ${esc(deal.title)}</div>` : ""}
-    </div>
-  </div>
-
-  <div class="quote-title">${esc(quote.title)}</div>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:28px">#</th>
-        <th>Descrizione</th>
-        <th style="width:100px">Tipo</th>
-        <th style="text-align:right;width:56px">Qtà</th>
-        <th style="text-align:right;width:110px">Prezzo unit.</th>
-        <th style="text-align:right;width:110px">Totale</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemRows || `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">Nessuna voce inserita</td></tr>`}
-    </tbody>
-  </table>
-
-  <div class="totals">
-    <div class="totals-box">
-      ${hasOneTime ? `<div class="t-row"><span class="t-label">Una tantum</span><span class="t-val">${formatEur(oneTimeSub)}</span></div>` : ""}
-      ${hasRecurring ? `<div class="t-row"><span class="t-label" style="color:#2563eb">↻ Ricorrente/mese</span><span class="t-val" style="color:#2563eb">${formatEur(recurringSub)}/mese</span></div>` : ""}
-      ${hasOneTime && hasRecurring ? `<div class="t-row"><span class="t-label">Subtotale</span><span class="t-val">${formatEur(subtotal)}</span></div>` : ""}
-      ${!hasOneTime && !hasRecurring ? `<div class="t-row"><span class="t-label">Subtotale</span><span class="t-val">${formatEur(subtotal)}</span></div>` : ""}
-      <div class="t-row"><span class="t-label">IVA ${quote.vatRate}%</span><span class="t-val">${formatEur(vatAmount)}</span></div>
-      <div class="t-total"><span>Totale</span><span>${formatEur(total)}</span></div>
-    </div>
-  </div>
-
-  ${
-    quote.notes
-      ? `<div class="notes-box">
-    <div class="notes-label">Note</div>
-    <div class="notes-text">${esc(quote.notes)}</div>
-  </div>`
-      : ""
-  }
-
-  <div style="margin-bottom:28px;font-size:13px">
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;font-weight:600;margin-bottom:8px">Modalità di Pagamento</div>
-    <div style="color:#1a1a1a">Bonifico Bancario</div>
-    <div style="color:#64748b;margin-top:3px">Intestatario C/C: Ricardo Consuegra &amp; Leonardo Sartori</div>
-    <div style="color:#64748b">IBAN: LT783250090360011881</div>
-    <div style="color:#64748b">Scadenza: 30 giorni data fattura (o come da accordi commerciali)</div>
-  </div>
-
-  <div style="margin-bottom:28px;display:flex;justify-content:flex-end">
-    <div style="font-size:12px;color:#64748b;text-align:right">
-      Per accettazione: Firma ________________________ &nbsp;&nbsp; Data _______________
-    </div>
-  </div>
-
-  <div class="footer">
-    <div class="footer-brand">SarconX</div>
-    <div class="footer-info">Documento generato il ${formatDateIt(new Date())} · ${esc(quote.number)}</div>
-  </div>
+<div class="no-print" style="text-align:center; margin: 10px auto; font-size:12px; color:#888;">
+    ✏️ Clicca su qualsiasi testo per modificarlo direttamente
 </div>
+<button class="btn-stampa no-print" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>
+
 </body>
 </html>`;
 
