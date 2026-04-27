@@ -5,6 +5,7 @@ const SESSION_COOKIE = "appwrite-session";
 const PUBLIC_PATHS = [
   "/api/webhook",
   "/api/auth",
+  "/api/health",
   "/login",
   "/register",
 ];
