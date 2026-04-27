@@ -13,7 +13,9 @@ import {
   ClipboardList,
   FileText,
   TrendingUp,
+  LogOut,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -31,6 +33,13 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="hidden md:flex md:w-64 md:flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] min-h-screen">
@@ -62,12 +71,16 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="px-4 py-4 border-t border-[var(--sidebar-border)]">
-        <p className="text-xs text-[var(--sidebar-foreground)]/50">
+      <div className="px-3 py-4 border-t border-[var(--sidebar-border)] space-y-1">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--sidebar-foreground)]/70 hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)] transition-colors cursor-pointer"
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          Esci
+        </button>
+        <p className="text-xs text-[var(--sidebar-foreground)]/50 px-3 pt-2">
           SarconX CRM v1.0
-        </p>
-        <p className="text-xs text-[var(--sidebar-foreground)]/50">
-          by SarconX
         </p>
       </div>
     </aside>

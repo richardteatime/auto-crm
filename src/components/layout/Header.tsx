@@ -1,11 +1,20 @@
 "use client";
 
-import { Bell, Menu } from "lucide-react";
+import { Bell, LogOut, Menu } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileNav } from "./MobileNav";
 
 export function Header() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6">
       <Sheet>
@@ -23,6 +32,9 @@ export function Header() {
 
       <Button variant="ghost" size="icon" className="relative cursor-pointer">
         <Bell className="h-5 w-5" />
+      </Button>
+      <Button variant="ghost" size="icon" className="cursor-pointer" onClick={handleLogout}>
+        <LogOut className="h-5 w-5" />
       </Button>
     </header>
   );
