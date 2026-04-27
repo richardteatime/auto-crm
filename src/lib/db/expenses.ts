@@ -1,5 +1,6 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, Query, type Models } from "node-appwrite";
+import { ID, type Models } from "node-appwrite";
+import { Query } from "@/lib/query17";
 import type { Expense } from "@/types";
 
 // ---------------------------------------------------------------------------

@@ -15,32 +15,32 @@ export async function GET() {
   results.projectId = projectId ? "configured" : "MISSING";
   results.apiKey = apiKey ? "configured" : "MISSING";
 
-  // 2. Test server-to-Appwrite connection (with API key — Users API)
+  // 2. Test server-to-Appwrite connection (with API key — list users)
   try {
     const client = new Client()
       .setEndpoint(endpoint)
       .setProject(projectId)
       .setKey(apiKey);
     const users = new Users(client);
-    const list = await users.list({ queries: ["limit(1)"] });
+    const list = await users.list();
     results.serverConnection = `OK — ${list.total} users found`;
   } catch (e: unknown) {
     results.serverConnection = `FAIL — ${e instanceof Error ? e.message : String(e)}`;
   }
 
-  // 3. Test Account API endpoint (without API key — simulates login path)
+  // 3. Test Account API endpoint reachability (guest = no session, expected to fail auth)
   try {
     const client = new Client()
       .setEndpoint(endpoint)
       .setProject(projectId);
     const account = new Account(client);
-    await account.get(); // Will fail (no session), but proves connectivity
+    await account.get();
     results.accountApi = "Unexpected success";
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    // "Invalid session" or auth error means endpoint responded — connectivity OK
-    if (msg.includes("session") || msg.includes("authorization") || msg.includes("401") || msg.includes("403") || msg.includes("Auth")) {
-      results.accountApi = "OK — endpoint reachable (no session, expected)";
+    // Any error that's NOT a network error means the endpoint is reachable
+    if (!msg.includes("ECONNREFUSED") && !msg.includes("ENOTFOUND") && !msg.includes("fetch failed") && !msg.includes("ETIMEDOUT")) {
+      results.accountApi = "OK — endpoint reachable (auth error expected without session)";
     } else {
       results.accountApi = `FAIL — ${msg}`;
     }
