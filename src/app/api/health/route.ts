@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Client, Account, Users } from "node-appwrite";
+import { Client, Account } from "node-appwrite";
 
 export const dynamic = "force-dynamic";
 
@@ -10,25 +10,31 @@ export async function GET() {
 
   const results: Record<string, string> = {};
 
-  // 1. Check env vars
   results.endpoint = endpoint;
   results.projectId = projectId ? "configured" : "MISSING";
   results.apiKey = apiKey ? "configured" : "MISSING";
 
-  // 2. Test server-to-Appwrite connection (with API key — list users)
+  // 2. Test server-to-Appwrite via direct REST (bypass SDK v24 query format)
   try {
-    const client = new Client()
-      .setEndpoint(endpoint)
-      .setProject(projectId)
-      .setKey(apiKey);
-    const users = new Users(client);
-    const list = await users.list();
-    results.serverConnection = `OK — ${list.total} users found`;
+    const url = endpoint.replace(/\/v1\/?$/, "") + "/v1/users";
+    const res = await fetch(url, {
+      headers: {
+        "X-Appwrite-Project": projectId,
+        "X-Appwrite-Key": apiKey,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      results.serverConnection = `OK — ${data.total ?? "?"} users found`;
+    } else {
+      const text = await res.text();
+      results.serverConnection = `FAIL — ${res.status}: ${text.slice(0, 200)}`;
+    }
   } catch (e: unknown) {
     results.serverConnection = `FAIL — ${e instanceof Error ? e.message : String(e)}`;
   }
 
-  // 3. Test Account API endpoint reachability (guest = no session, expected to fail auth)
+  // 3. Test Account API endpoint reachability
   try {
     const client = new Client()
       .setEndpoint(endpoint)
@@ -38,7 +44,6 @@ export async function GET() {
     results.accountApi = "Unexpected success";
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    // Any error that's NOT a network error means the endpoint is reachable
     if (!msg.includes("ECONNREFUSED") && !msg.includes("ENOTFOUND") && !msg.includes("fetch failed") && !msg.includes("ETIMEDOUT")) {
       results.accountApi = "OK — endpoint reachable (auth error expected without session)";
     } else {

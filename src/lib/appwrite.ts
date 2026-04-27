@@ -18,6 +18,22 @@ export const COLLECTIONS = {
   quotes: "quotes",
 } as const;
 
+// ---------------------------------------------------------------------------
+// Patch: remove SDK v24 headers that Appwrite 1.7.4 doesn't understand.
+// SDK v24 sends "x-appwrite-response-format" and serializes queries as
+// JSON objects. Appwrite 1.7.4 only accepts the legacy string format.
+// ---------------------------------------------------------------------------
+const originalFetch = globalThis.fetch;
+globalThis.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+  if (init?.headers) {
+    const h = init.headers as Record<string, string>;
+    delete h["x-appwrite-response-format"];
+    // Also strip x-appwrite-version if present
+    delete h["x-appwrite-version"];
+  }
+  return originalFetch(input, init);
+} as typeof globalThis.fetch;
+
 function createServerClient() {
   const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)

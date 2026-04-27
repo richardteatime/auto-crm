@@ -1,5 +1,4 @@
 import { Client, Account } from "node-appwrite";
-import { users } from "./appwrite";
 import { NextRequest, NextResponse } from "next/server";
 
 const APPWRITE_ENDPOINT =
@@ -121,10 +120,21 @@ export async function requireAuth(
  */
 export async function isFirstUser(): Promise<boolean> {
   try {
-    const result = await users.list({ queries: ["limit(1)"] });
-    return result.total === 0;
+    // Direct REST call to bypass SDK v24 query format (incompatible with 1.7.4)
+    const endpoint = APPWRITE_ENDPOINT;
+    const url = endpoint.replace(/\/v1\/?$/, "") + "/v1/users";
+    const res = await fetch(url, {
+      headers: {
+        "X-Appwrite-Project": APPWRITE_PROJECT_ID,
+        "X-Appwrite-Key": process.env.APPWRITE_API_KEY || "",
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.total === 0;
+    }
+    return false;
   } catch {
-    // If we can't reach Appwrite, assume users exist to be safe.
     return false;
   }
 }
