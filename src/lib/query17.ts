@@ -43,12 +43,32 @@ export const Query = {
     return `notEqual("${attribute}", [${v(value)}])`;
   },
 
-  greaterThan(attribute: string, value: number): string {
-    return `greaterThan("${attribute}", [${value}])`;
+  greaterThan(attribute: string, value: number | string): string {
+    return `greaterThan("${attribute}", [${v(value)}])`;
   },
 
-  lessThan(attribute: string, value: number): string {
-    return `lessThan("${attribute}", [${value}])`;
+  greaterThanEqual(attribute: string, value: number | string): string {
+    return `greaterThanEqual("${attribute}", [${v(value)}])`;
+  },
+
+  lessThan(attribute: string, value: number | string): string {
+    return `lessThan("${attribute}", [${v(value)}])`;
+  },
+
+  lessThanEqual(attribute: string, value: number | string): string {
+    return `lessThanEqual("${attribute}", [${v(value)}])`;
+  },
+
+  isNotNull(attribute: string): string {
+    return `isNotNull("${attribute}")`;
+  },
+
+  isNull(attribute: string): string {
+    return `isNull("${attribute}")`;
+  },
+
+  startsWith(attribute: string, value: string): string {
+    return `startsWith("${attribute}", "${value.replace(/"/g, '\\"')}")`;
   },
 
   search(attribute: string, value: string): string {
