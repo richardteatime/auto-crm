@@ -40,6 +40,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rate limit exceeded
+    if (message.includes("rate_limit") || message.includes("429")) {
+      return NextResponse.json(
+        { success: false, error: "Troppi tentativi. Riprova tra qualche minuto." },
+        { status: 429 }
+      );
+    }
+
     // Connection failure
     if (message.includes("ECONNREFUSED") || message.includes("ENOTFOUND") || message.includes("fetch failed") || message.includes("ETIMEDOUT")) {
       return NextResponse.json(
