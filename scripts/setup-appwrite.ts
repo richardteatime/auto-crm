@@ -59,20 +59,22 @@ async function main() {
   }
 
   // Shorthand helpers matching old column API
+  // In Appwrite 1.7.4: cannot set default on required attributes.
+  // When a default is provided, the attribute must be optional.
   const str = (col: string, key: string, size: number, req: boolean, def?: string) =>
-    () => db.createStringAttribute(DB_ID, col, key, size, req, def);
+    () => db.createStringAttribute(DB_ID, col, key, size, def !== undefined ? false : req, def);
   const email = (col: string, key: string, req: boolean) =>
     () => db.createEmailAttribute(DB_ID, col, key, req);
   const text = (col: string, key: string, req: boolean) =>
     () => db.createStringAttribute(DB_ID, col, key, 16384, req);
   const int = (col: string, key: string, req: boolean, def?: number, min?: number, max?: number) =>
-    () => db.createIntegerAttribute(DB_ID, col, key, req, min, max, def);
+    () => db.createIntegerAttribute(DB_ID, col, key, def !== undefined ? false : req, min, max, def);
   const bool = (col: string, key: string, req: boolean, def?: boolean) =>
-    () => db.createBooleanAttribute(DB_ID, col, key, req, def);
+    () => db.createBooleanAttribute(DB_ID, col, key, def !== undefined ? false : req, def);
   const dt = (col: string, key: string, req: boolean) =>
     () => db.createDatetimeAttribute(DB_ID, col, key, req);
   const enm = (col: string, key: string, elements: string[], req: boolean, def?: string) =>
-    () => db.createEnumAttribute(DB_ID, col, key, elements, req, def);
+    () => db.createEnumAttribute(DB_ID, col, key, elements, def !== undefined ? false : req, def);
 
   console.log("\n--- Creating Collections ---\n");
 
