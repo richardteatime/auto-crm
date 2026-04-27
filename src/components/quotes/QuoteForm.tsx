@@ -153,11 +153,15 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Errore nel salvataggio del preventivo");
+      }
       toast.success(isEditing ? "Preventivo aggiornato" : "Preventivo creato");
       onClose();
-    } catch {
-      toast.error("Errore nel salvataggio del preventivo");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore nel salvataggio del preventivo");
     } finally {
       setSubmitting(false);
     }

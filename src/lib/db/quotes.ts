@@ -44,10 +44,6 @@ function fromDoc<T>(doc: Models.Document): T {
   } as T;
 }
 
-/**
- * Auto-generate a quote number in the format: Q-YYYYMMDD-NNN
- * Uses the latest quote for today to compute the sequential suffix.
- */
 async function generateQuoteNumber(): Promise<string> {
   const today = new Date();
   const dateStr = [
@@ -55,24 +51,8 @@ async function generateQuoteNumber(): Promise<string> {
     String(today.getMonth() + 1).padStart(2, "0"),
     String(today.getDate()).padStart(2, "0"),
   ].join("");
-
-  const prefix = `Q-${dateStr}-`;
-
-  // Find quotes with today's prefix to determine the next sequence number
-  const res = await databases.listDocuments(DB_ID, COLLECTIONS.quotes, [
-    Query.startsWith("number", prefix),
-    Query.orderDesc("number"),
-    Query.limit(1),
-  ]);
-
-  let seq = 1;
-  if (res.documents.length > 0) {
-    const lastNumber = res.documents[0].number as string;
-    const lastSeq = parseInt(lastNumber.split("-").pop() ?? "0", 10);
-    seq = lastSeq + 1;
-  }
-
-  return `${prefix}${String(seq).padStart(3, "0")}`;
+  const suffix = String(today.getTime() % 1000).padStart(3, "0");
+  return `Q-${dateStr}-${suffix}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,20 +103,29 @@ export async function createQuote(data: {
 }): Promise<Quote> {
   const number = await generateQuoteNumber();
 
+  const payload: Record<string, unknown> = {
+    dealId: data.dealId,
+    number,
+    title: data.title,
+    items: data.items || "[]",
+    status: "bozza",
+    vatRate: data.vatRate ?? 22,
+  };
+
+  if (data.notes?.trim()) {
+    payload.notes = data.notes.trim();
+  }
+
+  const validUntilIso = toIsoDate(data.validUntil);
+  if (validUntilIso) {
+    payload.validUntil = validUntilIso;
+  }
+
   const doc = await databases.createDocument(
     DB_ID,
     COLLECTIONS.quotes,
     ID.unique(),
-    {
-      dealId: data.dealId,
-      number,
-      title: data.title,
-      items: data.items ?? "[]",
-      notes: data.notes ?? null,
-      status: "bozza",
-      vatRate: data.vatRate ?? 22,
-      validUntil: toIsoDate(data.validUntil),
-    },
+    payload,
   );
   return fromDoc<Quote>(doc);
 }

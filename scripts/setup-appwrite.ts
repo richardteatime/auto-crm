@@ -195,6 +195,7 @@ async function main() {
   await addAttr("quotes", dt("quotes", "createdAt", true));
   await addAttr("quotes", dt("quotes", "updatedAt", true));
   await addIndex("quotes", "idx_dealId", DatabasesIndexType.Key, ["dealId"]);
+  await addIndex("quotes", "idx_number", DatabasesIndexType.Key, ["number"]);
 
   // Seed default pipeline stages
   console.log("\n--- Seeding Pipeline Stages ---\n");

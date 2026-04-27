@@ -44,14 +44,20 @@ export async function POST(
     return NextResponse.json({ error: "Il titolo è obbligatorio" }, { status: 400 });
   }
 
-  const quote = await createQuote({
-    dealId: id,
-    title: title.trim(),
-    items: items ? JSON.stringify(items) : "[]",
-    notes: notes?.trim() || null,
-    vatRate: vatRate ?? 22,
-    validUntil: validUntil ? new Date(validUntil) : null,
-  });
+  try {
+    const quote = await createQuote({
+      dealId: id,
+      title: title.trim(),
+      items: items ? JSON.stringify(items) : "[]",
+      notes: typeof notes === "string" ? notes.trim() : undefined,
+      vatRate: typeof vatRate === "number" ? vatRate : 22,
+      validUntil: typeof validUntil === "string" && validUntil ? new Date(validUntil) : undefined,
+    });
 
-  return NextResponse.json(quote, { status: 201 });
+    return NextResponse.json(quote, { status: 201 });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Error creating quote:", msg, error);
+    return NextResponse.json({ error: msg || "Errore durante la creazione del preventivo" }, { status: 500 });
+  }
 }
