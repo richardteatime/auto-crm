@@ -103,6 +103,8 @@ export async function createQuote(data: {
 }): Promise<Quote> {
   const number = await generateQuoteNumber();
 
+  const now = new Date().toISOString();
+
   const payload: Record<string, unknown> = {
     dealId: data.dealId,
     number,
@@ -110,6 +112,8 @@ export async function createQuote(data: {
     items: data.items || "[]",
     status: "bozza",
     vatRate: data.vatRate ?? 22,
+    createdAt: now,
+    updatedAt: now,
   };
 
   if (data.notes?.trim()) {
