@@ -71,3 +71,13 @@ export type { Quote } from "./quotes";
 
 // Settings
 export { getSetting, setSetting } from "./settings";
+
+// Opportunities
+export {
+  listOpportunities,
+  getOpportunity,
+  createOpportunity,
+  updateOpportunity,
+  deleteOpportunity,
+} from "./opportunities";
+export type { } from "./opportunities";

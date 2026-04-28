@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ContactForm } from "./ContactForm";
 import { ActivityForm } from "@/components/activities/ActivityForm";
 import { DealForm } from "@/components/deals/DealForm";
+import { OpportunityList } from "@/components/opportunities/OpportunityList";
 import {
   ArrowLeft,
   Mail,
@@ -403,6 +404,9 @@ export function ContactDetailClient({
           </CardContent>
         </Card>
       </div>
+
+      {/* Opportunità — sezione full width sotto le 3 card */}
+      <OpportunityList contactId={contact.id} />
 
       <ContactForm
         open={showEditForm}

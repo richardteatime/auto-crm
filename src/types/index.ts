@@ -94,6 +94,22 @@ export interface Activity {
   createdAt: Date;
 }
 
+export type OpportunityStatus = "aperta" | "trasformata";
+
+export interface Opportunity {
+  id: string;
+  contactId: string;
+  title: string;
+  description: string | null;
+  notes: string | null;
+  attachments: string | null; // JSON: [{name, url}]
+  status: OpportunityStatus;
+  value: number | null; // cents
+  dealId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CrmConfig {
   business: {
     type: string;

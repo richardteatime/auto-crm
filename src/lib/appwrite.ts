@@ -16,6 +16,7 @@ export const COLLECTIONS = {
   messages: "messages",
   expenses: "expenses",
   quotes: "quotes",
+  opportunities: "opportunities",
 } as const;
 
 // ---------------------------------------------------------------------------
