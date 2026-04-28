@@ -13,6 +13,7 @@ import {
   ClipboardList,
   FileText,
   TrendingUp,
+  Target,
   LogOut,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/contacts", label: "Contatti", icon: Users },
   { href: "/deals", label: "Trattative", icon: Briefcase },
+  { href: "/opportunita", label: "Opportunità", icon: Target },
   { href: "/activities", label: "Attività", icon: Activity },
   { href: "/messages", label: "Chat Team", icon: MessageSquare },
   { href: "/tasks", label: "Task", icon: ClipboardList },
