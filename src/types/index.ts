@@ -45,6 +45,7 @@ export interface Deal {
   recurringMonths?: number | null;
   recurringStartDate?: Date | null;
   wonAt?: Date | null;
+  isPaid?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

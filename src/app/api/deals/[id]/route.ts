@@ -63,6 +63,7 @@ export async function PUT(
     if (body.attachments !== undefined) updateData.attachments = JSON.stringify(body.attachments ?? []);
     if (body.isRecurring !== undefined) updateData.isRecurring = !!body.isRecurring;
     if (body.recurringMonths !== undefined) updateData.recurringMonths = Number(body.recurringMonths) || 12;
+    if (body.isPaid !== undefined) updateData.isPaid = !!body.isPaid;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(existing);

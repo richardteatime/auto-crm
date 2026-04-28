@@ -52,6 +52,7 @@ export interface DealInitialData {
   attachments?: string | null;
   isRecurring?: boolean;
   recurringMonths?: number | null;
+  isPaid?: boolean;
 }
 
 interface DealFormProps {
@@ -77,6 +78,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
   const [uploading, setUploading] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringMonths, setRecurringMonths] = useState(12);
+  const [isPaid, setIsPaid] = useState(false);
 
   const {
     register,
@@ -112,6 +114,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
         setAttachments(parsedAttachments);
         setIsRecurring(initialData.isRecurring ?? false);
         setRecurringMonths(initialData.recurringMonths ?? 12);
+        setIsPaid(initialData.isPaid ?? false);
 
         reset({
           title: initialData.title,
@@ -126,6 +129,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
         setAttachments([]);
         setIsRecurring(false);
         setRecurringMonths(12);
+        setIsPaid(false);
         reset({
           title: "", value: "",
           contactId: preselectedContactId || "",
@@ -169,6 +173,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
       attachments,
       isRecurring,
       recurringMonths: isRecurring ? recurringMonths : null,
+      isPaid,
     };
 
     try {
@@ -310,6 +315,37 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
               </p>
             </div>
           )}
+
+          {/* Pagamento */}
+          <div className="space-y-2">
+            <Label>Stato Pagamento</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPaid(false)}
+                className={cn(
+                  "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                  !isPaid
+                    ? "bg-amber-500 text-white border-amber-500"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                )}
+              >
+                Non Pagato
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPaid(true)}
+                className={cn(
+                  "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                  isPaid
+                    ? "bg-green-600 text-white border-green-600"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                )}
+              >
+                Pagato
+              </button>
+            </div>
+          </div>
 
           {/* Allegati */}
           <div className="space-y-2">

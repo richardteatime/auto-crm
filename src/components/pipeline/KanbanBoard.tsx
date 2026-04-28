@@ -213,6 +213,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
               id={column.id}
               name={column.name}
               color={column.color}
+              isWon={column.isWon}
               deals={column.deals.map((d) => ({
                 id: d.id,
                 title: d.title,
@@ -222,6 +223,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
                 probability: d.probability,
                 isRecurring: (d as { isRecurring?: boolean }).isRecurring,
                 recurringMonths: (d as { recurringMonths?: number | null }).recurringMonths,
+                isPaid: (d as { isPaid?: boolean }).isPaid,
               }))}
             />
           ))}
@@ -238,6 +240,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
               probability={activeDeal.probability}
               isRecurring={(activeDeal as { isRecurring?: boolean }).isRecurring}
               recurringMonths={(activeDeal as { recurringMonths?: number | null }).recurringMonths}
+              isPaid={(activeDeal as { isPaid?: boolean }).isPaid}
             />
           ) : null}
         </DragOverlay>

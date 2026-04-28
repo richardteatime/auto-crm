@@ -4,9 +4,10 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, Euro, Percent } from "lucide-react";
+import { ArrowLeft, Calendar, Euro, Percent, Wallet } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { DealEditButton } from "@/components/deals/DealEditButton";
+import { DealPaymentToggle } from "@/components/deals/DealPaymentToggle";
 import { DealActivities } from "@/components/deals/DealActivities";
 import { QuoteList } from "@/components/quotes/QuoteList";
 
@@ -80,6 +81,7 @@ export default async function DealDetailPage({
             attachments: deal.attachments,
             isRecurring: deal.isRecurring,
             recurringMonths: deal.recurringMonths,
+            isPaid: deal.isPaid,
           }}
         />
       </div>
@@ -128,6 +130,18 @@ export default async function DealDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {stage?.isWon && (
+        <Card className="border-green-200 dark:border-green-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+              <Wallet className="h-4 w-4" />
+              Pagamento
+            </div>
+            <DealPaymentToggle dealId={deal.id} isPaid={deal.isPaid ?? false} />
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {deal.notes && (

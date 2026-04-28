@@ -17,16 +17,18 @@ interface Deal {
   probability: number;
   isRecurring?: boolean;
   recurringMonths?: number | null;
+  isPaid?: boolean;
 }
 
 interface KanbanColumnProps {
   id: string;
   name: string;
   color: string;
+  isWon?: boolean;
   deals: Deal[];
 }
 
-export function KanbanColumn({ id, name, color, deals }: KanbanColumnProps) {
+export function KanbanColumn({ id, name, color, isWon, deals }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   const totalValue = deals.reduce((sum, d) => sum + d.value, 0);
@@ -59,7 +61,7 @@ export function KanbanColumn({ id, name, color, deals }: KanbanColumnProps) {
       >
         <div className="flex-1 p-2 space-y-2 min-h-[100px] overflow-y-auto">
           {deals.map((deal) => (
-            <DealCard key={deal.id} {...deal} />
+            <DealCard key={deal.id} {...deal} isWon={isWon} />
           ))}
         </div>
       </SortableContext>

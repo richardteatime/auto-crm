@@ -123,6 +123,7 @@ async function main() {
   await addAttr("deals", int("deals", "recurringMonths", false, 12));
   await addAttr("deals", dt("deals", "recurringStartDate", false));
   await addAttr("deals", dt("deals", "wonAt", false));
+  await addAttr("deals", bool("deals", "isPaid", true, false));
   await addAttr("deals", dt("deals", "createdAt", true));
   await addAttr("deals", dt("deals", "updatedAt", true));
   await addIndex("deals", "idx_stageId", DatabasesIndexType.Key, ["stageId"]);

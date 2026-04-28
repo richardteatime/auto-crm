@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/lib/constants";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, CheckCircle2, Circle } from "lucide-react";
 import type { Temperature } from "@/types";
 
 interface DealCardProps {
@@ -17,6 +17,8 @@ interface DealCardProps {
   probability: number;
   isRecurring?: boolean;
   recurringMonths?: number | null;
+  isPaid?: boolean;
+  isWon?: boolean;
 }
 
 export function DealCard({
@@ -28,6 +30,8 @@ export function DealCard({
   probability,
   isRecurring,
   recurringMonths,
+  isPaid,
+  isWon,
 }: DealCardProps) {
   const {
     attributes,
@@ -77,6 +81,16 @@ export function DealCard({
           <span>{contactName || "Senza contatto"}</span>
           <span>{probability}%</span>
         </div>
+        {isWon && (
+          <div className={`flex items-center gap-1 text-xs font-medium ${isPaid ? "text-green-600" : "text-amber-500"}`}>
+            {isPaid ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <Circle className="h-3 w-3" />
+            )}
+            {isPaid ? "Pagato" : "Non pagato"}
+          </div>
+        )}
       </div>
     </Card>
   );

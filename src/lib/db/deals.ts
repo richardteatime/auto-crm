@@ -112,6 +112,7 @@ export async function createDeal(data: {
   attachments?: string | null;
   isRecurring?: boolean;
   recurringMonths?: number | null;
+  isPaid?: boolean;
 }): Promise<DealWithContact> {
   const denorm = await resolveDenormFields(data.contactId, data.stageId);
 
@@ -138,6 +139,7 @@ export async function createDeal(data: {
     recurringMonths: data.recurringMonths ?? null,
     recurringStartDate,
     wonAt,
+    isPaid: data.isPaid ?? false,
     contactName: denorm.contactName ?? null,
     contactTemperature: denorm.contactTemperature ?? null,
     stageName: denorm.stageName ?? null,
@@ -172,6 +174,7 @@ export async function updateDeal(
     attachments: string | null;
     isRecurring: boolean;
     recurringMonths: number | null;
+    isPaid: boolean;
   }>,
 ): Promise<DealWithContact> {
   // Resolve denormalized fields if contact or stage changed
