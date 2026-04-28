@@ -71,6 +71,7 @@ export async function createContact(data: {
   score?: number;
   notes?: string | null;
 }): Promise<Contact> {
+  const now = new Date().toISOString();
   const doc = await databases.createDocument(
     DB_ID,
     COLLECTIONS.contacts,
@@ -86,6 +87,8 @@ export async function createContact(data: {
       temperature: data.temperature ?? "cold",
       score: data.score ?? 0,
       notes: data.notes ?? null,
+      createdAt: now,
+      updatedAt: now,
     },
   );
   return fromDoc<Contact>(doc);

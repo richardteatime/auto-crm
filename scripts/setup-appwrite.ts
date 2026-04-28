@@ -84,6 +84,8 @@ async function main() {
   await addAttr("contacts", email("contacts", "email", false));
   await addAttr("contacts", str("contacts", "phone", 50, false));
   await addAttr("contacts", str("contacts", "company", 255, false));
+  await addAttr("contacts", str("contacts", "vatNumber", 50, false));
+  await addAttr("contacts", str("contacts", "address", 500, false));
   await addAttr("contacts", enm("contacts", "source", ["website", "whatsapp", "referido", "redes_sociales", "llamada_fria", "email", "formulario", "evento", "import", "webhook", "otro"], true, "otro"));
   await addAttr("contacts", enm("contacts", "temperature", ["cold", "warm", "hot"], true, "cold"));
   await addAttr("contacts", int("contacts", "score", true, 0, 0, 100));

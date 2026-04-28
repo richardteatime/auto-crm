@@ -124,6 +124,7 @@ export async function createDeal(data: {
   const recurringStartDate =
     isRecurring ? new Date().toISOString() : undefined;
 
+  const now = new Date().toISOString();
   const payload: Record<string, unknown> = {
     title: data.title,
     value: data.value ?? 0,
@@ -141,6 +142,8 @@ export async function createDeal(data: {
     contactTemperature: denorm.contactTemperature ?? null,
     stageName: denorm.stageName ?? null,
     stageColor: denorm.stageColor ?? null,
+    createdAt: now,
+    updatedAt: now,
   };
 
   const doc = await databases.createDocument(
