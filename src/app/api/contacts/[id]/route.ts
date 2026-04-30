@@ -55,7 +55,7 @@ export async function PUT(
 
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
-    if (body.email !== undefined) updateData.email = body.email;
+    if (body.email !== undefined) updateData.email = body.email || null;
     if (body.phone !== undefined) updateData.phone = body.phone;
     if (body.company !== undefined) updateData.company = body.company;
     if (body.vatNumber !== undefined) updateData.vatNumber = body.vatNumber;
