@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { type, description, contactId, dealId, scheduledAt } = body;
+  const { type, description, contactId, dealId, scheduledAt, startAt, endAt, notes, attachments } = body;
 
   if (!type || !description || !contactId) {
     return NextResponse.json(
@@ -41,6 +41,10 @@ export async function POST(request: NextRequest) {
       contactId,
       dealId: dealId || null,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      startAt: startAt ? new Date(startAt) : null,
+      endAt: endAt ? new Date(endAt) : null,
+      notes: notes || null,
+      attachments: attachments ? JSON.stringify(attachments) : null,
       completedAt: null,
       isCompleted: false,
     });

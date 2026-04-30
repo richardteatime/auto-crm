@@ -72,6 +72,10 @@ export async function createActivity(data: {
   contactId: string;
   dealId?: string | null;
   scheduledAt?: Date | string | number | null;
+  startAt?: Date | string | number | null;
+  endAt?: Date | string | number | null;
+  notes?: string | null;
+  attachments?: string | null;
   completedAt?: Date | string | number | null;
   isCompleted?: boolean;
 }): Promise<ActivityWithContact> {
@@ -81,15 +85,21 @@ export async function createActivity(data: {
     contactName = contact.name;
   }
 
+  const now = new Date().toISOString();
   const payload: Record<string, unknown> = {
     type: data.type,
     description: data.description,
     contactId: data.contactId,
     dealId: data.dealId ?? null,
     scheduledAt: toIsoDate(data.scheduledAt),
+    startAt: toIsoDate(data.startAt),
+    endAt: toIsoDate(data.endAt),
+    notes: data.notes ?? null,
+    attachments: data.attachments ?? null,
     completedAt: toIsoDate(data.completedAt),
     isCompleted: data.isCompleted ?? false,
     contactName,
+    createdAt: now,
   };
 
   const doc = await databases.createDocument(
