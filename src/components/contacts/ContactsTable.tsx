@@ -55,7 +55,7 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
     if (filterTemp && c.temperature !== filterTemp) return false;
     if (filterSource && c.source !== filterSource) return false;
     return true;
-  }), [contacts, search, filterTemp, filterSource, filterScoreMin]);
+  }), [contacts, search, filterTemp, filterSource]);
 
   const isFiltered = search || filterTemp || filterSource;
 
