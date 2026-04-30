@@ -63,7 +63,7 @@ function periodRange(type: QuickPeriod): { from: string; to: string } {
 
 interface SummaryStats {
   count?: number;
-  hot?: number; warm?: number; cold?: number; avgScore?: number;
+  hot?: number; warm?: number; cold?: number;
   totalValue?: number; wonCount?: number; wonValue?: number; recurring?: number;
   completed?: number; open?: number; byType?: Record<string, number>;
   byStatus?: Record<string, number>; acceptedValue?: number; winRate?: number;
@@ -84,9 +84,9 @@ function SectionStats({ section, stats }: { section: ReportSection; stats: Summa
   if (section === "contacts") return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard label="Nuovi contatti" value={String(stats.count ?? 0)} />
-      <StatCard label="Score medio" value={stats.count ? `${stats.avgScore}` : "—"} />
       <StatCard label="Caldi" value={String(stats.hot ?? 0)} color="text-red-500" />
-      <StatCard label="Tiepidi / Freddi" value={`${stats.warm ?? 0} / ${stats.cold ?? 0}`} />
+      <StatCard label="Tiepidi" value={String(stats.warm ?? 0)} color="text-orange-500" />
+      <StatCard label="Freddi" value={String(stats.cold ?? 0)} />
     </div>
   );
 

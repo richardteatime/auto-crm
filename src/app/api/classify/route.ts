@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getContact, updateContact } from "@/lib/db/contacts";
 import { listActivities } from "@/lib/db/activities";
 import { classifyLead, isAIEnabled } from "@/lib/claude";
-import { suggestTemperature } from "@/lib/scoring";
+import type { Temperature } from "@/types";
 
 export async function POST(request: NextRequest) {
   let body;
@@ -66,32 +66,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Rule-based fallback
-  const lastActivity = contactActivities.sort((a, b) => {
-    const aTime =
-      typeof a.createdAt === "number"
-        ? a.createdAt
-        : a.createdAt?.getTime() || 0;
-    const bTime =
-      typeof b.createdAt === "number"
-        ? b.createdAt
-        : b.createdAt?.getTime() || 0;
-    return bTime - aTime;
-  })[0];
-
-  const daysSinceLastActivity = lastActivity
-    ? Math.floor(
-        (Date.now() -
-          (typeof lastActivity.createdAt === "number"
-            ? lastActivity.createdAt * 1000
-            : lastActivity.createdAt?.getTime() || Date.now())) /
-          (1000 * 60 * 60 * 24)
-      )
-    : 999;
-
-  const temperature = suggestTemperature(
-    contact.temperature === "hot" ? 80 : contact.temperature === "warm" ? 50 : 20
-  );
+  // Rule-based fallback: keep existing temperature
+  const temperature = contact.temperature as Temperature;
 
   await updateContact(contactId, { temperature });
 
