@@ -117,7 +117,6 @@ export async function POST(request: NextRequest) {
       company: fields.company || null,
       source: "webhook",
       temperature: "cold",
-      score: 0,
       notes: fields.notes || null,
     });
 

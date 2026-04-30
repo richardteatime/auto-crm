@@ -31,13 +31,6 @@ const SOURCE_OPTIONS: { value: string; label: string }[] = [
   ...Object.entries(SOURCE_LABELS).map(([k, v]) => ({ value: k, label: v })),
 ];
 
-const SCORE_OPTIONS = [
-  { value: 0, label: "Qualsiasi score" },
-  { value: 25, label: "Score ≥ 25" },
-  { value: 50, label: "Score ≥ 50" },
-  { value: 75, label: "Score ≥ 75" },
-  { value: 90, label: "Score ≥ 90" },
-];
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -48,7 +41,6 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
   const [search, setSearch] = useState("");
   const [filterTemp, setFilterTemp] = useState<Temperature | "">("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterScoreMin, setFilterScoreMin] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const filtered = useMemo(() => contacts.filter((c) => {
@@ -62,17 +54,15 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
     }
     if (filterTemp && c.temperature !== filterTemp) return false;
     if (filterSource && c.source !== filterSource) return false;
-    if (filterScoreMin > 0 && c.score < filterScoreMin) return false;
     return true;
   }), [contacts, search, filterTemp, filterSource, filterScoreMin]);
 
-  const isFiltered = search || filterTemp || filterSource || filterScoreMin > 0;
+  const isFiltered = search || filterTemp || filterSource;
 
   const reset = () => {
     setSearch("");
     setFilterTemp("");
     setFilterSource("");
-    setFilterScoreMin(0);
   };
 
   if (contacts.length === 0) {
@@ -174,26 +164,6 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Score minimo</p>
-              <div className="flex flex-wrap gap-1">
-                {SCORE_OPTIONS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setFilterScoreMin(value)}
-                    className={cn(
-                      "px-2 py-0.5 rounded text-xs border transition-colors cursor-pointer",
-                      filterScoreMin === value
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="flex items-end">
               {isFiltered && (
                 <button
@@ -217,7 +187,6 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
               <TableHead className="hidden sm:table-cell">Azienda</TableHead>
               <TableHead className="hidden md:table-cell">Fonte</TableHead>
               <TableHead>Temperatura</TableHead>
-              <TableHead className="hidden md:table-cell">Score</TableHead>
               <TableHead className="hidden lg:table-cell">Data</TableHead>
             </TableRow>
           </TableHeader>
@@ -247,14 +216,6 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
                   </TableCell>
                   <TableCell>
                     <StatusBadge temperature={contact.temperature as Temperature} size="sm" />
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-1">
-                      <div className="h-2 w-16 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${contact.score}%` }} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{contact.score}</span>
-                    </div>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                     {formatDate(contact.createdAt)}

@@ -75,12 +75,12 @@ export async function GET(request: NextRequest) {
       .filter((c) => inRange(getTs(c.createdAt), fromMs, maxMs));
 
     const csv = buildCSV(
-      ["Nome", "Email", "Telefono", "Azienda", "Fonte", "Temperatura", "Score", "Note", "Data creazione"],
+      ["Nome", "Email", "Telefono", "Azienda", "Fonte", "Temperatura", "Note", "Data creazione"],
       rows.map((c) => [
         c.name, c.email || "", c.phone || "", c.company || "",
         SOURCE_LABELS[c.source as LeadSource] || c.source,
         c.temperature === "hot" ? "Caldo" : c.temperature === "warm" ? "Tiepido" : "Freddo",
-        String(c.score), c.notes || "", formatDate(c.createdAt),
+        c.notes || "", formatDate(c.createdAt),
       ])
     );
     return csvResponse(csv, `contatti${suffix}.csv`);

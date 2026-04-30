@@ -50,7 +50,6 @@ interface ContactDetailClientProps {
     company: string | null;
     source: string;
     temperature: string;
-    score: number;
     notes: string | null;
     createdAt: number | Date;
   };
@@ -147,7 +146,6 @@ export function ContactDetailClient({
             <StatusBadge temperature={contact.temperature as Temperature} />
           </div>
           <p className="text-muted-foreground">
-            Score: {contact.score}/100 &middot;{" "}
             {SOURCE_LABELS[contact.source as LeadSource] || contact.source}
           </p>
         </div>

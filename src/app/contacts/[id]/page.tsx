@@ -52,7 +52,6 @@ export default async function ContactDetailPage({
         company: contact.company,
         source: contact.source,
         temperature: contact.temperature,
-        score: contact.score,
         notes: contact.notes,
         createdAt: contact.createdAt,
       }}

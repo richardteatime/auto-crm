@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
         company: contact.company || null,
         source: contact.source || "import",
         temperature: contact.temperature || "cold",
-        score: contact.score || 0,
         notes: contact.notes || null,
       });
       results.imported++;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getContact, updateContact } from "@/lib/db/contacts";
 import { listActivities } from "@/lib/db/activities";
 import { classifyLead, isAIEnabled } from "@/lib/claude";
-import { calculateLeadScore, suggestTemperature } from "@/lib/scoring";
+import { suggestTemperature } from "@/lib/scoring";
 
 export async function POST(request: NextRequest) {
   let body;
@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
 
       await updateContact(contactId, {
         temperature: result.temperature,
-        score: result.score,
       });
 
       return NextResponse.json({
@@ -90,24 +89,14 @@ export async function POST(request: NextRequest) {
       )
     : 999;
 
-  const score = calculateLeadScore({
-    temperature: contact.temperature as "cold" | "warm" | "hot",
-    hasEmail: !!contact.email,
-    hasPhone: !!contact.phone,
-    hasCompany: !!contact.company,
-    activityCount: contactActivities.length,
-    daysSinceLastActivity,
-    hasDeals: false,
-    dealValue: 0,
-  });
+  const temperature = suggestTemperature(
+    contact.temperature === "hot" ? 80 : contact.temperature === "warm" ? 50 : 20
+  );
 
-  const temperature = suggestTemperature(score);
-
-  await updateContact(contactId, { temperature, score });
+  await updateContact(contactId, { temperature });
 
   return NextResponse.json({
     temperature,
-    score,
     nextAction: "Rivedere manualmente e fare follow-up",
     reasoning: "Classificazione basata su regole (senza API key)",
     mode: "rules",

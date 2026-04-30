@@ -45,10 +45,6 @@ export async function GET(request: NextRequest) {
       hot: rows.filter((c) => c.temperature === "hot").length,
       warm: rows.filter((c) => c.temperature === "warm").length,
       cold: rows.filter((c) => c.temperature === "cold").length,
-      avgScore:
-        rows.length
-          ? Math.round(rows.reduce((s, c) => s + c.score, 0) / rows.length)
-          : 0,
     });
   }
 

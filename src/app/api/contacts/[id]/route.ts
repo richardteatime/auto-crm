@@ -62,7 +62,6 @@ export async function PUT(
     if (body.address !== undefined) updateData.address = body.address;
     if (body.source !== undefined) updateData.source = body.source;
     if (body.temperature !== undefined) updateData.temperature = body.temperature;
-    if (body.score !== undefined) updateData.score = Math.max(0, Math.min(100, body.score));
     if (body.notes !== undefined) updateData.notes = body.notes;
 
     if (Object.keys(updateData).length === 0) {

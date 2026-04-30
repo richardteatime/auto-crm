@@ -64,14 +64,12 @@ async function classifyViaAnthropic(
 
 interface ClassifyResult {
   temperature: Temperature;
-  score: number;
   nextAction: string;
   reasoning: string;
 }
 
 const DEFAULT_RESULT: ClassifyResult = {
   temperature: "cold",
-  score: 25,
   nextAction: "Inviare email di presentazione",
   reasoning: "Classificazione predefinita (nessuna API key configurata)",
 };
@@ -107,7 +105,6 @@ ${historyText || "Nessuna interazione registrata"}
 Rispondi con questo formato JSON esatto:
 {
   "temperature": "cold" | "warm" | "hot",
-  "score": <numero 0-100>,
   "nextAction": "<prossima azione consigliata in italiano>",
   "reasoning": "<motivazione della classificazione in italiano>"
 }`;
@@ -156,7 +153,6 @@ export async function classifyLead(
 
   return {
     temperature: "cold",
-    score: 25,
     nextAction: "Rivedere manualmente",
     reasoning: "Impossibile analizzare la risposta dell'IA",
   };
