@@ -240,14 +240,14 @@ export function FinanceDashboard() {
         <KpiCard
           title="Fatturato Periodo"
           value={loading ? "..." : formatCurrency(summary?.totalRevenue ?? 0)}
-          sub={loading ? "" : `Una tantum: ${formatCurrency(summary?.oneTimeRevenue ?? 0)}`}
+          sub={loading ? "" : `Ric: ${formatCurrency(summary?.recurringRevenue ?? 0)} · Una t.: ${formatCurrency(summary?.oneTimeRevenue ?? 0)}`}
           icon={TrendingUp}
           color="text-green-400"
         />
         <KpiCard
           title="MRR Attivo"
           value={loading ? "..." : formatCurrency(summary?.mrr ?? 0)}
-          sub="Ricorrente mensile attivo"
+          sub={loading ? "" : `ARR: ${formatCurrency((summary?.mrr ?? 0) * 12)}`}
           icon={RefreshCw}
           color="text-blue-400"
         />

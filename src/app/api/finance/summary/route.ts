@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
 
   for (const d of allDeals) {
     if (!wonStageIds.has(d.stageId)) continue;
-    if (!d.isPaid) continue;
+    // One-time: require isPaid (invoice confirmed). Recurring: won = contract active, no isPaid needed.
+    if (!d.isRecurring && !d.isPaid) continue;
 
     if (!d.isRecurring) {
       const wonMs = toMs(d.wonAt as Date | number | null) || toMs(d.updatedAt as Date | number | null);
@@ -106,7 +107,7 @@ export async function GET(req: NextRequest) {
 
     for (const d of allDeals) {
       if (!wonStageIds.has(d.stageId)) continue;
-      if (!d.isPaid) continue;
+      if (!d.isRecurring && !d.isPaid) continue;
       if (!d.isRecurring) {
         const wonMs = toMs(d.wonAt as Date | number | null) || toMs(d.updatedAt as Date | number | null);
         if (wonMs >= mStart.getTime() && wonMs <= mEnd.getTime()) mOneTime += d.value;
