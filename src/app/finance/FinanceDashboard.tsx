@@ -262,12 +262,18 @@ export function FinanceDashboard() {
           sub={loading ? "" : `ARR: ${formatCurrency((summary?.mrr ?? 0) * 12)}`}
           icon={RefreshCw}
           color="text-blue-400"
+          onClick={() => !loading && router.push("/finance/mrr")}
         />
         <KpiCard
           title="Spese Periodo"
           value={loading ? "..." : formatCurrency(summary?.totalExpenses ?? 0)}
           icon={TrendingDown}
           color="text-red-400"
+          onClick={() => {
+            if (loading) return;
+            const { start, end } = getRange();
+            router.push(`/finance/spese?start=${start}&end=${end}`);
+          }}
         />
         <KpiCard
           title="Cash Flow"
