@@ -52,6 +52,7 @@ interface ActivityItem {
   notes?: string | null;
   attachments?: string | null;
   contactName: string | null;
+  contactCompany?: string | null;
   contactId: string;
   scheduledAt: number | Date | null;
   completedAt: number | Date | null;
@@ -88,8 +89,16 @@ export default function ActivitiesPage() {
     Promise.all([
       fetch("/api/activities").then((r) => r.json()),
       fetch("/api/followups").then((r) => r.json()),
-    ]).then(([acts, fups]) => {
-      setActivities(acts);
+      fetch("/api/contacts").then((r) => r.json()),
+    ]).then(([acts, fups, contacts]) => {
+      const companyMap: Record<string, string | null> = {};
+      if (Array.isArray(contacts)) {
+        for (const c of contacts) companyMap[c.id] = c.company ?? null;
+      }
+      const enriched = Array.isArray(acts)
+        ? acts.map((a: ActivityItem) => ({ ...a, contactCompany: companyMap[a.contactId] ?? null }))
+        : [];
+      setActivities(enriched);
       setFollowUps(fups);
       setLoading(false);
     });
@@ -102,7 +111,8 @@ export default function ActivitiesPage() {
       const q = search.toLowerCase();
       const hit = a.description.toLowerCase().includes(q) ||
         a.notes?.toLowerCase().includes(q) ||
-        a.contactName?.toLowerCase().includes(q);
+        a.contactName?.toLowerCase().includes(q) ||
+        a.contactCompany?.toLowerCase().includes(q);
       if (!hit) return false;
     }
     if (filterType && a.type !== filterType) return false;
@@ -345,7 +355,12 @@ export default function ActivitiesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="secondary" className="text-xs">{config?.label || activity.type}</Badge>
-                        <span className="text-xs text-muted-foreground">{activity.contactName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {activity.contactName}
+                          {activity.contactCompany && (
+                            <span className="text-muted-foreground/60"> · {activity.contactCompany}</span>
+                          )}
+                        </span>
                         <span className={cn("text-xs font-medium",
                           status === "completed" ? "text-green-600" : status === "overdue" ? "text-red-600" : "text-yellow-600")}>
                           {style.label}
