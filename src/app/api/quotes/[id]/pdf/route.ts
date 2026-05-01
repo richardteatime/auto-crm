@@ -101,17 +101,17 @@ export async function GET(
 
   const totaliRows = `
     ${hasOneTime ? `<tr><td>Subtotale (Una tantum)</td><td class="importo">${formatEur(oneTimeSub)}</td></tr>` : ""}
-    ${hasRecurring ? `<tr><td>Canone mensile ricorrente</td><td class="importo">${formatEur(recurringSub)}/mese</td></tr>` : ""}
+    ${hasRecurring ? `<tr><td>Canone 1° mese</td><td class="importo">${formatEur(recurringSub)}</td></tr>` : ""}
     ${!hasOneTime && !hasRecurring ? `<tr><td>Subtotale</td><td class="importo">${formatEur(subtotal)}</td></tr>` : ""}
     <tr><td>IVA (${quote.vatRate}% / Regime applicabile)</td><td class="importo">${formatEur(vatAmount)}</td></tr>
-    <tr>
+    <tr class="totale-finale">
       <td><strong>TOTALE DA CORRISPONDERE</strong></td>
-      <td class="importo"><strong>${
-        hasOneTime && hasRecurring
-          ? `${formatEur(oneTimeSub)} + ${formatEur(recurringSub)}/mese`
-          : formatEur(total)
-      }</strong></td>
-    </tr>`;
+      <td class="importo"><strong>${formatEur(total)}</strong></td>
+    </tr>
+    ${hasRecurring ? `<tr class="ricorrente-row">
+      <td><em>Dal 2° mese in poi</em></td>
+      <td class="importo"><em>${formatEur(recurringSub)}/mese</em></td>
+    </tr>` : ""}`;
 
   const html = `<!DOCTYPE html>
 <html lang="it">
@@ -182,7 +182,8 @@ export async function GET(
         .totali { margin-left: auto; width: 45%; margin-bottom: 25px; }
         .totali table { border: none; margin: 0; }
         .totali td { border: none; padding: 6px 10px; }
-        .totali tr:last-child { font-size: 1.15em; font-weight: bold; border-top: 2px solid var(--colore-primario); }
+        .totali tr.totale-finale { font-size: 1.15em; font-weight: bold; border-top: 2px solid var(--colore-primario); }
+        .totali tr.ricorrente-row td { color: #555; font-size: 0.92em; padding-top: 4px; border-top: 1px dashed #ccc; }
         .totali .importo { text-align: right; }
 
         /* === DESCRIZIONI FORMALI === */
