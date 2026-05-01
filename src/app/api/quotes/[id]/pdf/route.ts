@@ -109,7 +109,7 @@ export async function GET(
       <td class="importo"><strong>${formatEur(total)}</strong></td>
     </tr>
     ${hasRecurring ? `<tr class="ricorrente-row">
-      <td><em>Dal 2° mese in poi</em></td>
+      <td><em>Canone dal secondo mese</em></td>
       <td class="importo"><em>${formatEur(recurringSub)}/mese</em></td>
     </tr>` : ""}`;
 
