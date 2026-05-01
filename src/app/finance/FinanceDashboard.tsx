@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ExpenseForm } from "@/components/finance/ExpenseForm";
+import { RevenueDealsDialog } from "@/components/finance/RevenueDealsDialog";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X } from "lucide-react";
@@ -89,15 +90,20 @@ function KpiCard({
   sub,
   icon: Icon,
   color,
+  onClick,
 }: {
   title: string;
   value: string;
   sub?: string;
   icon: React.ElementType;
   color: string;
+  onClick?: () => void;
 }) {
   return (
-    <Card>
+    <Card
+      className={onClick ? "cursor-pointer hover:ring-2 hover:ring-primary/40 transition-shadow" : ""}
+      onClick={onClick}
+    >
       <CardContent className="pt-5 pb-4">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -124,6 +130,7 @@ export function FinanceDashboard() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+  const [showRevenueDeals, setShowRevenueDeals] = useState(false);
 
   // Expense filters
   const [expSearch, setExpSearch] = useState("");
@@ -243,6 +250,7 @@ export function FinanceDashboard() {
           sub={loading ? "" : `Ric: ${formatCurrency(summary?.recurringRevenue ?? 0)} · Una t.: ${formatCurrency(summary?.oneTimeRevenue ?? 0)}`}
           icon={TrendingUp}
           color="text-green-400"
+          onClick={() => !loading && setShowRevenueDeals(true)}
         />
         <KpiCard
           title="MRR Attivo"
@@ -482,6 +490,14 @@ export function FinanceDashboard() {
         onClose={() => { setShowExpenseForm(false); setEditingExpense(undefined); }}
         initialData={editingExpense}
         onSaved={loadData}
+      />
+
+      <RevenueDealsDialog
+        open={showRevenueDeals}
+        onClose={() => setShowRevenueDeals(false)}
+        start={getRange().start}
+        end={getRange().end}
+        totalRevenue={summary?.totalRevenue ?? 0}
       />
 
       <Dialog open={!!deletingExpense} onOpenChange={(v) => !v && setDeletingExpense(null)}>
