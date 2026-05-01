@@ -229,37 +229,39 @@ export default function PreventiviPage() {
       </div>
 
       {/* Search + value filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[220px]">
+      <div className="space-y-2">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Cerca per numero, titolo, cliente, trattativa..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 w-full"
           />
         </div>
-        <div className="flex items-center gap-1">
-          <Input type="number" min="0" placeholder="Min €" value={filterValueMin}
-            onChange={(e) => setFilterValueMin(e.target.value)} className="h-9 w-24 text-sm" />
-          <span className="text-muted-foreground text-sm">—</span>
-          <Input type="number" min="0" placeholder="Max €" value={filterValueMax}
-            onChange={(e) => setFilterValueMax(e.target.value)} className="h-9 w-24 text-sm" />
-        </div>
-        <button
-          onClick={() => setFilterOverdue((v) => !v)}
-          className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors cursor-pointer ${
-            filterOverdue ? "bg-destructive text-white border-destructive" : "border-border text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Solo scaduti
-        </button>
-        {isFiltered && (
-          <button onClick={resetFilters} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
-            <X className="h-3.5 w-3.5" />
-            Azzera
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Input type="number" min="0" placeholder="Min €" value={filterValueMin}
+              onChange={(e) => setFilterValueMin(e.target.value)} className="h-8 w-24 text-sm" />
+            <span className="text-muted-foreground text-sm">—</span>
+            <Input type="number" min="0" placeholder="Max €" value={filterValueMax}
+              onChange={(e) => setFilterValueMax(e.target.value)} className="h-8 w-24 text-sm" />
+          </div>
+          <button
+            onClick={() => setFilterOverdue((v) => !v)}
+            className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors cursor-pointer ${
+              filterOverdue ? "bg-destructive text-white border-destructive" : "border-border text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            Solo scaduti
           </button>
-        )}
+          {isFiltered && (
+            <button onClick={resetFilters} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+              <X className="h-3.5 w-3.5" />
+              Azzera filtri
+            </button>
+          )}
+        </div>
       </div>
 
       {/* KPI cards */}
