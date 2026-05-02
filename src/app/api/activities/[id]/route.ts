@@ -60,7 +60,16 @@ export async function PUT(
 
   if (body.type !== undefined) updateData.type = body.type;
   if (body.contactId !== undefined) updateData.contactId = body.contactId;
-  if (body.dealId !== undefined) updateData.dealId = body.dealId;
+  if (body.dealId !== undefined) updateData.dealId = body.dealId ?? null;
+  if (body.notes !== undefined) updateData.notes = body.notes ?? null;
+  if (body.attachments !== undefined) updateData.attachments = body.attachments ?? null;
+
+  if (body.startAt !== undefined) {
+    updateData.startAt = body.startAt ? new Date(body.startAt) : null;
+  }
+  if (body.endAt !== undefined) {
+    updateData.endAt = body.endAt ? new Date(body.endAt) : null;
+  }
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json(

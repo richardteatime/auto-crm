@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ActivityForm } from "@/components/activities/ActivityForm";
+import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
 import {
   Phone, Mail, Users, FileText, Clock, AlertCircle, Activity,
-  Plus, Paperclip, CalendarDays, Search, X,
+  Plus, Paperclip, CalendarDays, Search, X, Pencil,
 } from "lucide-react";
 import { formatRelativeDate, formatDate, getActivityStatus, ACTIVITY_STATUS_STYLE, ACTIVITY_TYPE_CONFIG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -47,13 +47,14 @@ interface ActivityItem {
   id: string;
   type: string;
   description: string;
-  startAt?: number | Date | null;
-  endAt?: number | Date | null;
+  startAt?: number | Date | string | null;
+  endAt?: number | Date | string | null;
   notes?: string | null;
   attachments?: string | null;
   contactName: string | null;
   contactCompany?: string | null;
   contactId: string;
+  dealId?: string | null;
   scheduledAt: number | Date | null;
   completedAt: number | Date | null;
   createdAt: number | Date;
@@ -77,6 +78,7 @@ export default function ActivitiesPage() {
   const [followUps, setFollowUps] = useState<FollowUps | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<ActivityInitialData | undefined>(undefined);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -173,7 +175,11 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
-      <ActivityForm open={showForm} onClose={() => { setShowForm(false); loadData(); }} />
+      <ActivityForm
+        open={showForm || !!editingActivity}
+        onClose={() => { setShowForm(false); setEditingActivity(undefined); loadData(); }}
+        initialData={editingActivity}
+      />
 
       {/* Filter bar */}
       <div className="space-y-2">
@@ -348,7 +354,7 @@ export default function ActivitiesPage() {
                 let attachmentList: { name: string; url: string }[] = [];
                 try { attachmentList = JSON.parse(activity.attachments || "[]"); } catch { /* */ }
                 return (
-                  <div key={activity.id} className="flex gap-3 items-start">
+                  <div key={activity.id} className="flex gap-3 items-start group">
                     <div className={`rounded-full p-2 shrink-0 ${style.iconBg}`}>
                       <Icon className={`h-4 w-4 ${style.iconColor}`} />
                     </div>
@@ -394,6 +400,23 @@ export default function ActivitiesPage() {
                       )}
                       <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeDate(activity.createdAt)}</p>
                     </div>
+                    <button
+                      onClick={() => setEditingActivity({
+                        id: activity.id,
+                        type: activity.type,
+                        description: activity.description,
+                        contactId: activity.contactId,
+                        dealId: activity.dealId ?? null,
+                        startAt: activity.startAt ? String(activity.startAt) : null,
+                        endAt: activity.endAt ? String(activity.endAt) : null,
+                        notes: activity.notes ?? null,
+                        attachments: activity.attachments ?? null,
+                      })}
+                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1.5 rounded hover:bg-muted"
+                      title="Modifica attività"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
                   </div>
                 );
               })}

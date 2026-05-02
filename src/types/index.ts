@@ -89,6 +89,10 @@ export interface Activity {
   description: string;
   contactId: string;
   dealId: string | null;
+  startAt?: Date | null;
+  endAt?: Date | null;
+  notes?: string | null;
+  attachments?: string | null;
   scheduledAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;

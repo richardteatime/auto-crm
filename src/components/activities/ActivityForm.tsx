@@ -42,11 +42,31 @@ interface Attachment {
   url: string;
 }
 
+export interface ActivityInitialData {
+  id: string;
+  type: string;
+  description: string;
+  contactId: string;
+  dealId?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  notes?: string | null;
+  attachments?: string | null;
+}
+
 interface ActivityFormProps {
   open: boolean;
   onClose: () => void;
   preselectedContactId?: string;
   preselectedDealId?: string;
+  initialData?: ActivityInitialData;
+}
+
+function toDatetimeLocal(val: string | null | undefined): string {
+  if (!val) return "";
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 16);
 }
 
 export function ActivityForm({
@@ -54,7 +74,9 @@ export function ActivityForm({
   onClose,
   preselectedContactId,
   preselectedDealId,
+  initialData,
 }: ActivityFormProps) {
+  const isEdit = !!initialData;
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [contactsList, setContacts] = useState<Array<{ id: string; name: string }>>([]);
@@ -83,22 +105,38 @@ export function ActivityForm({
 
   useEffect(() => {
     if (!open) return;
-    setAttachments([]);
-    reset({
-      type: "note",
-      description: "",
-      contactId: preselectedContactId || "",
-      dealId: preselectedDealId || "",
-      startAt: "",
-      endAt: "",
-      notes: "",
-    });
-    if (!preselectedContactId) {
-      fetch("/api/contacts")
-        .then((r) => r.json())
-        .then(setContacts);
+
+    if (isEdit && initialData) {
+      let existingAttachments: Attachment[] = [];
+      try { existingAttachments = JSON.parse(initialData.attachments || "[]"); } catch { /* */ }
+      setAttachments(existingAttachments);
+      reset({
+        type: initialData.type as FormData["type"],
+        description: initialData.description,
+        contactId: initialData.contactId,
+        dealId: initialData.dealId ?? "",
+        startAt: toDatetimeLocal(initialData.startAt),
+        endAt: toDatetimeLocal(initialData.endAt),
+        notes: initialData.notes ?? "",
+      });
+    } else {
+      setAttachments([]);
+      reset({
+        type: "note",
+        description: "",
+        contactId: preselectedContactId || "",
+        dealId: preselectedDealId || "",
+        startAt: "",
+        endAt: "",
+        notes: "",
+      });
+      if (!preselectedContactId) {
+        fetch("/api/contacts")
+          .then((r) => r.json())
+          .then(setContacts);
+      }
     }
-  }, [open, preselectedContactId, preselectedDealId, reset]);
+  }, [open, isEdit, initialData, preselectedContactId, preselectedDealId, reset]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -129,27 +167,38 @@ export function ActivityForm({
 
   const onSubmit = async (data: FormData) => {
     try {
-      const res = await fetch("/api/activities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: data.type,
-          description: data.description,
-          contactId: data.contactId,
-          dealId: data.dealId || null,
-          startAt: data.startAt || null,
-          endAt: data.endAt || null,
-          notes: data.notes || null,
-          attachments,
-        }),
-      });
+      const payload = {
+        type: data.type,
+        description: data.description,
+        contactId: data.contactId,
+        dealId: data.dealId || null,
+        startAt: data.startAt || null,
+        endAt: data.endAt || null,
+        notes: data.notes || null,
+        attachments,
+      };
+
+      const res = isEdit
+        ? await fetch(`/api/activities/${initialData!.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...payload,
+              attachments: JSON.stringify(attachments),
+            }),
+          })
+        : await fetch("/api/activities", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
 
       if (!res.ok) throw new Error();
-      toast.success("Attività registrata");
+      toast.success(isEdit ? "Attività aggiornata" : "Attività registrata");
       onClose();
       router.refresh();
     } catch {
-      toast.error("Errore durante la registrazione dell'attività");
+      toast.error(isEdit ? "Errore durante l'aggiornamento" : "Errore durante la registrazione");
     }
   };
 
@@ -159,7 +208,7 @@ export function ActivityForm({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registra Attività</DialogTitle>
+          <DialogTitle>{isEdit ? "Modifica Attività" : "Registra Attività"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -208,24 +257,16 @@ export function ActivityForm({
               <Label htmlFor="act-start">
                 {type === "follow_up" ? "Data programmata" : "Data inizio"}
               </Label>
-              <Input
-                id="act-start"
-                type="datetime-local"
-                {...register("startAt")}
-              />
+              <Input id="act-start" type="datetime-local" {...register("startAt")} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="act-end">Data fine</Label>
-              <Input
-                id="act-end"
-                type="datetime-local"
-                {...register("endAt")}
-              />
+              <Input id="act-end" type="datetime-local" {...register("endAt")} />
             </div>
           </div>
 
-          {/* Contatto (solo se non preselezionato) */}
-          {!preselectedContactId && (
+          {/* Contatto (solo in creazione senza preselezionato) */}
+          {!isEdit && !preselectedContactId && (
             <div className="space-y-2">
               <Label>Contatto *</Label>
               <Select
@@ -321,7 +362,7 @@ export function ActivityForm({
               Annulla
             </Button>
             <Button type="submit" disabled={isSubmitting || uploading} className="cursor-pointer">
-              {isSubmitting ? "Salvataggio..." : "Registra"}
+              {isSubmitting ? "Salvataggio..." : isEdit ? "Salva modifiche" : "Registra"}
             </Button>
           </div>
         </form>

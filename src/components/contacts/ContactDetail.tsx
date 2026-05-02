@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ContactForm } from "./ContactForm";
-import { ActivityForm } from "@/components/activities/ActivityForm";
+import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
 import { DealForm } from "@/components/deals/DealForm";
 import { OpportunityList } from "@/components/opportunities/OpportunityList";
 import {
@@ -66,10 +66,11 @@ interface ContactDetailClientProps {
     id: string;
     type: string;
     description: string;
-    startAt?: number | Date | null;
-    endAt?: number | Date | null;
+    startAt?: number | Date | string | null;
+    endAt?: number | Date | string | null;
     notes?: string | null;
     attachments?: string | null;
+    dealId?: string | null;
     scheduledAt: number | Date | null;
     completedAt: number | Date | null;
     createdAt: number | Date;
@@ -84,6 +85,7 @@ export function ContactDetailClient({
   const router = useRouter();
   const [showEditForm, setShowEditForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<ActivityInitialData | undefined>(undefined);
   const [showDealForm, setShowDealForm] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -332,7 +334,7 @@ export function ContactDetailClient({
                   let attachmentList: { name: string; url: string }[] = [];
                   try { attachmentList = JSON.parse(activity.attachments || "[]"); } catch { /* */ }
                   return (
-                    <div key={activity.id} className="flex gap-3">
+                    <div key={activity.id} className="flex gap-3 group">
                       <div className={`rounded-full p-2 h-fit shrink-0 ${style.iconBg}`}>
                         <Icon className={`h-3.5 w-3.5 ${style.iconColor}`} />
                       </div>
@@ -394,6 +396,23 @@ export function ContactDetailClient({
                           {formatRelativeDate(activity.createdAt)}
                         </p>
                       </div>
+                      <button
+                        onClick={() => setEditingActivity({
+                          id: activity.id,
+                          type: activity.type,
+                          description: activity.description,
+                          contactId: contact.id,
+                          dealId: activity.dealId ?? null,
+                          startAt: activity.startAt ? String(activity.startAt) : null,
+                          endAt: activity.endAt ? String(activity.endAt) : null,
+                          notes: activity.notes ?? null,
+                          attachments: activity.attachments ?? null,
+                        })}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1.5 rounded hover:bg-muted"
+                        title="Modifica attività"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
                     </div>
                   );
                 })}
@@ -425,12 +444,14 @@ export function ContactDetailClient({
       />
 
       <ActivityForm
-        open={showActivityForm}
+        open={showActivityForm || !!editingActivity}
         onClose={() => {
           setShowActivityForm(false);
+          setEditingActivity(undefined);
           router.refresh();
         }}
         preselectedContactId={contact.id}
+        initialData={editingActivity}
       />
 
       <DealForm
