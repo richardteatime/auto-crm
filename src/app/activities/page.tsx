@@ -359,15 +359,16 @@ export default function ActivitiesPage() {
                       <Icon className={`h-4 w-4 ${style.iconColor}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-sm font-semibold leading-tight">{activity.contactName}</span>
+                        {activity.contactCompany && (
+                          <span className="text-sm text-muted-foreground font-medium">{activity.contactCompany}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
                         <Badge variant="secondary" className="text-xs">{config?.label || activity.type}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {activity.contactName}
-                          {activity.contactCompany && (
-                            <span className="text-muted-foreground/60"> · {activity.contactCompany}</span>
-                          )}
-                        </span>
-                        <span className={cn("text-xs font-medium",
+                        <span className="text-xs text-muted-foreground truncate">{activity.description}</span>
+                        <span className={cn("text-xs font-medium shrink-0",
                           status === "completed" ? "text-green-600" : status === "overdue" ? "text-red-600" : "text-yellow-600")}>
                           {style.label}
                         </span>
@@ -377,7 +378,6 @@ export default function ActivitiesPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-medium mt-1">{activity.description}</p>
                       {activity.startAt && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                           <CalendarDays className="h-3 w-3" />
