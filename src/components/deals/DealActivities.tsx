@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ActivityForm } from "@/components/activities/ActivityForm";
+import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
 import {
   Plus,
   Phone,
@@ -15,9 +15,11 @@ import {
   Clock,
   Paperclip,
   CalendarDays,
+  Pencil,
 } from "lucide-react";
 import { formatRelativeDate, formatDate, getActivityStatus, ACTIVITY_STATUS_STYLE } from "@/lib/constants";
 import { ACTIVITY_TYPE_CONFIG } from "@/lib/constants";
+import { toast } from "sonner";
 import type { ActivityType } from "@/types";
 
 const activityIcons: Record<string, typeof Phone> = {
@@ -32,6 +34,7 @@ interface Activity {
   id: string;
   type: string;
   description: string;
+  contactId: string;
   startAt?: number | Date | null;
   endAt?: number | Date | null;
   notes?: string | null;
@@ -50,17 +53,20 @@ interface DealActivitiesProps {
 export function DealActivities({ dealId, contactId, activities }: DealActivitiesProps) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<ActivityInitialData | undefined>(undefined);
 
   const handleCompleteActivity = async (activityId: string) => {
     try {
-      await fetch(`/api/activities/${activityId}`, {
+      const res = await fetch(`/api/activities/${activityId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completedAt: new Date().toISOString() }),
       });
+      if (!res.ok) throw new Error();
+      toast.success("Attività completata");
       router.refresh();
     } catch {
-      // silent
+      toast.error("Errore durante il completamento");
     }
   };
 
@@ -158,6 +164,23 @@ export function DealActivities({ dealId, contactId, activities }: DealActivities
                         {formatRelativeDate(activity.createdAt as number | Date)}
                       </p>
                     </div>
+                    <button
+                      onClick={() => setEditingActivity({
+                        id: activity.id,
+                        type: activity.type,
+                        description: activity.description,
+                        contactId: activity.contactId || contactId,
+                        dealId: dealId,
+                        startAt: activity.startAt ? String(activity.startAt) : null,
+                        endAt: activity.endAt ? String(activity.endAt) : null,
+                        notes: activity.notes ?? null,
+                        attachments: activity.attachments ?? null,
+                      })}
+                      className="shrink-0 cursor-pointer p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Modifica attività"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 );
               })}
@@ -167,13 +190,15 @@ export function DealActivities({ dealId, contactId, activities }: DealActivities
       </Card>
 
       <ActivityForm
-        open={showForm}
+        open={showForm || !!editingActivity}
         onClose={() => {
           setShowForm(false);
+          setEditingActivity(undefined);
           router.refresh();
         }}
         preselectedContactId={contactId}
         preselectedDealId={dealId}
+        initialData={editingActivity}
       />
     </>
   );

@@ -5,7 +5,7 @@ WORKDIR /app
 # Install ALL dependencies (dev + prod) needed for build
 FROM base AS deps
 COPY package.json ./
-RUN npm install --prefer-offline
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
