@@ -334,7 +334,7 @@ export function ContactDetailClient({
                   let attachmentList: { name: string; url: string }[] = [];
                   try { attachmentList = JSON.parse(activity.attachments || "[]"); } catch { /* */ }
                   return (
-                    <div key={activity.id} className="flex gap-3 group">
+                    <div key={activity.id} className="flex gap-3">
                       <div className={`rounded-full p-2 h-fit shrink-0 ${style.iconBg}`}>
                         <Icon className={`h-3.5 w-3.5 ${style.iconColor}`} />
                       </div>
@@ -408,10 +408,10 @@ export function ContactDetailClient({
                           notes: activity.notes ?? null,
                           attachments: activity.attachments ?? null,
                         })}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1.5 rounded hover:bg-muted"
+                        className="shrink-0 cursor-pointer p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                         title="Modifica attività"
                       >
-                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   );

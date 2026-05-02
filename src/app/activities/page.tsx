@@ -354,7 +354,7 @@ export default function ActivitiesPage() {
                 let attachmentList: { name: string; url: string }[] = [];
                 try { attachmentList = JSON.parse(activity.attachments || "[]"); } catch { /* */ }
                 return (
-                  <div key={activity.id} className="flex gap-3 items-start group">
+                  <div key={activity.id} className="flex gap-3 items-start">
                     <div className={`rounded-full p-2 shrink-0 ${style.iconBg}`}>
                       <Icon className={`h-4 w-4 ${style.iconColor}`} />
                     </div>
@@ -412,10 +412,10 @@ export default function ActivitiesPage() {
                         notes: activity.notes ?? null,
                         attachments: activity.attachments ?? null,
                       })}
-                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1.5 rounded hover:bg-muted"
+                      className="shrink-0 cursor-pointer p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       title="Modifica attività"
                     >
-                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 );
