@@ -4,8 +4,8 @@ WORKDIR /app
 
 # Install ALL dependencies (dev + prod) needed for build
 FROM base AS deps
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json ./
+RUN npm install --prefer-offline
 
 # Rebuild the source code only when needed
 FROM base AS builder
