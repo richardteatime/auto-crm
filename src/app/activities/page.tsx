@@ -15,6 +15,7 @@ import { formatRelativeDate, formatDate, getActivityStatus, ACTIVITY_STATUS_STYL
 import { cn } from "@/lib/utils";
 import type { ActivityType } from "@/types";
 import { ReportDialog } from "@/components/shared/ReportDialog";
+import { toast } from "sonner";
 
 const typeIcons: Record<string, typeof Phone> = {
   call: Phone, email: Mail, meeting: Users, note: FileText, follow_up: Clock,
@@ -107,6 +108,21 @@ export default function ActivitiesPage() {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  const handleCompleteActivity = async (activityId: string) => {
+    try {
+      const res = await fetch(`/api/activities/${activityId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completedAt: new Date().toISOString() }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Attività completata");
+      loadData();
+    } catch {
+      toast.error("Errore durante il completamento");
+    }
+  };
 
   const filtered = useMemo(() => allActivities.filter((a) => {
     if (search) {
@@ -372,6 +388,14 @@ export default function ActivitiesPage() {
                           status === "completed" ? "text-green-600" : status === "overdue" ? "text-red-600" : "text-yellow-600")}>
                           {style.label}
                         </span>
+                        {status !== "completed" && (
+                          <button
+                            className="text-xs text-muted-foreground underline cursor-pointer hover:text-foreground shrink-0"
+                            onClick={() => handleCompleteActivity(activity.id)}
+                          >
+                            Segna completata
+                          </button>
+                        )}
                         {attachmentList.length > 0 && (
                           <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                             <Paperclip className="h-3 w-3" />{attachmentList.length}
