@@ -132,7 +132,7 @@ export async function createDeal(data: {
     stageId: data.stageId ?? "",
     contactId: data.contactId,
     expectedClose: toIsoDate(data.expectedClose),
-    probability: data.probability ?? 0,
+    probability: stage?.isWon ? 100 : (data.probability ?? 0),
     notes: data.notes ?? null,
     attachments: data.attachments ?? null,
     isRecurring,
@@ -193,8 +193,9 @@ export async function updateDeal(
   // If stage changed, check isWon
   if (data.stageId) {
     const stage = await getStage(data.stageId);
-    if (stage?.isWon && !existing?.wonAt) {
-      payload.wonAt = new Date().toISOString();
+    if (stage?.isWon) {
+      payload.wonAt = existing?.wonAt ?? new Date().toISOString();
+      payload.probability = 100;
     }
     // If moved away from won stage, clear wonAt
     if (!stage?.isWon && existing?.wonAt) {
