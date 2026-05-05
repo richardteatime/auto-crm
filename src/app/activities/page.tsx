@@ -48,8 +48,8 @@ interface ActivityItem {
   id: string;
   type: string;
   description: string;
-  startAt?: number | Date | string | null;
-  endAt?: number | Date | string | null;
+  startAt?: number | Date | null;
+  endAt?: number | Date | null;
   notes?: string | null;
   attachments?: string | null;
   contactName: string | null;
