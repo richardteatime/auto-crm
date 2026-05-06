@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listContacts, createContact } from "@/lib/db";
 import { isValidEmail } from "@/lib/utils";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || undefined;
   const temperature = searchParams.get("temperature") || undefined;
@@ -20,6 +24,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   let body;
   try {
     body = await request.json();

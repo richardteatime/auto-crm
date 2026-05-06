@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { storage } from "@/lib/appwrite";
+import { requireAuth } from "@/lib/auth";
 import { ID } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 
@@ -23,6 +24,9 @@ const ALLOWED_TYPES = [
 ];
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

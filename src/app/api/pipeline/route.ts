@@ -7,8 +7,12 @@ import {
   listDeals,
   getStages,
 } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const pipeline = await getFullPipeline();
     return NextResponse.json(pipeline);
@@ -21,6 +25,9 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   let body;
   try {
     body = await request.json();

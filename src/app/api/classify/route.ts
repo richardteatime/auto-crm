@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getContact, updateContact } from "@/lib/db/contacts";
+import { requireAuth } from "@/lib/auth";
 import { listActivities } from "@/lib/db/activities";
 import { classifyLead, isAIEnabled } from "@/lib/claude";
 import type { Temperature } from "@/types";
 import { VALID_ACTIVITY_TYPES } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   let body;
   try {
     body = await request.json();

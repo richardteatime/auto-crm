@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getQuote, updateQuote, deleteQuote } from "@/lib/db/quotes";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const quote = await getQuote(id);
   if (!quote) {
@@ -19,6 +23,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const quote = await getQuote(id);
   if (!quote) {
@@ -58,6 +65,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const quote = await getQuote(id);
   if (!quote) {

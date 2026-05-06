@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listOpportunities, createOpportunity } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const contactId = searchParams.get("contactId") || undefined;
   const status = searchParams.get("status") || undefined;
@@ -39,6 +43,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   let body;
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });

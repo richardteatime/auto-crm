@@ -18,7 +18,6 @@ export type ReportSection =
   | "deals"
   | "activities"
   | "quotes"
-  | "tasks"
   | "finance";
 
 const SECTION_LABELS: Record<ReportSection, string> = {
@@ -26,7 +25,6 @@ const SECTION_LABELS: Record<ReportSection, string> = {
   deals: "Trattative",
   activities: "Attività",
   quotes: "Preventivi",
-  tasks: "Task",
   finance: "Finance",
 };
 
@@ -117,19 +115,6 @@ function SectionStats({ section, stats }: { section: ReportSection; stats: Summa
       <StatCard label="Accettati" value={String(stats.byStatus?.accettato ?? 0)} color="text-green-600" />
       <StatCard label="Valore accettato" value={formatCurrency(stats.acceptedValue ?? 0)} color="text-green-600" />
       <StatCard label="Tasso accettazione" value={`${stats.winRate ?? 0}%`} />
-    </div>
-  );
-
-  if (section === "tasks") return (
-    <div className="grid grid-cols-2 gap-3">
-      <StatCard label="Task totali" value={String(stats.count ?? 0)} />
-      <StatCard label="Completati" value={String(stats.done ?? 0)} color="text-green-600" />
-      <StatCard label="Da fare" value={String(stats.todo ?? 0)} />
-      <StatCard
-        label="Scaduti"
-        value={String(stats.overdue ?? 0)}
-        color={(stats.overdue ?? 0) > 0 ? "text-red-500" : undefined}
-      />
     </div>
   );
 

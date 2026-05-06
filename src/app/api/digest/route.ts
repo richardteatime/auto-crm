@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { listContacts } from "@/lib/db/contacts";
+import { requireAuth } from "@/lib/auth";
 import { listDeals } from "@/lib/db/deals";
 import { getPendingFollowups } from "@/lib/db/activities";
 import { getStages } from "@/lib/db/pipeline";
 import { formatCurrency } from "@/lib/constants";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const apiKey = process.env.RESEND_API_KEY;
   const email = process.env.DIGEST_EMAIL;
 

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listDeals, createDeal, getStages } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const results = await listDeals();
     return NextResponse.json(results);
@@ -14,6 +18,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   let body;
   try {
     body = await request.json();

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listActivities, createActivity } from "@/lib/db";
 import { VALID_ACTIVITY_TYPES } from "@/lib/utils";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const contactId = searchParams.get("contactId") || undefined;
   const dealId = searchParams.get("dealId") || undefined;
@@ -20,6 +24,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   let body;
   try {
     body = await request.json();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDeal } from "@/lib/db/deals";
 import { listQuotes, createQuote } from "@/lib/db/quotes";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const result = await listQuotes({ dealId: id });
   return NextResponse.json(result);
@@ -17,6 +21,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   const deal = await getDeal(id);

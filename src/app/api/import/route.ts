@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createContact } from "@/lib/db/contacts";
 import { isValidEmail } from "@/lib/utils";
+import { requireAuth } from "@/lib/auth";
 
 const MAX_IMPORT_BATCH = 500;
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   let body;
   try {
     body = await request.json();

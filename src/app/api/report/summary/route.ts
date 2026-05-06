@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listContacts } from "@/lib/db/contacts";
+import { requireAuth } from "@/lib/auth";
 import { listDeals } from "@/lib/db/deals";
 import { listActivities } from "@/lib/db/activities";
 import { listQuotes } from "@/lib/db/quotes";
-import { listTasks } from "@/lib/db/tasks";
 import { listExpenses } from "@/lib/db/expenses";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,9 @@ function inRange(ts: number, fromMs: number, maxMs: number) {
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const section = searchParams.get("section") || "contacts";
   const { fromMs, maxMs } = parsePeriod(
@@ -103,20 +106,6 @@ export async function GET(request: NextRequest) {
       totalValue,
       acceptedValue,
       winRate: sent > 0 ? Math.round(((byStatus.accettato || 0) / sent) * 100) : 0,
-    });
-  }
-
-  if (section === "tasks") {
-    const rows = (await listTasks())
-      .filter((t) => inRange(getTs(t.createdAt), fromMs, maxMs));
-    const now = Date.now();
-    return NextResponse.json({
-      count: rows.length,
-      done: rows.filter((t) => t.done).length,
-      todo: rows.filter((t) => !t.done).length,
-      overdue: rows.filter(
-        (t) => !t.done && t.dueAt && getTs(t.dueAt as Date | number) < now
-      ).length,
     });
   }
 

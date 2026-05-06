@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateActivity, deleteActivity } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 function isNotFoundError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -11,6 +12,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   let body;
@@ -100,6 +104,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   try {

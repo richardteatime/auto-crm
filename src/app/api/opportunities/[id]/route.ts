@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpportunity, updateOpportunity, deleteOpportunity } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const opp = await getOpportunity(id);
   if (!opp) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });
@@ -15,6 +19,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   let body;
   try { body = await request.json(); } catch {
@@ -47,6 +54,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   const existing = await getOpportunity(id);
   if (!existing) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });

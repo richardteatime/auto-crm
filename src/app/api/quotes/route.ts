@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { listQuotes } from "@/lib/db/quotes";
+import { requireAuth } from "@/lib/auth";
 import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const quotes = await listQuotes();
 
   // Enrich each quote with deal title and contact info

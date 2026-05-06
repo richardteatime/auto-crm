@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { listDeals } from "@/lib/db/deals";
+import { requireAuth } from "@/lib/auth";
 import { getStages } from "@/lib/db/pipeline";
 import type { DealWithContact } from "@/types";
 
@@ -15,7 +16,10 @@ function toMs(d: Date | number | string | null | undefined): number {
   return d < 1e12 ? d * 1000 : d;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const now = new Date();
   const [stages, allDeals] = await Promise.all([getStages(), listDeals()]);
   const wonStageIds = new Set(stages.filter((s) => s.isWon).map((s) => s.id));

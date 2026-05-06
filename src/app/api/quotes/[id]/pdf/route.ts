@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getQuote } from "@/lib/db/quotes";
+import { requireAuth } from "@/lib/auth";
 import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
 import fs from "fs";
@@ -65,6 +66,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   const quote = await getQuote(id);

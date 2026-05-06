@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listExpenses, createExpense } from "@/lib/db/expenses";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(req.url);
   const start = searchParams.get("start");
   const end = searchParams.get("end");
@@ -20,6 +24,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   let body;
   try { body = await req.json(); } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });

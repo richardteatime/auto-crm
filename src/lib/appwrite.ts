@@ -12,7 +12,6 @@ export const COLLECTIONS = {
   deals: "deals",
   activities: "activities",
   crmSettings: "crm_settings",
-  tasks: "tasks",
   messages: "messages",
   expenses: "expenses",
   quotes: "quotes",

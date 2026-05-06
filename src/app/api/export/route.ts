@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { listContacts } from "@/lib/db/contacts";
+import { requireAuth } from "@/lib/auth";
 import { listDeals } from "@/lib/db/deals";
 import { listActivities } from "@/lib/db/activities";
 import { listQuotes } from "@/lib/db/quotes";
-import { listTasks } from "@/lib/db/tasks";
 import { listExpenses } from "@/lib/db/expenses";
 import { getStages } from "@/lib/db/pipeline";
 import { formatDate, formatCurrency, SOURCE_LABELS } from "@/lib/constants";
@@ -61,6 +61,9 @@ function csvResponse(csv: string, filename: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") || "contacts";
   const fromParam = searchParams.get("from");
@@ -166,22 +169,6 @@ export async function GET(request: NextRequest) {
     return csvResponse(csv, `preventivi${suffix}.csv`);
   }
 
-  /* ── TASKS ──────────────────────────────────────────────── */
-  if (type === "tasks") {
-    const rows = (await listTasks())
-      .filter((t) => inRange(getTs(t.createdAt), fromMs, maxMs));
-
-    const csv = buildCSV(
-      ["Titolo", "Descrizione", "Assegnato a", "Creato da", "Stato", "Scadenza", "Data creazione"],
-      rows.map((t) => [
-        t.title, t.description || "", t.assignedTo, t.createdBy,
-        t.done ? "Completato" : "Da fare",
-        formatDate(t.dueAt as Date | null), formatDate(t.createdAt),
-      ])
-    );
-    return csvResponse(csv, `task${suffix}.csv`);
-  }
-
   /* ── FINANCE REPORT ─────────────────────────────────────── */
   if (type === "finance") {
     const [allDeals, allExpenses] = await Promise.all([listDeals(), listExpenses()]);
@@ -263,7 +250,7 @@ export async function GET(request: NextRequest) {
     return csvResponse(csv, `report-finanziario${suffix}.csv`);
   }
 
-  return new Response("Tipo non valido. Usare ?type=contacts|deals|activities|quotes|tasks|finance", {
+  return new Response("Tipo non valido. Usare ?type=contacts|deals|activities|quotes|finance", {
     status: 400,
   });
 }

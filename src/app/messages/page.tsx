@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Send, MessageSquare, User } from "lucide-react";
 import { formatRelativeDate } from "@/lib/constants";
 import { toast } from "sonner";
@@ -15,32 +15,35 @@ interface Message {
   createdAt: number | Date;
 }
 
-const AUTHOR_KEY = "crm-display-name";
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+}
 
 export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [content, setContent] = useState("");
-  const [author, setAuthor] = useState("");
-  const [nameInput, setNameInput] = useState("");
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastTimestampRef = useRef<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load display name from localStorage
+  // Load real user from session
   useEffect(() => {
-    const saved = localStorage.getItem(AUTHOR_KEY);
-    if (saved) setAuthor(saved);
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        }
+      })
+      .catch(() => {
+        toast.error("Errore nel caricamento della sessione");
+      });
   }, []);
-
-  const saveName = () => {
-    const name = nameInput.trim();
-    if (!name) return;
-    localStorage.setItem(AUTHOR_KEY, name);
-    setAuthor(name);
-    setNameInput("");
-  };
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,6 +55,13 @@ export default function MessagesPage() {
         ? "/api/messages"
         : `/api/messages?since=${lastTimestampRef.current}`;
       const res = await fetch(url);
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error("Sessione scaduta. Effettua il login.");
+          return;
+        }
+        throw new Error();
+      }
       const data: Message[] = await res.json();
 
       if (isInitial) {
@@ -85,16 +95,22 @@ export default function MessagesPage() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || !author) return;
+    if (!content.trim() || !user) return;
 
     setSending(true);
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ author, content: content.trim() }),
+        body: JSON.stringify({ content: content.trim() }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error("Sessione scaduta. Effettua il login.");
+          return;
+        }
+        throw new Error();
+      }
       const msg: Message = await res.json();
       setMessages((prev) => [...prev, msg]);
       lastTimestampRef.current = new Date(msg.createdAt).getTime();
@@ -108,37 +124,11 @@ export default function MessagesPage() {
     }
   };
 
-  // Name setup screen
-  if (!author) {
+  if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-5 w-5" />
-              Come ti chiami?
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Scegli un nome visualizzato per la chat del team. Sarà visibile a tutti i colleghi.
-            </p>
-            <form
-              onSubmit={(e) => { e.preventDefault(); saveName(); }}
-              className="flex gap-2"
-            >
-              <Input
-                autoFocus
-                placeholder="Es: Marco Rossi"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-              />
-              <Button type="submit" disabled={!nameInput.trim()} className="cursor-pointer">
-                Entra
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <MessageSquare className="h-10 w-10 text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-muted-foreground">Caricamento sessione...</p>
       </div>
     );
   }
@@ -154,18 +144,7 @@ export default function MessagesPage() {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <User className="h-4 w-4" />
-          <span>{author}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs cursor-pointer h-7 px-2"
-            onClick={() => {
-              localStorage.removeItem(AUTHOR_KEY);
-              setAuthor("");
-            }}
-          >
-            Cambia
-          </Button>
+          <span>{user.name}</span>
         </div>
       </div>
 
@@ -189,7 +168,7 @@ export default function MessagesPage() {
             </div>
           ) : (
             messages.map((msg) => {
-              const isMe = msg.author === author;
+              const isMe = msg.author === user.name;
               return (
                 <div
                   key={msg.id}

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateExpense, deleteExpense } from "@/lib/db/expenses";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   let body;
   try { body = await req.json(); } catch {
@@ -27,6 +31,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   try {
     await deleteExpense(id);

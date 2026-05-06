@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listMessages, createMessage } from "@/lib/db/messages";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(req.url);
   const since = searchParams.get("since");
 
@@ -16,15 +20,18 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const { author, content } = await req.json();
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
 
-    if (!author?.trim() || !content?.trim()) {
-      return NextResponse.json({ error: "Autore e contenuto obbligatori" }, { status: 400 });
+  try {
+    const { content } = await req.json();
+
+    if (!content?.trim()) {
+      return NextResponse.json({ error: "Contenuto obbligatorio" }, { status: 400 });
     }
 
     const msg = await createMessage({
-      author: author.trim(),
+      author: auth.user.name,
       content: content.trim(),
     });
 

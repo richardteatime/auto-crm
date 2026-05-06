@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { listDeals } from "@/lib/db/deals";
 import { listExpenses } from "@/lib/db/expenses";
 import { getStages } from "@/lib/db/pipeline";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,9 @@ function clampMonths(dealStart: Date, dealMonths: number, periodStart: Date, per
 }
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   const { searchParams } = new URL(req.url);
   const startParam = searchParams.get("start");
   const endParam   = searchParams.get("end");

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpportunity, updateOpportunity, createDeal, getStages } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_req);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   const opp = await getOpportunity(id);

@@ -27,7 +27,6 @@ const navItems = [
   { href: "/opportunita", label: "Opportunità", icon: Target },
   { href: "/activities", label: "Attività", icon: Activity },
   { href: "/messages", label: "Chat Team", icon: MessageSquare },
-  { href: "/tasks", label: "Task", icon: ClipboardList },
   { href: "/preventivi", label: "Preventivi", icon: FileText },
   { href: "/finance", label: "Finance", icon: TrendingUp },
   { href: "/settings", label: "Impostazioni", icon: Settings },

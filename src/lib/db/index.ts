@@ -35,15 +35,6 @@ export {
   getFullPipeline,
 } from "./pipeline";
 
-// Tasks
-export {
-  listTasks,
-  createTask,
-  updateTask,
-  deleteTask,
-} from "./tasks";
-export type { Task } from "./tasks";
-
 // Messages
 export {
   listMessages,

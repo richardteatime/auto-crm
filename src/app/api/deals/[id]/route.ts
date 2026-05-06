@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDeal, updateDeal, deleteDeal } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   try {
@@ -30,6 +34,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   let body;
@@ -83,6 +90,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(_request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
 
   try {
