@@ -86,10 +86,14 @@ export default function ActivitiesPage() {
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
   // Filters
+  const today = new Date().toISOString().split("T")[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [filterPeriod, setFilterPeriod] = useState("");
+  const [dateFrom, setDateFrom] = useState(thirtyDaysAgo);
+  const [dateTo, setDateTo] = useState(today);
   const [filterContact, setFilterContact] = useState("");
 
   const loadData = () => {
@@ -151,18 +155,33 @@ export default function ActivitiesPage() {
       const s = getActivityStatus(a);
       if (s !== filterStatus) return false;
     }
-    if (filterPeriod) {
-      const days = parseInt(filterPeriod);
-      const cutoff = Date.now() - days * 86400000;
-      if (toMs(a.createdAt) < cutoff) return false;
+    // Date range filter (applies to scheduledAt, then createdAt)
+    const actMs = toMs(a.scheduledAt) || toMs(a.createdAt);
+    if (dateFrom) {
+      const fromMs = new Date(dateFrom + "T00:00:00").getTime();
+      if (actMs && actMs < fromMs) return false;
+    }
+    if (dateTo) {
+      const toMsVal = new Date(dateTo + "T23:59:59").getTime();
+      if (actMs && actMs > toMsVal) return false;
     }
     return true;
-  }), [allActivities, search, filterType, filterStatus, filterPeriod, filterContact]);
+  }), [allActivities, search, filterType, filterStatus, dateFrom, dateTo, filterContact]);
 
-  const isFiltered = !!(search || filterType || filterStatus || filterPeriod || filterContact);
+  const isFiltered = !!(search || filterType || filterStatus || filterContact || dateFrom !== thirtyDaysAgo || dateTo !== today);
 
   const resetFilters = () => {
-    setSearch(""); setFilterType(""); setFilterStatus(""); setFilterPeriod(""); setFilterContact("");
+    setSearch(""); setFilterType(""); setFilterStatus(""); setFilterContact("");
+    setDateFrom(thirtyDaysAgo); setDateTo(today);
+  };
+
+  const applyPreset = (days: number | null) => {
+    if (days === null) {
+      setDateFrom(""); setDateTo("");
+    } else {
+      const d = new Date(Date.now() - days * 86400000).toISOString().split("T")[0];
+      setDateFrom(d); setDateTo(today);
+    }
   };
 
   const statusCounts = useMemo(() => {
@@ -302,20 +321,50 @@ export default function ActivitiesPage() {
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground font-medium">Periodo</p>
             <div className="flex flex-wrap gap-1.5">
-              {PERIOD_OPTIONS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setFilterPeriod(value)}
-                  className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
-                    filterPeriod === value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
+              {[
+                { days: 7, label: "7g" },
+                { days: 30, label: "1m" },
+                { days: 90, label: "3m" },
+                { days: null, label: "Sempre" },
+              ].map(({ days, label }) => {
+                const active = days === null
+                  ? !dateFrom && !dateTo
+                  : dateFrom === new Date(Date.now() - days * 86400000).toISOString().split("T")[0] && dateTo === today;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => applyPreset(days)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 mt-1">
+              <div>
+                <label className="text-[10px] text-muted-foreground block">Da</label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground block">A</label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
             </div>
           </div>
 
