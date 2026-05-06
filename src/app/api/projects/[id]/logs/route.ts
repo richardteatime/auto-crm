@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listProjectLogs, createProjectLog, getProject, updateProject } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 import type { ProjectStatus } from "@/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Ctx) {
+export async function GET(request: NextRequest, { params }: Ctx) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   try {
     const logs = await listProjectLogs(id);
@@ -14,10 +18,13 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   }
 }
 
-export async function POST(req: NextRequest, { params }: Ctx) {
+export async function POST(request: NextRequest, { params }: Ctx) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   const { id } = await params;
   try {
-    const body = await req.json();
+    const body = await request.json();
     if (!body.toStatus) return NextResponse.json({ error: "toStatus obbligatorio" }, { status: 400 });
     if (!body.notes?.trim()) return NextResponse.json({ error: "notes obbligatorio" }, { status: 400 });
 
