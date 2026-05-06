@@ -3,6 +3,25 @@ import { createContact } from "@/lib/db/contacts";
 import { createActivity } from "@/lib/db/activities";
 import { getSetting } from "@/lib/db/settings";
 
+// Simple in-memory rate limiter: max 30 requests per IP per minute
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const WEBHOOK_RATE_LIMIT = 30;
+const WEBHOOK_WINDOW_MS = 60_000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + WEBHOOK_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= WEBHOOK_RATE_LIMIT) {
+    return false;
+  }
+  entry.count++;
+  return true;
+}
+
 // Field name mapping: common variations → standard field
 const FIELD_MAP: Record<string, string> = {
   // Name
@@ -76,6 +95,15 @@ function extractFields(
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit by IP
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: "Troppe richieste. Riprova più tardi." },
+      { status: 429 }
+    );
+  }
+
   // Auth check: if a webhook secret is stored, require it in the header
   const stored = await getSetting("webhook_secret");
 

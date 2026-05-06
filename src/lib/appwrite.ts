@@ -1,4 +1,4 @@
-import { Client, Databases, Users } from "node-appwrite";
+import { Client, Databases, Users, Storage } from "node-appwrite";
 
 const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
@@ -47,3 +47,4 @@ function createServerClient() {
 const client = createServerClient();
 export const databases = new Databases(client);
 export const users = new Users(client);
+export const storage = new Storage(client);

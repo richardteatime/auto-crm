@@ -9,6 +9,7 @@ services:
       - APPWRITE_PROJECT_ID=${APPWRITE_PROJECT_ID:-}
       - APPWRITE_API_KEY=${APPWRITE_API_KEY:-}
       - APPWRITE_DATABASE_ID=${APPWRITE_DATABASE_ID:-crm}
+      - SESSION_SECRET=${SESSION_SECRET:-}
       # Optional: AI features
       # - ANTHROPIC_API_KEY=sk-ant-...
       # Optional: Email digest

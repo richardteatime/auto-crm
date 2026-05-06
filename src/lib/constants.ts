@@ -37,14 +37,14 @@ export const ACTIVITY_TYPE_CONFIG: Record<
 export type ActivityStatus = "completed" | "overdue" | "open";
 
 export function getActivityStatus(activity: {
-  completedAt: number | Date | null | undefined;
-  startAt?: number | Date | null;
-  scheduledAt?: number | Date | null;
+  completedAt: number | Date | string | null | undefined;
+  startAt?: number | Date | string | null | undefined;
+  scheduledAt?: number | Date | string | null | undefined;
 }): ActivityStatus {
   if (activity.completedAt) return "completed";
   const dueRaw = activity.startAt ?? activity.scheduledAt;
   if (dueRaw) {
-    const ms = dueRaw instanceof Date ? dueRaw.getTime() : dueRaw < 1e12 ? dueRaw * 1000 : dueRaw;
+    const ms = dueRaw instanceof Date ? dueRaw.getTime() : typeof dueRaw === "number" && dueRaw < 1e12 ? dueRaw * 1000 : new Date(dueRaw).getTime();
     if (ms < Date.now()) return "overdue";
   }
   return "open";

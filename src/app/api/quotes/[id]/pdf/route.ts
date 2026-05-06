@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { getQuote } from "@/lib/db/quotes";
 import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,28 @@ interface DbQuoteItem {
   quantity: number;
   unitPrice: number; // cents
   billingType?: "one_time" | "recurring";
+}
+
+interface CompanyConfig {
+  name?: string;
+  address?: string;
+  vatNumber?: string;
+  phone?: string;
+  email?: string;
+  iban?: string;
+  bankHolder?: string;
+  paymentTerms?: string;
+}
+
+function loadCompanyConfig(): CompanyConfig {
+  try {
+    const configPath = path.join(process.cwd(), "crm-config.json");
+    const raw = fs.readFileSync(configPath, "utf-8");
+    const json = JSON.parse(raw);
+    return json.company || {};
+  } catch {
+    return {};
+  }
 }
 
 function esc(str: string | null | undefined): string {
@@ -50,6 +74,7 @@ export async function GET(
 
   const deal = quote.dealId ? await getDeal(quote.dealId) : null;
   const contact = deal?.contactId ? await getContact(deal.contactId) : null;
+  const company = loadCompanyConfig();
 
   let items: DbQuoteItem[] = [];
   try {
@@ -112,6 +137,26 @@ export async function GET(
       <td><em>Canone dal secondo mese</em></td>
       <td class="importo"><em>${formatEur(recurringSub)}/mese</em></td>
     </tr>` : ""}`;
+
+  const companyLines = [
+    company.name ? `<h1>${esc(company.name)}</h1>` : "",
+    company.address ? `<p>${esc(company.address)}</p>` : "",
+    company.vatNumber ? `<p>P.IVA: ${esc(company.vatNumber)}</p>` : "",
+    company.phone ? `<p>Tel: ${esc(company.phone)}</p>` : "",
+    company.email ? `<p>${esc(company.email)}</p>` : "",
+  ].filter(Boolean).join("");
+
+  const footerCompany = [
+    company.name,
+    company.address,
+    company.vatNumber ? `P.IVA ${company.vatNumber}` : "",
+  ].filter(Boolean).join(" | ");
+
+  const paymentBlock = [
+    company.paymentTerms ? `<strong>Modalità di Pagamento:</strong> ${esc(company.paymentTerms)}` : `<strong>Modalità di Pagamento:</strong> Bonifico Bancario`,
+    company.bankHolder ? `<p>Intestatario C/C: ${esc(company.bankHolder)}</p>` : "",
+    company.iban ? `<p>IBAN: ${esc(company.iban)}</p>` : "",
+  ].filter(Boolean).join("");
 
   const html = `<!DOCTYPE html>
 <html lang="it">
@@ -228,10 +273,7 @@ export async function GET(
     <!-- INTESTAZIONE -->
     <header class="header">
         <div class="fornitore">
-            <h1>SarconX</h1>
-            <p>Via Vigentina 15, 27100 Pavia</p>
-            <p>P.IVA: 02838240188</p>
-            <p>Tel: +39 334 134 0272</p>
+            ${companyLines || `<h1>Azienda</h1>`}
         </div>
         <div class="dati-preventivo">
             <h2>PREVENTIVO</h2>
@@ -290,15 +332,15 @@ export async function GET(
 
     <!-- MODALITÀ DI PAGAMENTO -->
     <section class="pagamento">
+        ${paymentBlock || `
         <strong>Modalità di Pagamento:</strong> Bonifico Bancario
-        <p>Intestatario C/C: Ricardo Consuegra &amp; Leonardo Sartori</p>
-        <p>IBAN: LT783250090360011881</p>
-        <p>Scadenza: 30 giorni data fattura (o come da accordi commerciali)</p>
+        <p>Scadenza: 30 giorni data fattura</p>
+        `}
     </section>
 
     <!-- FOOTER -->
     <footer class="footer">
-        <p>SarconX | Via Vigentina 15, 27100 Pavia | P.IVA 02838240188</p>
+        <p>${footerCompany || "Azienda"}</p>
         <p>Documento generato il ${formatDateIt(new Date())} | Rif. ${esc(quote.number)}</p>
         <p style="font-size:11px; color:#999; margin-top:5px;">Per accettazione: Firma ________________________ Data _______________</p>
     </footer>

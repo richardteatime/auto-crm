@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if this is the first user BEFORE creating the account.
+    const isFirst = await isFirstUser();
+
     // Create the user in Appwrite Auth.
     const user = await users.create(
       ID.unique(),
@@ -37,8 +40,6 @@ export async function POST(request: NextRequest) {
 
     // Immediately create a session so the user is logged in after registration.
     const { userId, sessionId } = await createSession(email, password);
-
-    const isFirst = await isFirstUser();
 
     const response = NextResponse.json(
       {

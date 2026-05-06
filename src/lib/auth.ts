@@ -6,18 +6,21 @@ const APPWRITE_ENDPOINT =
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
 const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
 
+// Dedicated session secret — decoupled from the Appwrite API key so that
+// rotating the API key does not invalidate all active user sessions.
+const SESSION_SECRET = process.env.SESSION_SECRET || APPWRITE_API_KEY;
+
 const SESSION_COOKIE = "appwrite-session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 // ---------------------------------------------------------------------------
 // Signed session token (HMAC-SHA256)
 // Cookie format: userId.sessionId.hmac
-// This avoids depending on Appwrite's session secret, which is empty in 1.7.4.
 // ---------------------------------------------------------------------------
 
 function signToken(userId: string, sessionId: string): string {
   const payload = `${userId}.${sessionId}`;
-  const hmac = createHmac("sha256", APPWRITE_API_KEY)
+  const hmac = createHmac("sha256", SESSION_SECRET)
     .update(payload)
     .digest("hex");
   return `${payload}.${hmac}`;
@@ -29,7 +32,7 @@ export function verifyToken(
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [userId, sessionId, signature] = parts;
-  const expected = createHmac("sha256", APPWRITE_API_KEY)
+  const expected = createHmac("sha256", SESSION_SECRET)
     .update(`${userId}.${sessionId}`)
     .digest("hex");
   try {
@@ -93,7 +96,7 @@ export type AuthUser = {
 
 /**
  * Get the current user from the signed session cookie.
- * Uses Admin API (API key) to fetch user details — no session secret needed.
+ * Uses Admin API (API key) to fetch user details.
  */
 export async function getCurrentUser(
   request: NextRequest

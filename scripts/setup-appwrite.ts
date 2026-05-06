@@ -1,4 +1,4 @@
-import { Client, Databases, ID, Query, DatabasesIndexType } from "node-appwrite";
+import { Client, Databases, ID, Query, DatabasesIndexType, Storage } from "node-appwrite";
 import "dotenv/config";
 
 const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
@@ -13,6 +13,7 @@ async function main() {
     .setKey(APPWRITE_API_KEY);
 
   const db = new Databases(client);
+  const storage = new Storage(client);
 
   console.log(`Using database: ${DB_ID}`);
   console.log(`Endpoint: ${APPWRITE_ENDPOINT}`);
@@ -218,6 +219,33 @@ async function main() {
     }
   } else {
     console.log("  Pipeline stages already exist, skipping seed");
+  }
+
+  // === STORAGE BUCKET ===
+  console.log("\n--- Creating Storage Bucket ---\n");
+  try {
+    await storage.createBucket(
+      "uploads",
+      "Uploads",
+      [],
+      true,   // fileSecurity
+      true,   // enabled
+      undefined,
+      undefined,
+      undefined,
+      20 * 1024 * 1024, // 20MB
+      ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "mp4", "mov"],
+      undefined,
+      true,   // encryption
+      true    // antivirus
+    );
+    console.log('  Bucket "uploads" created');
+  } catch (e: unknown) {
+    if (e instanceof Error && (e.message.includes("already exists") || e.message.includes("Duplicate"))) {
+      console.log('  Bucket "uploads" already exists');
+    } else {
+      console.error('  Bucket error:', e instanceof Error ? e.message : e);
+    }
   }
 
   console.log("\nSetup complete!");
