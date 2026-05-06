@@ -137,6 +137,42 @@ export interface CrmConfig {
   };
 }
 
+export type ProjectStatus =
+  | "aperto"
+  | "in_lavorazione"
+  | "bloccato"
+  | "in_pausa"
+  | "revisione_cto"
+  | "consegnato";
+
+export type ProjectPriority = "bassa" | "media" | "alta";
+
+export interface Project {
+  id: string;
+  title: string;
+  description: string | null;
+  status: ProjectStatus;
+  priority: ProjectPriority;
+  assignedTo: string | null;
+  startDate: Date | null;
+  dueDate: Date | null;
+  deliveredAt: Date | null;
+  notes: string | null;
+  contactId: string | null;
+  dealId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProjectLog {
+  id: string;
+  projectId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  notes: string;
+  createdAt: Date;
+}
+
 // API response types
 export interface DealWithContact extends Deal {
   contact?: Contact;

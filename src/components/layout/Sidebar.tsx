@@ -14,6 +14,7 @@ import {
   FileText,
   TrendingUp,
   Target,
+  GitBranch,
   LogOut,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/deals", label: "Trattative", icon: Briefcase },
   { href: "/opportunita", label: "Opportunità", icon: Target },
   { href: "/activities", label: "Attività", icon: Activity },
+  { href: "/timeline", label: "Timeline", icon: GitBranch },
   { href: "/messages", label: "Chat Team", icon: MessageSquare },
   { href: "/preventivi", label: "Preventivi", icon: FileText },
   { href: "/finance", label: "Finance", icon: TrendingUp },

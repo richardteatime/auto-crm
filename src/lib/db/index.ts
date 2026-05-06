@@ -63,6 +63,17 @@ export type { Quote } from "./quotes";
 // Settings
 export { getSetting, setSetting } from "./settings";
 
+// Projects / Timeline
+export {
+  listProjects,
+  getProject,
+  createProject,
+  updateProject,
+  deleteProject,
+  listProjectLogs,
+  createProjectLog,
+} from "./projects";
+
 // Opportunities
 export {
   listOpportunities,

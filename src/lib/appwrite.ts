@@ -16,6 +16,8 @@ export const COLLECTIONS = {
   expenses: "expenses",
   quotes: "quotes",
   opportunities: "opportunities",
+  projects: "projects",
+  projectLogs: "project_logs",
 } as const;
 
 // ---------------------------------------------------------------------------

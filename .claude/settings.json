@@ -20,7 +20,18 @@
       "Bash(cat:*)",
       "Bash(python3:*)",
       "Bash(head:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(grep -o '\"$id\":\"[^\"]*\",\"[^\"]*\":\"[^\"]*\",\"[^\"]*\":\"[^\"]*\",\"[^\"]*\":[^,]*,\"[^\"]*\":\"[^\"]*\",\"[^\"]*\":\"[^\"]*\",\"[^\"]*\":[^,]*,\"[^\"]*\":[^}]*')",
+      "Bash(grep -o '\"$id\":\"[^\"]*\"[^}]*\"stageId\":\"[^\"]*\"[^}]*\"probability\":[0-9]*')"
+    ],
+    "additionalDirectories": [
+      "\\tmp",
+      "C:\\Users\\leona\\.claude\\projects\\c--Users-leona-Documents-GitHub-auto-crm",
+      "c:\\Users\\leona\\Documents\\GitHub\\auto-crm\\src\\app\\api\\projects\\[id]",
+      "c:\\Users\\leona\\Documents\\GitHub\\auto-crm\\src\\app\\timeline"
     ]
   }
 }
