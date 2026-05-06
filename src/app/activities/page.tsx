@@ -226,7 +226,6 @@ export default function ActivitiesPage() {
           { key: "list", label: "Lista", icon: LayoutList },
           { key: "kanban", label: "Kanban", icon: Kanban },
           { key: "calendar", label: "Calendario", icon: Calendar1 },
-          { key: "timeline", label: "Timeline", icon: GanttChart },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -251,15 +250,16 @@ export default function ActivitiesPage() {
       />
 
       {/* Filter bar */}
-      <div className="space-y-2">
-        <div className="flex gap-2">
+      <div className="bg-muted/40 border rounded-lg p-4 space-y-4">
+        {/* Top row: search + actions */}
+        <div className="flex gap-2 items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Cerca in descrizione, note, contatto..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-9 bg-background"
             />
           </div>
           {isFiltered && (
@@ -270,56 +270,56 @@ export default function ActivitiesPage() {
           )}
         </div>
 
-        {/* Tipo chips */}
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground font-medium">Tipo</p>
-          <div className="flex flex-wrap gap-1.5">
-            {TYPE_OPTIONS.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => setFilterType(value)}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
-                  filterType === value
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {label}
-                {value && <span className="ml-1 opacity-60">({allActivities.filter((a) => a.type === value).length})</span>}
-              </button>
-            ))}
+        {/* Filters grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Tipo */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Tipo</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TYPE_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setFilterType(value)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                    filterType === value
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Status + Period */}
-        <div className="flex flex-wrap gap-4">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">Stato</p>
+          {/* Stato */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Stato</p>
             <div className="flex flex-wrap gap-1.5">
               {STATUS_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
                   onClick={() => setFilterStatus(value)}
                   className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                    "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
                     filterStatus === value
                       ? value === "overdue" ? "bg-red-500 text-white border-red-500"
                         : value === "completed" ? "bg-green-600 text-white border-green-600"
                         : value === "open" ? "bg-yellow-500 text-white border-yellow-500"
                         : "bg-primary text-primary-foreground border-primary"
-                      : "border-border text-muted-foreground hover:bg-muted"
+                      : "bg-background border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
                   {label}
-                  <span className="ml-1 opacity-70">({statusCounts[value] ?? 0})</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">Periodo</p>
+          {/* Periodo */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Periodo</p>
             <div className="flex flex-wrap gap-1.5">
               {[
                 { days: 7, label: "7g" },
@@ -335,10 +335,10 @@ export default function ActivitiesPage() {
                     key={label}
                     onClick={() => applyPreset(days)}
                     className={cn(
-                      "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                      "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
                       active
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-muted-foreground hover:bg-muted"
+                        : "bg-background border-border text-muted-foreground hover:bg-muted"
                     )}
                   >
                     {label}
@@ -346,35 +346,31 @@ export default function ActivitiesPage() {
                 );
               })}
             </div>
-            <div className="flex gap-2 mt-1">
-              <div>
-                <label className="text-[10px] text-muted-foreground block">Da</label>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-7 text-xs"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground block">A</label>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="h-7 text-xs"
-                />
-              </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-8 text-xs bg-background"
+              />
+              <span className="text-muted-foreground text-xs">→</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-8 text-xs bg-background"
+              />
             </div>
           </div>
 
-          <div className="space-y-1 min-w-[160px]">
-            <p className="text-xs text-muted-foreground font-medium">Filtra contatto</p>
+          {/* Contatto */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Contatto</p>
             <Input
               placeholder="Nome contatto..."
               value={filterContact}
               onChange={(e) => setFilterContact(e.target.value)}
-              className="h-7 text-xs"
+              className="h-8 text-xs bg-background"
             />
           </div>
         </div>
