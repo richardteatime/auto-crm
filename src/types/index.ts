@@ -95,6 +95,7 @@ export interface Activity {
   attachments?: string | null;
   scheduledAt: Date | null;
   completedAt: Date | null;
+  assignedTo?: string | null;
   createdAt: Date;
 }
 

@@ -144,11 +144,13 @@ async function main() {
   await addAttr("activities", dt("activities", "scheduledAt", false));
   await addAttr("activities", dt("activities", "completedAt", false));
   await addAttr("activities", bool("activities", "isCompleted", true, false));
+  await addAttr("activities", str("activities", "assignedTo", 128, false));
   await addAttr("activities", dt("activities", "createdAt", true));
   await addIndex("activities", "idx_contactId", DatabasesIndexType.Key, ["contactId"]);
   await addIndex("activities", "idx_dealId", DatabasesIndexType.Key, ["dealId"]);
   await addIndex("activities", "idx_isCompleted", DatabasesIndexType.Key, ["isCompleted"]);
   await addIndex("activities", "idx_scheduledAt", DatabasesIndexType.Key, ["scheduledAt"]);
+  await addIndex("activities", "idx_assignedTo", DatabasesIndexType.Key, ["assignedTo"]);
 
   // === CRM SETTINGS ===
   await ensureCollection("crm_settings", "CRM Settings");

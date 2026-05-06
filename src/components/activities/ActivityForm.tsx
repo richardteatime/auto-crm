@@ -33,6 +33,7 @@ const schema = z.object({
   startAt: z.string().optional(),
   endAt: z.string().optional(),
   notes: z.string().optional(),
+  assignedTo: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -52,6 +53,7 @@ export interface ActivityInitialData {
   endAt?: string | null;
   notes?: string | null;
   attachments?: string | null;
+  assignedTo?: string | null;
 }
 
 interface ActivityFormProps {
@@ -80,6 +82,7 @@ export function ActivityForm({
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [contactsList, setContacts] = useState<Array<{ id: string; name: string }>>([]);
+  const [usersList, setUsersList] = useState<Array<{ id: string; name: string }>>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -118,6 +121,7 @@ export function ActivityForm({
         startAt: toDatetimeLocal(initialData.startAt),
         endAt: toDatetimeLocal(initialData.endAt),
         notes: initialData.notes ?? "",
+        assignedTo: initialData.assignedTo ?? "",
       });
     } else {
       setAttachments([]);
@@ -129,12 +133,16 @@ export function ActivityForm({
         startAt: "",
         endAt: "",
         notes: "",
+        assignedTo: "",
       });
       if (!preselectedContactId) {
         fetch("/api/contacts")
           .then((r) => r.json())
           .then(setContacts);
       }
+      fetch("/api/users")
+        .then((r) => r.json())
+        .then(setUsersList);
     }
   }, [open, isEdit, initialData, preselectedContactId, preselectedDealId, reset]);
 
@@ -175,6 +183,7 @@ export function ActivityForm({
         startAt: data.startAt || null,
         endAt: data.endAt || null,
         notes: data.notes || null,
+        assignedTo: data.assignedTo || null,
         attachments,
       };
 
@@ -291,6 +300,27 @@ export function ActivityForm({
           )}
 
           {/* Note */}
+          {/* Assegnazione */}
+          <div className="space-y-2">
+            <Label>Assegnato a</Label>
+            <Select
+              value={watch("assignedTo") || undefined}
+              onValueChange={(v) => setValue("assignedTo", v || "")}
+            >
+              <SelectTrigger className="cursor-pointer">
+                <SelectValue placeholder="Seleziona utente" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Nessuno</SelectItem>
+                {usersList.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="act-notes">Note</Label>
             <Textarea

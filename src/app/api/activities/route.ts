@@ -6,9 +6,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const contactId = searchParams.get("contactId") || undefined;
   const dealId = searchParams.get("dealId") || undefined;
+  const assignedTo = searchParams.get("assignedTo") || undefined;
 
   try {
-    const results = await listActivities({ contactId, dealId });
+    const results = await listActivities({ contactId, dealId, assignedTo });
     return NextResponse.json(results);
   } catch {
     return NextResponse.json(
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { type, description, contactId, dealId, scheduledAt, startAt, endAt, notes, attachments } = body;
+  const { type, description, contactId, dealId, scheduledAt, startAt, endAt, notes, attachments, assignedTo } = body;
 
   if (!type || !description || !contactId) {
     return NextResponse.json(
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
       attachments: attachments ? JSON.stringify(attachments) : null,
       completedAt: null,
       isCompleted: false,
+      assignedTo: assignedTo || null,
     });
 
     return NextResponse.json(result, { status: 201 });

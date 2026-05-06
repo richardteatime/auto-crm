@@ -41,6 +41,7 @@ export async function listActivities(filters?: {
   contactId?: string;
   dealId?: string;
   isCompleted?: boolean;
+  assignedTo?: string;
 }): Promise<ActivityWithContact[]> {
   const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
 
@@ -52,6 +53,9 @@ export async function listActivities(filters?: {
   }
   if (filters?.isCompleted !== undefined) {
     queries.push(Query.equal("isCompleted", filters.isCompleted));
+  }
+  if (filters?.assignedTo !== undefined) {
+    queries.push(Query.equal("assignedTo", filters.assignedTo));
   }
 
   const res = await databases.listDocuments(
@@ -78,6 +82,7 @@ export async function createActivity(data: {
   attachments?: string | null;
   completedAt?: Date | string | number | null;
   isCompleted?: boolean;
+  assignedTo?: string | null;
 }): Promise<ActivityWithContact> {
   let contactName: string | null = null;
   const contact = await getContact(data.contactId);
@@ -98,6 +103,7 @@ export async function createActivity(data: {
     attachments: data.attachments ?? null,
     completedAt: toIsoDate(data.completedAt),
     isCompleted: data.isCompleted ?? false,
+    assignedTo: data.assignedTo ?? null,
     contactName,
     createdAt: now,
   };
@@ -125,6 +131,7 @@ export async function updateActivity(
     scheduledAt: Date | string | number | null;
     completedAt: Date | string | number | null;
     isCompleted: boolean;
+    assignedTo: string | null;
   }>,
 ): Promise<ActivityWithContact> {
   const payload: Record<string, unknown> = { ...data };

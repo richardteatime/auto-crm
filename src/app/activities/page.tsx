@@ -7,12 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
+import { ActivityKanbanBoard } from "@/components/activities/ActivityKanbanBoard";
+import { ActivityCalendar } from "@/components/activities/ActivityCalendar";
+import { ActivityTimeline } from "@/components/activities/ActivityTimeline";
 import {
   Phone, Mail, Users, FileText, Clock, AlertCircle, Activity,
   Plus, Paperclip, CalendarDays, Search, X, Pencil,
+  LayoutList, Kanban, Calendar1, GanttChart,
 } from "lucide-react";
 import { formatRelativeDate, formatDate, getActivityStatus, ACTIVITY_STATUS_STYLE, ACTIVITY_TYPE_CONFIG } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, toMs } from "@/lib/utils";
 import type { ActivityType } from "@/types";
 import { ReportDialog } from "@/components/shared/ReportDialog";
 import { toast } from "sonner";
@@ -48,16 +52,18 @@ interface ActivityItem {
   id: string;
   type: string;
   description: string;
-  startAt?: number | Date | null;
-  endAt?: number | Date | null;
+  startAt?: number | Date | string | null;
+  endAt?: number | Date | string | null;
   notes?: string | null;
   attachments?: string | null;
   contactName: string | null;
   contactCompany?: string | null;
   contactId: string;
   dealId?: string | null;
-  scheduledAt: number | Date | null;
-  completedAt: number | Date | null;
+  scheduledAt: number | Date | string | null;
+  completedAt: number | Date | string | null;
+  isCompleted?: boolean;
+  assignedTo?: string | null;
   createdAt: number | Date;
 }
 
@@ -68,11 +74,7 @@ interface FollowUps {
   unscheduled: ActivityItem[];
 }
 
-function toMs(val: number | Date | null | undefined): number {
-  if (!val) return 0;
-  if (val instanceof Date) return val.getTime();
-  return val < 1e12 ? val * 1000 : val;
-}
+
 
 export default function ActivitiesPage() {
   const [allActivities, setActivities] = useState<ActivityItem[]>([]);
@@ -80,6 +82,8 @@ export default function ActivitiesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ActivityInitialData | undefined>(undefined);
+  const [view, setView] = useState<"list" | "kanban" | "calendar" | "timeline">("list");
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
   // Filters
   const [search, setSearch] = useState("");
@@ -93,7 +97,8 @@ export default function ActivitiesPage() {
       fetch("/api/activities").then((r) => r.json()),
       fetch("/api/followups").then((r) => r.json()),
       fetch("/api/contacts").then((r) => r.json()),
-    ]).then(([acts, fups, contacts]) => {
+      fetch("/api/users").then((r) => r.json()),
+    ]).then(([acts, fups, contacts, users]) => {
       const companyMap: Record<string, string | null> = {};
       if (Array.isArray(contacts)) {
         for (const c of contacts) companyMap[c.id] = c.company ?? null;
@@ -101,8 +106,13 @@ export default function ActivitiesPage() {
       const enriched = Array.isArray(acts)
         ? acts.map((a: ActivityItem) => ({ ...a, contactCompany: companyMap[a.contactId] ?? null }))
         : [];
+      const uMap: Record<string, string> = {};
+      if (Array.isArray(users)) {
+        for (const u of users) uMap[u.id] = u.name || u.email;
+      }
       setActivities(enriched);
       setFollowUps(fups);
+      setUsersMap(uMap);
       setLoading(false);
     });
   };
@@ -177,7 +187,7 @@ export default function ActivitiesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Attività</h1>
           <p className="text-muted-foreground">Storico interazioni e follow-up</p>
@@ -189,6 +199,30 @@ export default function ActivitiesPage() {
             Registra
           </Button>
         </div>
+      </div>
+
+      {/* View switcher */}
+      <div className="flex gap-1 border-b">
+        {[
+          { key: "list", label: "Lista", icon: LayoutList },
+          { key: "kanban", label: "Kanban", icon: Kanban },
+          { key: "calendar", label: "Calendario", icon: Calendar1 },
+          { key: "timeline", label: "Timeline", icon: GanttChart },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setView(key as typeof view)}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
+              view === key
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
       </div>
 
       <ActivityForm
@@ -312,7 +346,7 @@ export default function ActivitiesPage() {
                 {followUps.overdue.map((f) => (
                   <div key={f.id} className="p-2 rounded bg-destructive/5 text-sm">
                     <p className="font-medium">{f.description}</p>
-                    <p className="text-xs text-muted-foreground">{f.contactName} &middot; {formatDate(f.scheduledAt)}</p>
+                    <p className="text-xs text-muted-foreground">{f.contactName} &middot; {formatDate(toMs(f.scheduledAt) || null)}</p>
                   </div>
                 ))}
               </CardContent>
@@ -339,7 +373,72 @@ export default function ActivitiesPage() {
         </div>
       )}
 
-      {/* Timeline */}
+      {/* Lista / Kanban / Calendario / Timeline */}
+      {view === "kanban" && (
+        <ActivityKanbanBoard
+          activities={filtered}
+          users={usersMap}
+          onUpdate={async (id, data) => {
+            await fetch(`/api/activities/${id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+            loadData();
+          }}
+          onEdit={(activity) => setEditingActivity({
+            id: activity.id,
+            type: activity.type,
+            description: activity.description,
+            contactId: activity.contactId,
+            dealId: activity.dealId ?? null,
+            startAt: activity.startAt ? String(activity.startAt) : null,
+            endAt: activity.endAt ? String(activity.endAt) : null,
+            notes: activity.notes ?? null,
+            attachments: activity.attachments ?? null,
+            assignedTo: activity.assignedTo ?? null,
+          })}
+        />
+      )}
+
+      {view === "calendar" && (
+        <ActivityCalendar
+          activities={filtered}
+          onEdit={(activity) => setEditingActivity({
+            id: activity.id,
+            type: activity.type,
+            description: activity.description,
+            contactId: activity.contactId,
+            dealId: activity.dealId ?? null,
+            startAt: activity.startAt ? String(activity.startAt) : null,
+            endAt: activity.endAt ? String(activity.endAt) : null,
+            notes: activity.notes ?? null,
+            attachments: activity.attachments ?? null,
+            assignedTo: activity.assignedTo ?? null,
+          })}
+        />
+      )}
+
+      {view === "timeline" && (
+        <ActivityTimeline
+          activities={filtered}
+          users={usersMap}
+          onEdit={(activity) => setEditingActivity({
+            id: activity.id,
+            type: activity.type,
+            description: activity.description,
+            contactId: activity.contactId,
+            dealId: activity.dealId ?? null,
+            startAt: activity.startAt ? String(activity.startAt) : null,
+            endAt: activity.endAt ? String(activity.endAt) : null,
+            notes: activity.notes ?? null,
+            attachments: activity.attachments ?? null,
+            assignedTo: activity.assignedTo ?? null,
+          })}
+        />
+      )}
+
+      {view === "list" && (
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center justify-between">
@@ -448,6 +547,7 @@ export default function ActivitiesPage() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
