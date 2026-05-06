@@ -5,6 +5,7 @@ import {
   updateContact,
   deleteContact,
 } from "@/lib/db";
+import { isValidEmail } from "@/lib/utils";
 
 export async function GET(
   _request: NextRequest,
@@ -23,9 +24,9 @@ export async function GET(
     }
 
     return NextResponse.json(contact);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nel recupero del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nel recupero del contatto" },
       { status: 500 }
     );
   }
@@ -53,6 +54,13 @@ export async function PUT(
       );
     }
 
+    if (body.email && !isValidEmail(body.email)) {
+      return NextResponse.json(
+        { error: "Formato email non valido" },
+        { status: 400 }
+      );
+    }
+
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.email !== undefined) updateData.email = body.email || null;
@@ -70,9 +78,9 @@ export async function PUT(
 
     const result = await updateContact(id, updateData);
     return NextResponse.json(result);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nell'aggiornamento del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'aggiornamento del contatto" },
       { status: 500 }
     );
   }
@@ -95,9 +103,9 @@ export async function DELETE(
 
     await deleteContact(id);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nell'eliminazione del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'eliminazione del contatto" },
       { status: 500 }
     );
   }

@@ -13,7 +13,6 @@ export async function POST(
     return NextResponse.json({ error: "Opportunità già trasformata in trattativa" }, { status: 400 });
   }
 
-  // Prende il primo stage del pipeline (ordine più basso)
   const stages = await getStages();
   const firstStage = stages.sort((a, b) => a.order - b.order)[0];
   if (!firstStage) {
@@ -21,7 +20,6 @@ export async function POST(
   }
 
   try {
-    // Crea la trattativa con i dati dell'opportunità
     const deal = await createDeal({
       title: opp.title,
       value: opp.value ?? 0,
@@ -31,13 +29,12 @@ export async function POST(
       probability: firstStage.isWon ? 100 : 10,
     });
 
-    // Aggiorna l'opportunità come trasformata
     await updateOpportunity(id, { status: "trasformata", dealId: deal.id });
 
     return NextResponse.json({ deal, opportunityId: id });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nella conversione: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nella conversione" },
       { status: 500 }
     );
   }

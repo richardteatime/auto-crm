@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(results);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nel recupero delle opportunità: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nel recupero delle opportunità" },
       { status: 500 }
     );
   }
@@ -58,9 +58,9 @@ export async function POST(request: NextRequest) {
       value: value != null ? Math.round(value * 100) : null,
     });
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nella creazione: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nella creazione" },
       { status: 500 }
     );
   }

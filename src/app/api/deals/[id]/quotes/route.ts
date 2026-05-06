@@ -55,9 +55,7 @@ export async function POST(
     });
 
     return NextResponse.json(quote, { status: 201 });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error("Error creating quote:", msg, error);
-    return NextResponse.json({ error: msg || "Errore durante la creazione del preventivo" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Errore durante la creazione del preventivo" }, { status: 500 });
   }
 }

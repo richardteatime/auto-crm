@@ -18,9 +18,9 @@ export async function GET(
     }
 
     return NextResponse.json(deal);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nel recupero della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nel recupero della trattativa" },
       { status: 500 }
     );
   }
@@ -69,12 +69,11 @@ export async function PUT(
       return NextResponse.json(existing);
     }
 
-    // updateDeal handles wonAt/recurringStartDate logic internally
     const result = await updateDeal(id, updateData);
     return NextResponse.json(result);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nell'aggiornamento della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'aggiornamento della trattativa" },
       { status: 500 }
     );
   }
@@ -97,9 +96,9 @@ export async function DELETE(
 
     await deleteDeal(id);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nell'eliminazione della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'eliminazione della trattativa" },
       { status: 500 }
     );
   }

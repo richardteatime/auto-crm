@@ -1,39 +1,30 @@
 import { NextResponse } from "next/server";
 import { listActivities } from "@/lib/db/activities";
+import { toMs } from "@/lib/utils";
 
 export async function GET() {
   // Get all incomplete activities with scheduled dates
   const pendingFollowups = await listActivities({ isCompleted: false });
 
-  const now = Date.now() / 1000;
+  const now = Date.now();
+  const startOfDay = new Date().setHours(0, 0, 0, 0);
+  const endOfDay = startOfDay + 86400000;
 
   const categorized = {
     overdue: pendingFollowups.filter((f) => {
       if (!f.scheduledAt) return false;
-      const ts =
-        typeof f.scheduledAt === "number"
-          ? f.scheduledAt
-          : f.scheduledAt.getTime() / 1000;
-      return ts < now;
+      const ms = toMs(f.scheduledAt);
+      return ms > 0 && ms < startOfDay;
     }),
     today: pendingFollowups.filter((f) => {
       if (!f.scheduledAt) return false;
-      const ts =
-        typeof f.scheduledAt === "number"
-          ? f.scheduledAt
-          : f.scheduledAt.getTime() / 1000;
-      const startOfDay = Math.floor(now / 86400) * 86400;
-      const endOfDay = startOfDay + 86400;
-      return ts >= startOfDay && ts < endOfDay;
+      const ms = toMs(f.scheduledAt);
+      return ms >= startOfDay && ms < endOfDay;
     }),
     upcoming: pendingFollowups.filter((f) => {
       if (!f.scheduledAt) return false;
-      const ts =
-        typeof f.scheduledAt === "number"
-          ? f.scheduledAt
-          : f.scheduledAt.getTime() / 1000;
-      const endOfDay = (Math.floor(now / 86400) + 1) * 86400;
-      return ts >= endOfDay;
+      const ms = toMs(f.scheduledAt);
+      return ms >= endOfDay;
     }),
     unscheduled: pendingFollowups.filter((f) => !f.scheduledAt),
   };

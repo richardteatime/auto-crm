@@ -26,6 +26,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { success: false, error: "Formato email non valido" },
+        { status: 400 }
+      );
+    }
+
     // Check if this is the first user BEFORE creating the account.
     const isFirst = await isFirstUser();
 
@@ -65,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: "Errore durante la registrazione" },
       { status: 500 }
     );
   }

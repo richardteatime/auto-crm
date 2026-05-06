@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listContacts, createContact } from "@/lib/db";
+import { isValidEmail } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,9 +11,9 @@ export async function GET(request: NextRequest) {
   try {
     const results = await listContacts({ search, temperature, source });
     return NextResponse.json(results);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nel recupero dei contatti: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nel recupero dei contatti" },
       { status: 500 }
     );
   }
@@ -29,16 +30,23 @@ export async function POST(request: NextRequest) {
   const { name, email, phone, company, vatNumber, address, source, temperature, notes } =
     body;
 
-  if (!name) {
+  if (!name || typeof name !== "string" || name.trim().length === 0) {
     return NextResponse.json(
       { error: "Il nome è obbligatorio" },
       { status: 400 }
     );
   }
 
+  if (email && !isValidEmail(email)) {
+    return NextResponse.json(
+      { error: "Formato email non valido" },
+      { status: 400 }
+    );
+  }
+
   try {
     const result = await createContact({
-      name,
+      name: name.trim(),
       email: email || null,
       phone: phone || null,
       company: company || null,
@@ -50,9 +58,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nella creazione del contatto: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nella creazione del contatto" },
       { status: 500 }
     );
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listActivities, createActivity } from "@/lib/db";
+import { VALID_ACTIVITY_TYPES } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -9,9 +10,9 @@ export async function GET(request: NextRequest) {
   try {
     const results = await listActivities({ contactId, dealId });
     return NextResponse.json(results);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nel recupero delle attività: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nel recupero delle attività" },
       { status: 500 }
     );
   }
@@ -34,6 +35,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!VALID_ACTIVITY_TYPES.includes(type)) {
+    return NextResponse.json(
+      { error: "Tipo di attività non valido" },
+      { status: 400 }
+    );
+  }
+
   try {
     const result = await createActivity({
       type,
@@ -50,10 +58,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Unknown";
+  } catch {
     return NextResponse.json(
-      { error: `Errore nella creazione dell'attività: ${msg}` },
+      { error: "Errore nella creazione dell'attività" },
       { status: 500 }
     );
   }

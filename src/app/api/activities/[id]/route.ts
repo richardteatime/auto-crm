@@ -89,7 +89,7 @@ export async function PUT(
       );
     }
     return NextResponse.json(
-      { error: `Errore nell'aggiornamento: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'aggiornamento" },
       { status: 500 }
     );
   }
@@ -112,7 +112,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json(
-      { error: `Errore nell'eliminazione: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'eliminazione" },
       { status: 500 }
     );
   }

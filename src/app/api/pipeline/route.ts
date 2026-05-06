@@ -12,9 +12,9 @@ export async function GET() {
   try {
     const pipeline = await getFullPipeline();
     return NextResponse.json(pipeline);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nel recupero del pipeline: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nel recupero del pipeline" },
       { status: 500 }
     );
   }
@@ -39,7 +39,6 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      // updateDeal handles wonAt/recurringStartDate logic internally
       const result = await updateDeal(body.dealId, {
         stageId: body.stageId,
       });
@@ -53,7 +52,7 @@ export async function PUT(request: NextRequest) {
         );
       }
       return NextResponse.json(
-        { error: `Errore nell'aggiornamento della trattativa: ${error instanceof Error ? error.message : "sconosciuto"}` },
+        { error: "Errore nell'aggiornamento della trattativa" },
         { status: 500 }
       );
     }
@@ -62,7 +61,6 @@ export async function PUT(request: NextRequest) {
   // Bulk update stages (from /setup or /customize)
   if (body.stages && Array.isArray(body.stages)) {
     try {
-      // Check if any deals exist
       const existingDeals = await listDeals();
       if (existingDeals.length > 0) {
         return NextResponse.json(
@@ -84,16 +82,11 @@ export async function PUT(request: NextRequest) {
         }))
       );
 
-      // Return stages sorted by order
       const allStages = await getStages();
       return NextResponse.json(allStages);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "sconosciuto";
-      if (msg.includes("Cannot replace stages")) {
-        return NextResponse.json({ error: msg }, { status: 400 });
-      }
+    } catch {
       return NextResponse.json(
-        { error: `Errore nell'aggiornamento delle fasi: ${msg}` },
+        { error: "Errore nell'aggiornamento delle fasi" },
         { status: 500 }
       );
     }

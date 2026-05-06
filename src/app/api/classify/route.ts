@@ -3,6 +3,7 @@ import { getContact, updateContact } from "@/lib/db/contacts";
 import { listActivities } from "@/lib/db/activities";
 import { classifyLead, isAIEnabled } from "@/lib/claude";
 import type { Temperature } from "@/types";
+import { VALID_ACTIVITY_TYPES } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   let body;
@@ -40,17 +41,19 @@ export async function POST(request: NextRequest) {
           source: contact.source,
           notes: contact.notes || undefined,
         },
-        contactActivities.map((a) => ({
-          type: a.type as "call" | "email" | "meeting" | "note" | "follow_up",
-          description: a.description,
-          date: a.createdAt
-            ? new Date(
-                typeof a.createdAt === "number"
-                  ? a.createdAt * 1000
-                  : a.createdAt
-              ).toISOString()
-            : "unknown",
-        }))
+        contactActivities
+          .filter((a) => VALID_ACTIVITY_TYPES.includes(a.type as typeof VALID_ACTIVITY_TYPES[number]))
+          .map((a) => ({
+            type: a.type as "call" | "email" | "meeting" | "note" | "follow_up",
+            description: a.description,
+            date: a.createdAt
+              ? new Date(
+                  typeof a.createdAt === "number"
+                    ? a.createdAt * 1000
+                    : a.createdAt
+                ).toISOString()
+              : "unknown",
+          }))
       );
 
       await updateContact(contactId, {

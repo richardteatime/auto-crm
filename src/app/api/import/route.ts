@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createContact } from "@/lib/db/contacts";
+import { isValidEmail } from "@/lib/utils";
+
+const MAX_IMPORT_BATCH = 500;
 
 export async function POST(request: NextRequest) {
   let body;
@@ -12,7 +15,14 @@ export async function POST(request: NextRequest) {
 
   if (!Array.isArray(contactList) || contactList.length === 0) {
     return NextResponse.json(
-      { error: "Se requiere un array de contactos" },
+      { error: "È richiesto un array di contatti" },
+      { status: 400 }
+    );
+  }
+
+  if (contactList.length > MAX_IMPORT_BATCH) {
+    return NextResponse.json(
+      { error: `Massimo ${MAX_IMPORT_BATCH} contatti per importazione` },
       { status: 400 }
     );
   }
@@ -26,7 +36,13 @@ export async function POST(request: NextRequest) {
   for (const contact of contactList) {
     if (!contact.name) {
       results.failed++;
-      results.errors.push(`Contacto sin nombre: ${JSON.stringify(contact)}`);
+      results.errors.push(`Contatto senza nome`);
+      continue;
+    }
+
+    if (contact.email && !isValidEmail(contact.email)) {
+      results.failed++;
+      results.errors.push(`Email non valida per ${contact.name}`);
       continue;
     }
 
@@ -41,11 +57,9 @@ export async function POST(request: NextRequest) {
         notes: contact.notes || null,
       });
       results.imported++;
-    } catch (error) {
+    } catch {
       results.failed++;
-      results.errors.push(
-        `Error importando ${contact.name}: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      results.errors.push(`Errore importando ${contact.name}`);
     }
   }
 

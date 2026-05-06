@@ -35,9 +35,9 @@ export async function PUT(
   try {
     const result = await updateOpportunity(id, patch);
     return NextResponse.json(result);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nell'aggiornamento: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'aggiornamento" },
       { status: 500 }
     );
   }
@@ -53,9 +53,9 @@ export async function DELETE(
   try {
     await deleteOpportunity(id);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nell'eliminazione: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nell'eliminazione" },
       { status: 500 }
     );
   }

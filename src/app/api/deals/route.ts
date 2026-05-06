@@ -5,9 +5,9 @@ export async function GET() {
   try {
     const results = await listDeals();
     return NextResponse.json(results);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: `Errore nel recupero delle trattative: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore nel recupero delle trattative" },
       { status: 500 }
     );
   }
@@ -23,11 +23,28 @@ export async function POST(request: NextRequest) {
 
   const { title, value, stageId, contactId, expectedClose, probability, notes, attachments, isRecurring, recurringMonths } = body;
 
-  if (!title || !contactId) {
+  if (!title || typeof title !== "string" || title.trim().length === 0) {
     return NextResponse.json(
-      { error: "Titolo e contatto sono obbligatori" },
+      { error: "Titolo obbligatorio" },
       { status: 400 }
     );
+  }
+
+  if (!contactId || typeof contactId !== "string") {
+    return NextResponse.json(
+      { error: "Contatto obbligatorio" },
+      { status: 400 }
+    );
+  }
+
+  if (expectedClose) {
+    const d = new Date(expectedClose);
+    if (isNaN(d.getTime())) {
+      return NextResponse.json(
+        { error: "Data di chiusura attesa non valida" },
+        { status: 400 }
+      );
+    }
   }
 
   // Get first stage if none provided
@@ -46,8 +63,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await createDeal({
-      title,
-      value: value || 0,
+      title: title.trim(),
+      value: Number(value) || 0,
       stageId: finalStageId,
       contactId,
       expectedClose: expectedClose ? new Date(expectedClose) : null,
@@ -59,16 +76,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : "Unknown";
-    if (msg.includes("not found") || msg.includes("NOT_FOUND")) {
-      return NextResponse.json(
-        { error: "Contatto non trovato" },
-        { status: 400 }
-      );
-    }
+  } catch {
     return NextResponse.json(
-      { error: `Errore nella creazione della trattativa: ${msg}` },
+      { error: "Errore nella creazione della trattativa" },
       { status: 500 }
     );
   }
