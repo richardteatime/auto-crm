@@ -318,6 +318,12 @@ export async function GET(
         </table>
     </div>
 
+    <!-- DESCRIZIONI FORMALI -->
+    <section class="descrizioni">
+        <h3>Dettaglio delle Voci di Offerta</h3>
+        <div class="voce" style="min-height:80px;">&nbsp;</div>
+    </section>
+
     <!-- NOTE -->
     ${quote.notes ? `
     <section class="note">
