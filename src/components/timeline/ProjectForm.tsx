@@ -176,7 +176,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
 
           <div className="space-y-2">
             <Label>Cliente collegato</Label>
-            <Select value={contactId || "__none__"} onValueChange={(v) => setValue("contactId", v === "__none__" ? "" : v)}>
+            <Select value={contactId || "__none__"} onValueChange={(v) => setValue("contactId", v === "__none__" || !v ? "" : v)}>
               <SelectTrigger className="cursor-pointer">
                 <SelectValue placeholder="Nessun cliente" />
               </SelectTrigger>
