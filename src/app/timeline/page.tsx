@@ -27,6 +27,7 @@ export default function TimelinePage() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<ProjectStatus | "">("");
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
   const load = () => {
     fetch("/api/projects")
@@ -35,7 +36,17 @@ export default function TimelinePage() {
       .catch(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((users: Array<{ id: string; name: string; email: string }>) => {
+        const map: Record<string, string> = {};
+        for (const u of users) map[u.id] = u.name || u.email;
+        setUsersMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => projects.filter((p) => {
     if (filterStatus && p.status !== filterStatus) return false;
@@ -172,7 +183,7 @@ export default function TimelinePage() {
                         {project.assignedTo && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <User className="h-3 w-3" />
-                            {project.assignedTo}
+                            {usersMap[project.assignedTo] ?? project.assignedTo}
                           </span>
                         )}
                         {project.startDate && (
