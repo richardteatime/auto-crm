@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateActivity, deleteActivity } from "@/lib/db";
+import { getActivity, updateActivity, deleteActivity } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { notifyAssignment } from "@/lib/notify";
 
 function isNotFoundError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -83,8 +84,33 @@ export async function PUT(
     );
   }
 
+  // Fetch current state to detect assignedTo changes
+  let previousAssignedTo: string | null = null;
+  if (body.assignedTo !== undefined) {
+    const current = await getActivity(id);
+    previousAssignedTo = current?.assignedTo ?? null;
+  }
+
   try {
     const result = await updateActivity(id, updateData);
+
+    // Notify only if assignedTo actually changed to a new (non-null) user
+    const newAssignedTo = body.assignedTo ?? null;
+    if (
+      newAssignedTo &&
+      newAssignedTo !== previousAssignedTo
+    ) {
+      await notifyAssignment({
+        assignedToUserId: newAssignedTo,
+        fromUserId: auth.user.id,
+        fromUserName: auth.user.name || auth.user.email,
+        type: "activity_assigned",
+        title: `Attività assegnata: ${result.description}`,
+        body: `Assegnata da ${auth.user.name || auth.user.email}`,
+        relatedId: id,
+      });
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     if (isNotFoundError(error)) {

@@ -20,6 +20,7 @@ export {
 // Activities
 export {
   listActivities,
+  getActivity,
   createActivity,
   updateActivity,
   deleteActivity,
@@ -83,3 +84,13 @@ export {
   deleteOpportunity,
 } from "./opportunities";
 export type { } from "./opportunities";
+
+// Notifications
+export {
+  listNotifications,
+  createNotification,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+} from "./notifications";
+export type { AppNotification, NotificationType } from "./notifications";

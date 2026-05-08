@@ -18,6 +18,7 @@ export const COLLECTIONS = {
   opportunities: "opportunities",
   projects: "projects",
   projectLogs: "project_logs",
+  notifications: "notifications",
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { listActivities, createActivity } from "@/lib/db";
 import { VALID_ACTIVITY_TYPES } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth";
+import { notifyAssignment } from "@/lib/notify";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -65,6 +66,18 @@ export async function POST(request: NextRequest) {
       isCompleted: false,
       assignedTo: assignedTo || null,
     });
+
+    if (assignedTo) {
+      await notifyAssignment({
+        assignedToUserId: assignedTo,
+        fromUserId: auth.user.id,
+        fromUserName: auth.user.name || auth.user.email,
+        type: "activity_assigned",
+        title: `Nuova attività assegnata: ${description}`,
+        body: `Assegnata da ${auth.user.name || auth.user.email}`,
+        relatedId: result.id,
+      });
+    }
 
     return NextResponse.json(result, { status: 201 });
   } catch {
