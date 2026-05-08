@@ -22,8 +22,8 @@ function fromDoc<T>(doc: Models.Document): T {
   const { $id, $createdAt, $updatedAt, ...rest } = doc;
   return {
     id: $id,
-    createdAt: new Date($createdAt),
     updatedAt: new Date($updatedAt),
+    createdAt: new Date(rest.createdAt ?? $createdAt),
     ...rest,
   } as T;
 }
@@ -63,6 +63,7 @@ export async function createMessage(data: {
     {
       author: data.author,
       content: data.content,
+      createdAt: new Date().toISOString(),
     },
   );
   return fromDoc<Message>(doc);
