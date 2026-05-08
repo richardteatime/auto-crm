@@ -125,15 +125,6 @@ export async function GET(
     )
     .join("");
 
-  const vociDettaglio = items
-    .map(
-      (item, idx) => `
-        <div class="voce">
-          <strong>${idx + 1}. ${esc(item.description)}</strong>
-        </div>`
-    )
-    .join("");
-
   const totaliRows = `
     ${hasOneTime ? `<tr><td>Subtotale (Una tantum)</td><td class="importo">${formatEur(oneTimeSub)}</td></tr>` : ""}
     ${hasRecurring ? `<tr><td>Canone 1° mese</td><td class="importo">${formatEur(recurringSub)}</td></tr>` : ""}
@@ -326,13 +317,6 @@ export async function GET(
             ${totaliRows}
         </table>
     </div>
-
-    <!-- DESCRIZIONI FORMALI -->
-    ${vociDettaglio ? `
-    <section class="descrizioni">
-        <h3>Dettaglio delle Voci di Offerta</h3>
-        ${vociDettaglio}
-    </section>` : ""}
 
     <!-- NOTE -->
     ${quote.notes ? `
