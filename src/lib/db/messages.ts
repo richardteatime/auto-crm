@@ -32,13 +32,12 @@ function fromDoc<T>(doc: Models.Document): T {
 // listMessages
 // ---------------------------------------------------------------------------
 
-export async function listMessages(sinceId?: string): Promise<Message[]> {
+export async function listMessages(sinceTimestamp?: string): Promise<Message[]> {
   const queries: string[] = [Query.orderAsc("$createdAt"), Query.limit(500)];
 
-  if (sinceId) {
-    // Cursor-based pagination: fetch documents after the given ID
-    // We use cursorAfter for forward pagination
-    queries.push(Query.cursorAfter(sinceId));
+  const ts = sinceTimestamp ? Number(sinceTimestamp) : 0;
+  if (ts > 0) {
+    queries.push(Query.greaterThan("$createdAt", new Date(ts).toISOString()));
   }
 
   const res = await databases.listDocuments(
