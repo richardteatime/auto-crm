@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listProjectLogs, createProjectLog, getProject, updateProject } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { notifyAssignment } from "@/lib/notify";
 import type { ProjectStatus } from "@/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -31,6 +32,16 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     const project = await getProject(id);
     if (!project) return NextResponse.json({ error: "Progetto non trovato" }, { status: 404 });
 
+    const newAssignedTo: string | null = body.assignedTo ?? null;
+    const projectUpdate: Parameters<typeof updateProject>[1] = {
+      status: body.toStatus as ProjectStatus,
+      deliveredAt:
+        body.toStatus === "consegnato" && !project.deliveredAt
+          ? new Date()
+          : undefined,
+    };
+    if (body.assignedTo !== undefined) projectUpdate.assignedTo = newAssignedTo;
+
     const [log] = await Promise.all([
       createProjectLog({
         projectId: id,
@@ -38,14 +49,20 @@ export async function POST(request: NextRequest, { params }: Ctx) {
         toStatus: body.toStatus,
         notes: body.notes,
       }),
-      updateProject(id, {
-        status: body.toStatus as ProjectStatus,
-        deliveredAt:
-          body.toStatus === "consegnato" && !project.deliveredAt
-            ? new Date()
-            : undefined,
-      }),
+      updateProject(id, projectUpdate),
     ]);
+
+    if (newAssignedTo && newAssignedTo !== project.assignedTo) {
+      await notifyAssignment({
+        assignedToUserId: newAssignedTo,
+        fromUserId: auth.user.id,
+        fromUserName: auth.user.name || auth.user.email,
+        type: "project_assigned",
+        title: `Progetto assegnato: ${project.title}`,
+        body: `Assegnato da ${auth.user.name || auth.user.email}`,
+        relatedId: id,
+      });
+    }
 
     return NextResponse.json(log, { status: 201 });
   } catch (e) {

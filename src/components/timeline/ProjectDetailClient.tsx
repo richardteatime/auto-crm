@@ -257,6 +257,7 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
         onClose={() => { setShowStatus(false); router.refresh(); }}
         projectId={project.id}
         currentStatus={project.status}
+        currentAssignedTo={project.assignedTo}
       />
     </div>
   );

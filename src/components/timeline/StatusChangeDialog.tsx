@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,12 +15,25 @@ interface StatusChangeDialogProps {
   onClose: () => void;
   projectId: string;
   currentStatus: ProjectStatus;
+  currentAssignedTo?: string | null;
 }
 
-export function StatusChangeDialog({ open, onClose, projectId, currentStatus }: StatusChangeDialogProps) {
+export function StatusChangeDialog({ open, onClose, projectId, currentStatus, currentAssignedTo }: StatusChangeDialogProps) {
   const [toStatus, setToStatus] = useState<ProjectStatus>(currentStatus);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [assignedTo, setAssignedTo] = useState<string>(currentAssignedTo ?? "__none__");
+  const [teamUsers, setTeamUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setToStatus(currentStatus);
+    setAssignedTo(currentAssignedTo ?? "__none__");
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setTeamUsers(data); })
+      .catch(() => {});
+  }, [open, currentStatus, currentAssignedTo]);
 
   const handleSave = async () => {
     if (!notes.trim()) {
@@ -29,10 +42,14 @@ export function StatusChangeDialog({ open, onClose, projectId, currentStatus }: 
     }
     setSaving(true);
     try {
+      const body: Record<string, unknown> = { toStatus, notes };
+      if (assignedTo !== "__none__") body.assignedTo = assignedTo;
+      else body.assignedTo = null;
+
       const res = await fetch(`/api/projects/${projectId}/logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toStatus, notes }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error();
       toast.success("Stato aggiornato");
@@ -70,7 +87,24 @@ export function StatusChangeDialog({ open, onClose, projectId, currentStatus }: 
           </div>
 
           <div className="space-y-2">
-            <Label>Cosa è stato fatto / motivo del cambio * </Label>
+            <Label>Assegnato a</Label>
+            <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <SelectTrigger className="cursor-pointer">
+                <SelectValue placeholder="Seleziona membro del team" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nessuno</SelectItem>
+                {teamUsers.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name || u.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Cosa è stato fatto / motivo del cambio *</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
