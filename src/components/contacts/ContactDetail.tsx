@@ -27,6 +27,7 @@ import {
   Check,
   Paperclip,
   CalendarDays,
+  NotebookPen,
 } from "lucide-react";
 import { formatCurrency, formatDate, formatRelativeDate, cleanPhoneForWhatsApp, getActivityStatus, ACTIVITY_STATUS_STYLE } from "@/lib/constants";
 import { ACTIVITY_TYPE_CONFIG, SOURCE_LABELS } from "@/lib/constants";
@@ -88,6 +89,25 @@ export function ContactDetailClient({
   const [editingActivity, setEditingActivity] = useState<ActivityInitialData | undefined>(undefined);
   const [showDealForm, setShowDealForm] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [internalNotes, setInternalNotes] = useState(contact.notes || "");
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  const handleSaveNotes = async () => {
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`/api/contacts/${contact.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: internalNotes }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Note salvate");
+    } catch {
+      toast.error("Errore durante il salvataggio");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   const handleCopy = async (value: string, field: string) => {
     try {
@@ -244,11 +264,6 @@ export function ContactDetailClient({
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span>Creato il {formatDate(contact.createdAt)}</span>
             </div>
-            {contact.notes && (
-              <div className="pt-2 border-t">
-                <p className="text-sm text-muted-foreground">{contact.notes}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -421,6 +436,34 @@ export function ContactDetailClient({
           </CardContent>
         </Card>
       </div>
+
+      {/* Note interne */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <NotebookPen className="h-4 w-4 text-muted-foreground" />
+              Note
+            </CardTitle>
+            <Button
+              size="sm"
+              onClick={handleSaveNotes}
+              disabled={savingNotes}
+              className="cursor-pointer"
+            >
+              {savingNotes ? "Salvataggio…" : "Salva"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <textarea
+            value={internalNotes}
+            onChange={(e) => setInternalNotes(e.target.value)}
+            placeholder="Scrivi qui come stanno andando le cose con questo contatto…"
+            className="w-full min-h-[140px] resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </CardContent>
+      </Card>
 
       {/* Opportunità — sezione full width sotto le 3 card */}
       <OpportunityList contactId={contact.id} />

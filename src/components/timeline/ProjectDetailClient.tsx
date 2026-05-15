@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,18 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
   const router = useRouter();
   const [showEdit, setShowEdit] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((users: Array<{ id: string; name: string; email: string }>) => {
+        const map: Record<string, string> = {};
+        for (const u of users) map[u.id] = u.name || u.email;
+        setUsersMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const statusCfg = PROJECT_STATUS_CONFIG[project.status];
   const priorityCfg = PROJECT_PRIORITY_CONFIG[project.priority];
@@ -125,7 +137,7 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
             {project.assignedTo && (
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span>{project.assignedTo}</span>
+                <span>{usersMap[project.assignedTo] ?? project.assignedTo}</span>
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -245,6 +257,7 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
         onClose={() => { setShowStatus(false); router.refresh(); }}
         projectId={project.id}
         currentStatus={project.status}
+        currentAssignedTo={project.assignedTo}
       />
     </div>
   );

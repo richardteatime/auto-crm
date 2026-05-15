@@ -159,6 +159,19 @@ export async function updateActivity(
 }
 
 // ---------------------------------------------------------------------------
+// getActivity
+// ---------------------------------------------------------------------------
+
+export async function getActivity(id: string): Promise<ActivityWithContact | null> {
+  try {
+    const doc = await databases.getDocument(DB_ID, COLLECTIONS.activities, id);
+    return fromDoc<ActivityWithContact>(doc);
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // deleteActivity
 // ---------------------------------------------------------------------------
 

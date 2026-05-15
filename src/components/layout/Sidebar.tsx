@@ -10,7 +10,6 @@ import {
   Settings,
   Briefcase,
   MessageSquare,
-  ClipboardList,
   FileText,
   TrendingUp,
   Target,
@@ -19,24 +18,26 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useNotifications } from "@/components/shared/NotificationContext";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/pipeline", label: "Pipeline", icon: Kanban },
-  { href: "/contacts", label: "Contatti", icon: Users },
-  { href: "/deals", label: "Trattative", icon: Briefcase },
-  { href: "/opportunita", label: "Opportunità", icon: Target },
-  { href: "/activities", label: "Attività", icon: Activity },
-  { href: "/timeline", label: "Timeline", icon: GitBranch },
-  { href: "/messages", label: "Chat Team", icon: MessageSquare },
-  { href: "/preventivi", label: "Preventivi", icon: FileText },
-  { href: "/finance", label: "Finance", icon: TrendingUp },
-  { href: "/settings", label: "Impostazioni", icon: Settings },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, badge: null as null | "activities" | "timeline" },
+  { href: "/pipeline", label: "Pipeline", icon: Kanban, badge: null },
+  { href: "/contacts", label: "Contatti", icon: Users, badge: null },
+  { href: "/deals", label: "Trattative", icon: Briefcase, badge: null },
+  { href: "/opportunita", label: "Opportunità", icon: Target, badge: null },
+  { href: "/activities", label: "Attività", icon: Activity, badge: "activities" as const },
+  { href: "/timeline", label: "Timeline", icon: GitBranch, badge: "timeline" as const },
+  { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: null },
+  { href: "/preventivi", label: "Preventivi", icon: FileText, badge: null },
+  { href: "/finance", label: "Finance", icon: TrendingUp, badge: null },
+  { href: "/settings", label: "Impostazioni", icon: Settings, badge: null },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { counts } = useNotifications();
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -56,6 +57,7 @@ export function Sidebar() {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
+          const badgeCount = item.badge ? counts[item.badge] : 0;
           return (
             <Link
               key={item.href}
@@ -68,7 +70,12 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {badgeCount > 0 && (
+                <span className="ml-auto h-5 min-w-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {badgeCount > 99 ? "99+" : badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}

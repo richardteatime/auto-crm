@@ -44,6 +44,7 @@ interface ProjectFormProps {
 export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
   const isEdit = !!initialData;
   const [contacts, setContacts] = useState<Array<{ id: string; name: string }>>([]);
+  const [teamUsers, setTeamUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -64,6 +65,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
   useEffect(() => {
     if (!open) return;
     fetch("/api/contacts").then((r) => r.json()).then(setContacts).catch(() => {});
+    fetch("/api/users").then((r) => r.json()).then(setTeamUsers).catch(() => {});
     if (isEdit && initialData) {
       reset({
         title: initialData.title,
@@ -108,6 +110,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
   const status = watch("status");
   const priority = watch("priority");
   const contactId = watch("contactId");
+  const assignedTo = watch("assignedTo");
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -160,7 +163,22 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
 
           <div className="space-y-2">
             <Label>Assegnato a</Label>
-            <Input {...register("assignedTo")} placeholder="es. Mario Rossi" />
+            <Select
+              value={assignedTo || "__none__"}
+              onValueChange={(v) => setValue("assignedTo", v === "__none__" ? "" : v)}
+            >
+              <SelectTrigger className="cursor-pointer">
+                <SelectValue placeholder="Seleziona membro del team" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nessuno</SelectItem>
+                {teamUsers.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name || u.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

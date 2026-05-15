@@ -28,14 +28,20 @@ interface CompanyConfig {
 }
 
 function loadCompanyConfig(): CompanyConfig {
-  try {
-    const configPath = path.join(process.cwd(), "crm-config.json");
-    const raw = fs.readFileSync(configPath, "utf-8");
-    const json = JSON.parse(raw);
-    return json.company || {};
-  } catch {
-    return {};
+  const candidates = [
+    path.join(process.cwd(), "crm-config.json"),
+    path.join(process.cwd(), "public", "crm-config.json"),
+  ];
+  for (const configPath of candidates) {
+    try {
+      const raw = fs.readFileSync(configPath, "utf-8");
+      const json = JSON.parse(raw);
+      if (json.company) return json.company;
+    } catch {
+      // try next
+    }
   }
+  return {};
 }
 
 function esc(str: string | null | undefined): string {
@@ -116,15 +122,6 @@ export async function GET(
             <td>${importo}</td>
           </tr>`;
       }
-    )
-    .join("");
-
-  const vociDettaglio = items
-    .map(
-      (item, idx) => `
-        <div class="voce">
-          <strong>${idx + 1}. ${esc(item.description)}</strong>
-        </div>`
     )
     .join("");
 

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { NotificationProvider } from "@/components/shared/NotificationContext";
 
 const AUTH_ROUTES = ["/login", "/register"];
 
@@ -24,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <>
+    <NotificationProvider>
       <Sidebar />
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
         <Header />
@@ -32,6 +33,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-    </>
+    </NotificationProvider>
   );
 }
