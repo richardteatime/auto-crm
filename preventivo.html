@@ -16,19 +16,61 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: var(--testo);
             margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
+            padding: 24px 12px 120px;
+            background-color: #e5e5e5;
             font-size: 14px;
             line-height: 1.5;
         }
-        .preventivo-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 40px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-radius: 4px;
+
+        /* === TOOLBAR === */
+        .toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: var(--colore-primario);
+            padding: 10px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            z-index: 1000;
+            align-items: center;
         }
+        .toolbar button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 7px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .toolbar button:hover { background: rgba(255,255,255,0.2); }
+        .toolbar button.primary { background: #16a34a; border-color: #16a34a; }
+        .toolbar button.primary:hover { background: #15803d; }
+        .toolbar button.danger { background: #dc2626; border-color: #dc2626; }
+        .toolbar button.danger:hover { background: #b91c1c; }
+
+        /* === FOGLIO A4 === */
+        .page-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 0 auto 24px;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.14);
+            box-sizing: border-box;
+            position: relative;
+            outline: none;
+        }
+        .page-sheet:last-child { margin-bottom: 0; }
+
+        /* Modifica inline */
+        [contenteditable="true"]:hover { outline: 1px dashed #aaa; border-radius: 2px; cursor: text; }
+        [contenteditable="true"]:focus { outline: 2px solid var(--colore-primario); border-radius: 2px; }
 
         /* === INTESTAZIONE === */
         .header {
@@ -38,6 +80,7 @@
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid var(--colore-primario);
+            page-break-inside: avoid;
         }
         .fornitore h1 { margin: 0; font-size: 22px; color: var(--colore-primario); }
         .fornitore p { margin: 2px 0; font-size: 13px; color: #555; }
@@ -51,173 +94,223 @@
             padding: 15px;
             border-radius: 4px;
             margin-bottom: 25px;
+            page-break-inside: avoid;
         }
         .cliente h3 { margin: 0 0 8px; font-size: 15px; border-bottom: 1px solid var(--bordo); padding-bottom: 5px; }
         .cliente p { margin: 3px 0; font-size: 13px; }
 
         /* === TABELLA === */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: avoid; }
+        thead { display: table-header-group; }
         th, td { padding: 10px 12px; border: 1px solid var(--bordo); text-align: left; }
         th { background-color: var(--colore-sfondo); font-weight: 600; text-align: center; font-size: 13px; }
         td:nth-child(2) { width: 45%; }
         td:nth-child(3), td:nth-child(4) { text-align: center; width: 12%; }
         td:nth-child(5) { text-align: right; width: 18%; font-weight: 500; }
+        tr { page-break-inside: avoid; }
 
         /* === TOTALI === */
-        .totali { margin-left: auto; width: 45%; margin-bottom: 25px; }
+        .totali { margin-left: auto; width: 45%; margin-bottom: 25px; page-break-inside: avoid; }
         .totali table { border: none; margin: 0; }
         .totali td { border: none; padding: 6px 10px; }
         .totali tr:last-child { font-size: 1.15em; font-weight: bold; border-top: 2px solid var(--colore-primario); }
         .totali .importo { text-align: right; }
 
         /* === DESCRIZIONI FORMALI === */
-        .descrizioni { margin-bottom: 25px; }
+        .descrizioni { margin-bottom: 25px; page-break-inside: avoid; }
         .descrizioni h3 { margin: 0 0 12px; font-size: 15px; color: var(--colore-primario); }
-        .voce { margin-bottom: 12px; }
+        .voce { margin-bottom: 12px; page-break-inside: avoid; }
         .voce strong { display: block; margin-bottom: 2px; }
         .voce p { margin: 0; font-size: 13px; color: #444; }
 
         /* === PAGAMENTO E NOTE === */
-        .pagamento, .note { margin-bottom: 20px; font-size: 13px; }
+        .pagamento, .note { margin-bottom: 20px; font-size: 13px; page-break-inside: avoid; }
         .pagamento p, .note p { margin: 4px 0; }
 
         /* === FOOTER === */
-        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid var(--bordo); padding-top: 15px; }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid var(--bordo);
+            padding-top: 15px;
+            page-break-inside: avoid;
+        }
 
         /* === STAMPA === */
-        .btn-stampa {
-            display: block; width: fit-content; margin: 20px auto; padding: 10px 20px;
-            background: var(--colore-primario); color: #fff; border: none; border-radius: 4px;
-            cursor: pointer; font-size: 14px;
-        }
-        .btn-stampa:hover { opacity: 0.9; }
-
-        /* === MODALITÀ MODIFICA === */
-        [contenteditable="true"]:hover { outline: 1px dashed #aaa; border-radius: 2px; cursor: text; }
-        [contenteditable="true"]:focus { outline: 2px solid var(--colore-primario); border-radius: 2px; }
         @media print {
             body { background: #fff; padding: 0; margin: 0; }
-            .preventivo-container { box-shadow: none; padding: 0; max-width: 100%; }
-            @page { size: A4 portrait; margin: 2cm; }
+            .page-sheet {
+                box-shadow: none;
+                margin: 0 auto;
+                break-after: page;
+                page-break-after: always;
+                width: 100%;
+                min-height: auto;
+                padding: 0;
+            }
+            .page-sheet:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+            @page { size: A4 portrait; margin: 20mm; }
             thead { display: table-header-group; }
             tr { page-break-inside: avoid; }
-            .btn-stampa, .no-print { display: none !important; }
-            .preventivo-container { border: none; }
+            .toolbar, .no-print { display: none !important; }
+            .page-sheet { border: none; }
+            .header, .cliente, .totali, .descrizioni, .pagamento, .note, .footer, table, tbody, tr, .voce {
+                page-break-inside: avoid;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="preventivo-container" contenteditable="true">
-    <!-- INTESTAZIONE -->
-    <header class="header">
-        <div class="fornitore">
-            <h1>SarconX</h1>
-            <p>Via Vigentina 15, 27100 Pavia</p>
-            <p>P.IVA: 02838240188</p>
-            <p>Tel: +39 334 134 0272</p>
-        </div>
-        <div class="dati-preventivo">
-            <h2>PREVENTIVO</h2>
-            <p><strong>N° Doc:</strong> Q-20260427-673</p>
-            <p><strong>Data:</strong> 27 aprile 2026</p>
-            <p><strong>Valido fino al:</strong> 27 maggio 2026</p>
-            <p><strong>Oggetto:</strong> Manutenzione Portale & Tool AI</p>
-        </div>
-    </header>
+<div id="pages">
+    <div class="page-sheet" contenteditable="true">
+        <!-- INTESTAZIONE -->
+        <header class="header">
+            <div class="fornitore">
+                <h1>SarconX</h1>
+                <p>Via Vigentina 15, 27100 Pavia</p>
+                <p>P.IVA: 02838240188</p>
+                <p>Tel: +39 334 134 0272</p>
+            </div>
+            <div class="dati-preventivo">
+                <h2>PREVENTIVO</h2>
+                <p><strong>N° Doc:</strong> Q-20260427-673</p>
+                <p><strong>Data:</strong> 27 aprile 2026</p>
+                <p><strong>Valido fino al:</strong> 27 maggio 2026</p>
+                <p><strong>Oggetto:</strong> Manutenzione Portale & Tool AI</p>
+            </div>
+        </header>
 
-    <!-- DATI CLIENTE -->
-    <section class="cliente">
-        <h3>DESTINATARIO</h3>
-        <p><strong>Il Fabbricato S.r.l.</strong></p>
-        <p>Via Lorenzo Fasolo 26, 27100 Pavia (PV)</p>
-        <p><strong>P.IVA:</strong> 02163050186</p>
-        <p><strong>Tel:</strong> +39 347 648 9805</p>
-    </section>
+        <!-- DATI CLIENTE -->
+        <section class="cliente">
+            <h3>DESTINATARIO</h3>
+            <p><strong>Il Fabbricato S.r.l.</strong></p>
+            <p>Via Lorenzo Fasolo 26, 27100 Pavia (PV)</p>
+            <p><strong>P.IVA:</strong> 02163050186</p>
+            <p><strong>Tel:</strong> +39 347 648 9805</p>
+        </section>
 
-    <!-- TABELLA SERVIZI -->
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>DESCRIZIONE</th>
-                <th>TIPO</th>
-                <th>QTA</th>
-                <th>IMPORTO</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>1</td>
-                <td>Manutenzione e ottimizzazione portale "Spendiamo a Pavia"</td>
-                <td>Una tantum</td>
-                <td>1</td>
-                <td>350,00 €</td>
-            </tr>
-            <tr>
-                <td>2</td>
-                <td>Fornitura Tool AI per monitoraggio notizie ed eventi</td>
-                <td>Ricorrente/mese</td>
-                <td>1</td>
-                <td>50,00 €/mese</td>
-            </tr>
-            <tr>
-                <td>3</td>
-                <td>Fornitura Tool AI per ricerca clienti</td>
-                <td>Ricorrente/mese</td>
-                <td>1</td>
-                <td>0,00 €</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <!-- TOTALI -->
-    <div class="totali">
+        <!-- TABELLA SERVIZI -->
         <table>
-            <tr><td>Subtotale (Una tantum)</td><td class="importo">350,00 €</td></tr>
-            <tr><td>Canone mensile ricorrente</td><td class="importo">50,00 €/mese</td></tr>
-            <tr><td>IVA (0% / Regime applicabile)</td><td class="importo">0,00 €</td></tr>
-            <tr><td><strong>TOTALE DA CORRISPONDERE</strong></td><td class="importo"><strong>350,00 € + 50,00 €/mese</strong></td></tr>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>DESCRIZIONE</th>
+                    <th>TIPO</th>
+                    <th>QTA</th>
+                    <th>IMPORTO</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Manutenzione e ottimizzazione portale "Spendiamo a Pavia"</td>
+                    <td>Una tantum</td>
+                    <td>1</td>
+                    <td>350,00 €</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Fornitura Tool AI per monitoraggio notizie ed eventi</td>
+                    <td>Ricorrente/mese</td>
+                    <td>1</td>
+                    <td>50,00 €/mese</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Fornitura Tool AI per ricerca clienti</td>
+                    <td>Ricorrente/mese</td>
+                    <td>1</td>
+                    <td>0,00 €</td>
+                </tr>
+            </tbody>
         </table>
+
+        <!-- TOTALI -->
+        <div class="totali">
+            <table>
+                <tr><td>Subtotale (Una tantum)</td><td class="importo">350,00 €</td></tr>
+                <tr><td>Canone mensile ricorrente</td><td class="importo">50,00 €/mese</td></tr>
+                <tr><td>IVA (0% / Regime applicabile)</td><td class="importo">0,00 €</td></tr>
+                <tr><td><strong>TOTALE DA CORRISPONDERE</strong></td><td class="importo"><strong>350,00 € + 50,00 €/mese</strong></td></tr>
+            </table>
+        </div>
+
+        <!-- DESCRIZIONI FORMALI -->
+        <section class="descrizioni">
+            <h3>Dettaglio delle Voci di Offerta</h3>
+            <div class="voce">
+                <strong>1. Manutenzione e Sistemazione Portale</strong>
+                <p>Interventi tecnici di risoluzione, aggiornamento e ottimizzazione delle funzionalità del portale "Spendiamo a Pavia", eseguiti in conformità con quanto concordato e dettagliato nei report tecnici consegnati. Include il posizionamento SEO e GEO iniziale, con focus sull'indicizzazione, visibilità e strutturazione dati delle sezioni "Vetrine" attualmente attive.</p>
+            </div>
+            <div class="voce">
+                <strong>2. Fornitura Tool AI per Notizie ed Eventi</strong>
+                <p>Attivazione e fornitura in abbonamento mensile di un'intelligenza artificiale dedicata alla raccolta, filtro e pubblicazione automatica di notizie ed eventi pertinenti al territorio di riferimento. Il servizio garantisce l'aggiornamento continuo dei contenuti editoriali, migliorando la rilevanza e il posizionamento organico del portale.</p>
+            </div>
+            <div class="voce">
+                <strong>3. Fornitura Tool AI per Ricerca Clienti</strong>
+                <p>Attivazione gratuita di un modulo AI complementare, progettato per l'analisi, il targeting e l'identificazione di potenziali lead nel settore di interesse. Il tool è fornito a titolo promozionale e integrativo, senza costi aggiuntivi o vincoli contrattuali specifici.</p>
+            </div>
+        </section>
+
+        <!-- MODALITÀ DI PAGAMENTO -->
+        <section class="pagamento">
+            <strong>Modalità di Pagamento:</strong> Bonifico Bancario
+            <p>Intestatario C/C: Ricardo Consuegra & Leonardo Sartori</p>
+            <p>IBAN: LT783250090360011881</p>
+            <p>Scadenza: 30 giorni data fattura (o come da accordi commerciali)</p>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <p>SarconX | Via Vigentina 15, 27100 Pavia | P.IVA 02838240188</p>
+            <p>Documento generato il 27/04/2026 | Rif. Q-20260427-673</p>
+            <p style="font-size:11px; color:#999; margin-top:5px;">Per accettazione: Firma ________________________ Data _______________</p>
+        </footer>
     </div>
-
-    <!-- DESCRIZIONI FORMALI -->
-    <section class="descrizioni">
-        <h3>DETtaglio delle Voci di Offerta</h3>
-        <div class="voce">
-            <strong>1. Manutenzione e Sistemazione Portale</strong>
-            <p>Interventi tecnici di risoluzione, aggiornamento e ottimizzazione delle funzionalità del portale "Spendiamo a Pavia", eseguiti in conformità con quanto concordato e dettagliato nei report tecnici consegnati. Include il posizionamento SEO e GEO iniziale, con focus sull'indicizzazione, visibilità e strutturazione dati delle sezioni "Vetrine" attualmente attive.</p>
-        </div>
-        <div class="voce">
-            <strong>2. Fornitura Tool AI per Notizie ed Eventi</strong>
-            <p>Attivazione e fornitura in abbonamento mensile di un'intelligenza artificiale dedicata alla raccolta, filtro e pubblicazione automatica di notizie ed eventi pertinenti al territorio di riferimento. Il servizio garantisce l'aggiornamento continuo dei contenuti editoriali, migliorando la rilevanza e il posizionamento organico del portale.</p>
-        </div>
-        <div class="voce">
-            <strong>3. Fornitura Tool AI per Ricerca Clienti</strong>
-            <p>Attivazione gratuita di un modulo AI complementare, progettato per l'analisi, il targeting e l'identificazione di potenziali lead nel settore di interesse. Il tool è fornito a titolo promozionale e integrativo, senza costi aggiuntivi o vincoli contrattuali specifici.</p>
-        </div>
-    </section>
-
-    <!-- MODALITÀ DI PAGAMENTO -->
-    <section class="pagamento">
-        <strong>Modalità di Pagamento:</strong> Bonifico Bancario
-        <p>Intestatario C/C: Ricardo Consuegra & Leonardo Sartori</p>
-        <p>IBAN: LT783250090360011881</p>
-        <p>Scadenza: 30 giorni data fattura (o come da accordi commerciali)</p>
-    </section>
-
-    <!-- FOOTER -->
-    <footer class="footer">
-        <p>SarconX | Via Vigentina 15, 27100 Pavia | P.IVA 02838240188</p>
-        <p>Documento generato il 27/04/2026 | Rif. Q-20260427-673</p>
-        <p style="font-size:11px; color:#999; margin-top:5px;">Per accettazione: Firma ________________________ Data _______________</p>
-    </footer>
 </div>
 
-<div class="no-print" style="text-align:center; margin: 10px auto; font-size:12px; color:#888;">
-    ✏️ Clicca su qualsiasi testo per modificarlo direttamente
+<div class="toolbar no-print">
+    <button onclick="addPage()">➕ Aggiungi pagina</button>
+    <button class="danger" onclick="removeLastPage()">➖ Rimuovi pagina</button>
+    <button class="primary" onclick="window.print()">🖨️ Stampa / Salva PDF</button>
 </div>
-<button class="btn-stampa no-print" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>
+
+<div class="no-print" style="text-align:center; margin: 10px auto 80px; font-size:12px; color:#888;">
+    ✏️ Clicca su qualsiasi testo per modificarlo. Ogni foglio = una pagina PDF.
+</div>
+
+<script>
+    function addPage() {
+        const container = document.getElementById('pages');
+        const page = document.createElement('div');
+        page.className = 'page-sheet';
+        page.contentEditable = 'true';
+        page.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-style:italic;">Pagina vuota — clicca per scrivere</div>';
+        container.appendChild(page);
+        const emptyDiv = page.querySelector('div');
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(emptyDiv);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+    function removeLastPage() {
+        const container = document.getElementById('pages');
+        if (container.children.length > 1) {
+            if (confirm('Rimuovere l\'ultima pagina?')) {
+                container.removeChild(container.lastElementChild);
+            }
+        } else {
+            alert('Deve rimanere almeno una pagina.');
+        }
+    }
+</script>
 
 </body>
 </html>

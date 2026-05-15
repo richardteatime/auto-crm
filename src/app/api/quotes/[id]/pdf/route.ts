@@ -180,19 +180,61 @@ export async function GET(
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: var(--testo);
             margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
+            padding: 24px 12px 120px;
+            background-color: #e5e5e5;
             font-size: 14px;
             line-height: 1.5;
         }
-        .preventivo-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 40px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-radius: 4px;
+
+        /* === TOOLBAR === */
+        .toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: var(--colore-primario);
+            padding: 10px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            z-index: 1000;
+            align-items: center;
         }
+        .toolbar button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 7px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .toolbar button:hover { background: rgba(255,255,255,0.2); }
+        .toolbar button.primary { background: #16a34a; border-color: #16a34a; }
+        .toolbar button.primary:hover { background: #15803d; }
+        .toolbar button.danger { background: #dc2626; border-color: #dc2626; }
+        .toolbar button.danger:hover { background: #b91c1c; }
+
+        /* === FOGLIO A4 === */
+        .page-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 0 auto 24px;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.14);
+            box-sizing: border-box;
+            position: relative;
+            outline: none;
+        }
+        .page-sheet:last-child { margin-bottom: 0; }
+
+        /* Modifica inline */
+        [contenteditable="true"]:hover { outline: 1px dashed #aaa; border-radius: 2px; cursor: text; }
+        [contenteditable="true"]:focus { outline: 2px solid var(--colore-primario); border-radius: 2px; }
 
         /* === INTESTAZIONE === */
         .header {
@@ -202,6 +244,7 @@ export async function GET(
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid var(--colore-primario);
+            page-break-inside: avoid;
         }
         .fornitore h1 { margin: 0; font-size: 22px; color: var(--colore-primario); }
         .fornitore p { margin: 2px 0; font-size: 13px; color: #555; }
@@ -215,20 +258,23 @@ export async function GET(
             padding: 15px;
             border-radius: 4px;
             margin-bottom: 25px;
+            page-break-inside: avoid;
         }
         .cliente h3 { margin: 0 0 8px; font-size: 15px; border-bottom: 1px solid var(--bordo); padding-bottom: 5px; }
         .cliente p { margin: 3px 0; font-size: 13px; }
 
         /* === TABELLA === */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: avoid; }
+        thead { display: table-header-group; }
         th, td { padding: 10px 12px; border: 1px solid var(--bordo); text-align: left; }
         th { background-color: var(--colore-sfondo); font-weight: 600; text-align: center; font-size: 13px; }
         td:nth-child(2) { width: 45%; }
         td:nth-child(3), td:nth-child(4) { text-align: center; width: 12%; }
         td:nth-child(5) { text-align: right; width: 18%; font-weight: 500; }
+        tr { page-break-inside: avoid; }
 
         /* === TOTALI === */
-        .totali { margin-left: auto; width: 45%; margin-bottom: 25px; }
+        .totali { margin-left: auto; width: 45%; margin-bottom: 25px; page-break-inside: avoid; }
         .totali table { border: none; margin: 0; }
         .totali td { border: none; padding: 6px 10px; }
         .totali tr.totale-finale { font-size: 1.15em; font-weight: bold; border-top: 2px solid var(--colore-primario); }
@@ -236,124 +282,173 @@ export async function GET(
         .totali .importo { text-align: right; }
 
         /* === DESCRIZIONI FORMALI === */
-        .descrizioni { margin-bottom: 25px; }
+        .descrizioni { margin-bottom: 25px; page-break-inside: avoid; }
         .descrizioni h3 { margin: 0 0 12px; font-size: 15px; color: var(--colore-primario); }
-        .voce { margin-bottom: 12px; }
+        .voce { margin-bottom: 12px; page-break-inside: avoid; }
         .voce strong { display: block; margin-bottom: 2px; }
         .voce p { margin: 0; font-size: 13px; color: #444; }
 
         /* === PAGAMENTO E NOTE === */
-        .pagamento, .note { margin-bottom: 20px; font-size: 13px; }
+        .pagamento, .note { margin-bottom: 20px; font-size: 13px; page-break-inside: avoid; }
         .pagamento p, .note p { margin: 4px 0; }
 
         /* === FOOTER === */
-        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid var(--bordo); padding-top: 15px; }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid var(--bordo);
+            padding-top: 15px;
+            page-break-inside: avoid;
+        }
 
         /* === STAMPA === */
-        .btn-stampa {
-            display: block; width: fit-content; margin: 20px auto; padding: 10px 20px;
-            background: var(--colore-primario); color: #fff; border: none; border-radius: 4px;
-            cursor: pointer; font-size: 14px;
-        }
-        .btn-stampa:hover { opacity: 0.9; }
-
-        /* === MODALITÀ MODIFICA === */
-        [contenteditable="true"]:hover { outline: 1px dashed #aaa; border-radius: 2px; cursor: text; }
-        [contenteditable="true"]:focus { outline: 2px solid var(--colore-primario); border-radius: 2px; }
         @media print {
             body { background: #fff; padding: 0; margin: 0; }
-            .preventivo-container { box-shadow: none; padding: 0; max-width: 100%; }
-            @page { size: A4 portrait; margin: 2cm; }
+            .page-sheet {
+                box-shadow: none;
+                margin: 0 auto;
+                break-after: page;
+                page-break-after: always;
+                width: 100%;
+                min-height: auto;
+                padding: 0;
+            }
+            .page-sheet:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+            @page { size: A4 portrait; margin: 20mm; }
             thead { display: table-header-group; }
             tr { page-break-inside: avoid; }
-            .btn-stampa, .no-print { display: none !important; }
-            .preventivo-container { border: none; }
+            .toolbar, .no-print { display: none !important; }
+            .page-sheet { border: none; }
+            /* Evita spezzature sui blocchi principali */
+            .header, .cliente, .totali, .descrizioni, .pagamento, .note, .footer, table, tbody, tr, .voce {
+                page-break-inside: avoid;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="preventivo-container" contenteditable="true">
-    <!-- INTESTAZIONE -->
-    <header class="header">
-        <div class="fornitore">
-            ${companyLines || `<h1>Azienda</h1>`}
-        </div>
-        <div class="dati-preventivo">
-            <h2>PREVENTIVO</h2>
-            <p><strong>N° Doc:</strong> ${esc(quote.number)}</p>
-            <p><strong>Data:</strong> ${formatDateIt(quote.createdAt)}</p>
-            <p><strong>Valido fino al:</strong> ${formatDateIt(quote.validUntil)}</p>
-            <p><strong>Oggetto:</strong> ${esc(quote.title)}</p>
-        </div>
-    </header>
+<div id="pages">
+    <div class="page-sheet" contenteditable="true">
+        <!-- INTESTAZIONE -->
+        <header class="header">
+            <div class="fornitore">
+                ${companyLines || `<h1>Azienda</h1>`}
+            </div>
+            <div class="dati-preventivo">
+                <h2>PREVENTIVO</h2>
+                <p><strong>N° Doc:</strong> ${esc(quote.number)}</p>
+                <p><strong>Data:</strong> ${formatDateIt(quote.createdAt)}</p>
+                <p><strong>Valido fino al:</strong> ${formatDateIt(quote.validUntil)}</p>
+                <p><strong>Oggetto:</strong> ${esc(quote.title)}</p>
+            </div>
+        </header>
 
-    <!-- DATI CLIENTE -->
-    <section class="cliente">
-        <h3>DESTINATARIO</h3>
-        <p><strong>${esc(contact?.company || contact?.name || "—")}</strong></p>
-        ${contact?.address ? `<p>${esc(contact.address)}</p>` : ""}
-        ${contact?.vatNumber ? `<p><strong>P.IVA:</strong> ${esc(contact.vatNumber)}</p>` : ""}
-        ${contact?.phone ? `<p><strong>Tel:</strong> ${esc(contact.phone)}</p>` : ""}
-        ${contact?.email ? `<p>${esc(contact.email)}</p>` : ""}
-    </section>
+        <!-- DATI CLIENTE -->
+        <section class="cliente">
+            <h3>DESTINATARIO</h3>
+            <p><strong>${esc(contact?.company || contact?.name || "—")}</strong></p>
+            ${contact?.address ? `<p>${esc(contact.address)}</p>` : ""}
+            ${contact?.vatNumber ? `<p><strong>P.IVA:</strong> ${esc(contact.vatNumber)}</p>` : ""}
+            ${contact?.phone ? `<p><strong>Tel:</strong> ${esc(contact.phone)}</p>` : ""}
+            ${contact?.email ? `<p>${esc(contact.email)}</p>` : ""}
+        </section>
 
-    <!-- TABELLA SERVIZI -->
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>DESCRIZIONE</th>
-                <th>TIPO</th>
-                <th>QTA</th>
-                <th>IMPORTO</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${itemRows || `<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">Nessuna voce inserita</td></tr>`}
-        </tbody>
-    </table>
-
-    <!-- TOTALI -->
-    <div class="totali">
+        <!-- TABELLA SERVIZI -->
         <table>
-            ${totaliRows}
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>DESCRIZIONE</th>
+                    <th>TIPO</th>
+                    <th>QTA</th>
+                    <th>IMPORTO</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemRows || `<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">Nessuna voce inserita</td></tr>`}
+            </tbody>
         </table>
+
+        <!-- TOTALI -->
+        <div class="totali">
+            <table>
+                ${totaliRows}
+            </table>
+        </div>
+
+        <!-- DESCRIZIONI FORMALI -->
+        ${vociDettaglio ? `
+        <section class="descrizioni">
+            <h3>Dettaglio delle Voci di Offerta</h3>
+            ${vociDettaglio}
+        </section>` : ""}
+
+        <!-- NOTE -->
+        ${quote.notes ? `
+        <section class="note">
+            <p>${esc(quote.notes).replace(/\n/g, "<br>")}</p>
+        </section>` : ""}
+
+        <!-- MODALITÀ DI PAGAMENTO -->
+        <section class="pagamento">
+            ${paymentBlock || `
+            <strong>Modalità di Pagamento:</strong> Bonifico Bancario
+            <p>Scadenza: 30 giorni data fattura</p>
+            `}
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <p>${footerCompany || "Azienda"}</p>
+            <p>Documento generato il ${formatDateIt(new Date())} | Rif. ${esc(quote.number)}</p>
+            <p style="font-size:11px; color:#999; margin-top:5px;">Per accettazione: Firma ________________________ Data _______________</p>
+        </footer>
     </div>
-
-    <!-- DESCRIZIONI FORMALI -->
-    ${vociDettaglio ? `
-    <section class="descrizioni">
-        <h3>Dettaglio delle Voci di Offerta</h3>
-        ${vociDettaglio}
-    </section>` : ""}
-
-    <!-- NOTE -->
-    ${quote.notes ? `
-    <section class="note">
-        <p>${esc(quote.notes).replace(/\n/g, "<br>")}</p>
-    </section>` : ""}
-
-    <!-- MODALITÀ DI PAGAMENTO -->
-    <section class="pagamento">
-        ${paymentBlock || `
-        <strong>Modalità di Pagamento:</strong> Bonifico Bancario
-        <p>Scadenza: 30 giorni data fattura</p>
-        `}
-    </section>
-
-    <!-- FOOTER -->
-    <footer class="footer">
-        <p>${footerCompany || "Azienda"}</p>
-        <p>Documento generato il ${formatDateIt(new Date())} | Rif. ${esc(quote.number)}</p>
-        <p style="font-size:11px; color:#999; margin-top:5px;">Per accettazione: Firma ________________________ Data _______________</p>
-    </footer>
 </div>
 
-<div class="no-print" style="text-align:center; margin: 10px auto; font-size:12px; color:#888;">
-    ✏️ Clicca su qualsiasi testo per modificarlo direttamente
+<div class="toolbar no-print">
+    <button onclick="addPage()">➕ Aggiungi pagina</button>
+    <button class="danger" onclick="removeLastPage()">➖ Rimuovi pagina</button>
+    <button class="primary" onclick="window.print()">🖨️ Stampa / Salva PDF</button>
 </div>
-<button class="btn-stampa no-print" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>
+
+<div class="no-print" style="text-align:center; margin: 10px auto 80px; font-size:12px; color:#888;">
+    ✏️ Clicca su qualsiasi testo per modificarlo. Ogni foglio = una pagina PDF.
+</div>
+
+<script>
+    function addPage() {
+        const container = document.getElementById('pages');
+        const page = document.createElement('div');
+        page.className = 'page-sheet';
+        page.contentEditable = 'true';
+        page.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-style:italic;">Pagina vuota — clicca per scrivere</div>';
+        container.appendChild(page);
+        // Posiziona il cursore nel div vuoto
+        const emptyDiv = page.querySelector('div');
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(emptyDiv);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+    function removeLastPage() {
+        const container = document.getElementById('pages');
+        if (container.children.length > 1) {
+            if (confirm('Rimuovere l\\'ultima pagina?')) {
+                container.removeChild(container.lastElementChild);
+            }
+        } else {
+            alert('Deve rimanere almeno una pagina.');
+        }
+    }
+</script>
 
 </body>
 </html>`;
