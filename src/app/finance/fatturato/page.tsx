@@ -101,58 +101,56 @@ function FatturatoContent() {
             {deals.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center gap-4 rounded-xl border bg-card px-5 py-4 hover:bg-muted/30 transition-colors"
+                className="flex items-center gap-5 rounded-xl border bg-card px-6 py-5 hover:bg-muted/30 transition-colors"
               >
                 {/* Icon */}
-                <div className={`shrink-0 p-2.5 rounded-xl ${d.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
+                <div className={`shrink-0 p-3 rounded-xl ${d.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
                   {d.isRecurring
-                    ? <RefreshCw className="h-5 w-5 text-blue-500" />
-                    : <Zap className="h-5 w-5 text-green-600" />
+                    ? <RefreshCw className="h-6 w-6 text-blue-500" />
+                    : <Zap className="h-6 w-6 text-green-600" />
                   }
                 </div>
 
                 {/* Name + client */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-base truncate">{d.title}</p>
-                  <p className="text-sm text-muted-foreground truncate">{d.contactName ?? "—"}</p>
-                </div>
-
-                {/* Type badge */}
-                <div className="shrink-0">
-                  {d.isRecurring ? (
-                    <Badge variant="outline" className="text-blue-500 border-blue-500/40 whitespace-nowrap">
-                      Ricorrente {d.recurringMonths ? `×${d.recurringMonths}m` : ""}
-                      {d.overlapMonths && d.overlapMonths < (d.recurringMonths ?? 12)
-                        ? ` · ${d.overlapMonths}m`
-                        : ""}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-green-600 border-green-600/40">
-                      Una Tantum
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Won date */}
-                <div className="shrink-0 text-right hidden sm:block min-w-[100px]">
-                  <p className="text-xs text-muted-foreground">Vinta il</p>
-                  <p className="text-sm font-medium">
-                    {d.wonAt ? formatDate(new Date(d.wonAt)) : "—"}
-                  </p>
+                  <p className="font-semibold text-base">{d.title}</p>
+                  <p className="text-sm text-muted-foreground">{d.contactName ?? "—"}</p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {d.isRecurring ? (
+                      <Badge variant="outline" className="text-blue-500 border-blue-500/40 whitespace-nowrap text-xs">
+                        Ricorrente {d.recurringMonths ? `×${d.recurringMonths}m` : ""}
+                        {d.overlapMonths && d.overlapMonths < (d.recurringMonths ?? 12)
+                          ? ` · ${d.overlapMonths}m`
+                          : ""}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-green-600 border-green-600/40 text-xs">
+                        Una Tantum
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {d.wonAt ? formatDate(new Date(d.wonAt)) : ""}
+                    </span>
+                  </div>
                 </div>
 
                 {/* €/mese — recurring only */}
-                <div className="shrink-0 text-right hidden md:block min-w-[90px]">
+                <div className="shrink-0 text-right hidden md:block min-w-[100px]">
                   {d.isRecurring ? (
                     <>
                       <p className="text-xs text-muted-foreground">€/mese</p>
                       <p className="text-sm font-medium text-blue-500">{formatCurrency(d.value)}</p>
                     </>
-                  ) : null}
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">Valore</p>
+                      <p className="text-sm font-medium text-green-600">{formatCurrency(d.value)}</p>
+                    </>
+                  )}
                 </div>
 
                 {/* Total contribution */}
-                <div className="shrink-0 text-right min-w-[110px]">
+                <div className="shrink-0 text-right min-w-[120px]">
                   <p className="text-xs text-muted-foreground">Totale periodo</p>
                   <p className="text-xl font-bold text-green-500">{formatCurrency(d.revenueContribution)}</p>
                 </div>

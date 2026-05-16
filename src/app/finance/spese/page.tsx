@@ -5,20 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, TrendingDown, Loader2, Search, X } from "lucide-react";
+import { ArrowLeft, TrendingDown, Loader2, Search, X, Receipt, Rocket, User } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import type { Expense } from "@/types";
 
-const TYPE_LABELS: Record<string, string> = {
-  spesa: "Spesa",
-  investimento: "Investimento",
-  stipendio: "Stipendio",
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  spesa: "text-red-500 border-red-500/40",
-  investimento: "text-blue-500 border-blue-500/40",
-  stipendio: "text-yellow-500 border-yellow-500/40",
+const TYPE_CONFIG: Record<string, { label: string; color: string; border: string; bg: string; icon: React.ElementType }> = {
+  spesa: { label: "Spesa", color: "text-red-500", border: "border-red-500/30", bg: "bg-red-500/10", icon: Receipt },
+  investimento: { label: "Investimento", color: "text-blue-500", border: "border-blue-500/30", bg: "bg-blue-500/10", icon: Rocket },
+  stipendio: { label: "Stipendio", color: "text-amber-500", border: "border-amber-500/30", bg: "bg-amber-500/10", icon: User },
 };
 
 function SpeseContent() {
@@ -97,7 +91,7 @@ function SpeseContent() {
             </div>
             {Object.entries(byType).map(([type, amt]) => (
               <div key={type} className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
-                <span className="text-sm text-muted-foreground">{TYPE_LABELS[type] ?? type}</span>
+                <span className="text-sm text-muted-foreground">{TYPE_CONFIG[type]?.label ?? type}</span>
                 <span className="text-lg font-semibold">{formatCurrency(amt)}</span>
               </div>
             ))}
@@ -164,45 +158,37 @@ function SpeseContent() {
             <button onClick={reset} className="underline cursor-pointer hover:text-foreground">Azzera</button>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filtered.map((e) => (
-              <div key={e.id} className="flex items-center gap-4 rounded-xl border bg-card px-5 py-4 hover:bg-muted/30 transition-colors">
-                {/* Type icon area */}
-                <div className="shrink-0 p-2.5 rounded-xl bg-red-500/10">
-                  <TrendingDown className="h-5 w-5 text-red-500" />
-                </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {filtered.map((e) => {
+              const cfg = TYPE_CONFIG[e.type];
+              const Icon = cfg?.icon ?? Receipt;
+              return (
+                <div key={e.id} className={`flex items-center gap-4 rounded-xl border ${cfg?.border ?? "border-border"} bg-card px-6 py-5 hover:bg-muted/30 transition-colors`}>
+                  {/* Type icon area */}
+                  <div className={`shrink-0 p-3 rounded-xl ${cfg?.bg ?? "bg-muted"}`}>
+                    <Icon className={`h-6 w-6 ${cfg?.color ?? ""}`} />
+                  </div>
 
-                {/* Description + category */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-base truncate">{e.description}</p>
-                  <p className="text-sm text-muted-foreground">{e.createdBy}</p>
-                </div>
+                  {/* Description + meta */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-base">{e.description}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge variant="outline" className={`text-xs ${cfg?.color ?? ""} ${cfg?.border ?? ""}`}>
+                        {cfg?.label ?? e.type}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">{e.category}</Badge>
+                      <span className="text-xs text-muted-foreground">{formatDate(e.date)}</span>
+                    </div>
+                  </div>
 
-                {/* Type badge */}
-                <div className="shrink-0 hidden sm:block">
-                  <Badge variant="outline" className={`text-xs ${TYPE_COLORS[e.type] ?? ""}`}>
-                    {TYPE_LABELS[e.type] ?? e.type}
-                  </Badge>
+                  {/* Amount */}
+                  <div className="shrink-0 text-right min-w-[120px]">
+                    <p className="text-xs text-muted-foreground">Importo</p>
+                    <p className="text-xl font-bold text-red-500">-{formatCurrency(e.amount)}</p>
+                  </div>
                 </div>
-
-                {/* Category */}
-                <div className="shrink-0 hidden md:block">
-                  <Badge variant="secondary" className="text-xs">{e.category}</Badge>
-                </div>
-
-                {/* Date */}
-                <div className="shrink-0 text-right hidden sm:block min-w-[100px]">
-                  <p className="text-xs text-muted-foreground">Data</p>
-                  <p className="text-sm font-medium">{formatDate(e.date)}</p>
-                </div>
-
-                {/* Amount */}
-                <div className="shrink-0 text-right min-w-[110px]">
-                  <p className="text-xs text-muted-foreground">Importo</p>
-                  <p className="text-xl font-bold text-red-500">-{formatCurrency(e.amount)}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

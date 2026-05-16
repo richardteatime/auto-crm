@@ -32,7 +32,7 @@ import {
 import { ExpenseForm } from "@/components/finance/ExpenseForm";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import type { FinanceSummary, Expense } from "@/types";
 import { ReportDialog } from "@/components/shared/ReportDialog";
@@ -72,16 +72,10 @@ const PERIOD_LABELS: Record<QuickPeriod, string> = {
   custom: "Personalizzato",
 };
 
-const EXPENSE_TYPE_COLORS: Record<string, string> = {
-  spesa: "text-red-400",
-  investimento: "text-blue-400",
-  stipendio: "text-yellow-400",
-};
-
-const EXPENSE_TYPE_LABELS: Record<string, string> = {
-  spesa: "Spesa",
-  investimento: "Investimento",
-  stipendio: "Stipendio",
+const EXPENSE_TYPE_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ElementType }> = {
+  spesa: { label: "Spesa", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", icon: Receipt },
+  investimento: { label: "Investimento", color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20", icon: Rocket },
+  stipendio: { label: "Stipendio", color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20", icon: User },
 };
 
 function KpiCard({
@@ -318,43 +312,42 @@ export function FinanceDashboard() {
         </CardContent>
       </Card>
 
-      {/* Category breakdown + Expenses table side-by-side on large screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Category Breakdown */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Spese per Categoria</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {summary && Object.keys(summary.expenseByCategory).length > 0 ? (
-              <div className="space-y-2">
-                {Object.entries(summary.expenseByCategory)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([cat, amt]) => {
-                    const pct = summary.totalExpenses > 0
-                      ? Math.round((amt / summary.totalExpenses) * 100)
-                      : 0;
-                    return (
-                      <div key={cat}>
-                        <div className="flex justify-between text-sm mb-0.5">
-                          <span>{cat}</span>
-                          <span className="text-muted-foreground">{formatCurrency(amt)} ({pct}%)</span>
-                        </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
-                        </div>
+      {/* Category breakdown */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Spese per Categoria</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {summary && Object.keys(summary.expenseByCategory).length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(summary.expenseByCategory)
+                .sort((a, b) => b[1] - a[1])
+                .map(([cat, amt]) => {
+                  const pct = summary.totalExpenses > 0
+                    ? Math.round((amt / summary.totalExpenses) * 100)
+                    : 0;
+                  return (
+                    <div key={cat} className="rounded-lg border p-3">
+                      <div className="flex justify-between text-sm mb-1.5">
+                        <span className="font-medium">{cat}</span>
+                        <span className="text-muted-foreground">{pct}%</span>
                       </div>
-                    );
-                  })}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nessuna spesa nel periodo.</p>
-            )}
-          </CardContent>
-        </Card>
+                      <p className="text-lg font-bold">{formatCurrency(amt)}</p>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nessuna spesa nel periodo.</p>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Expense Table */}
-        <div className="lg:col-span-2 space-y-3">
+      {/* Expense Table */}
+      <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold">Spese e Investimenti</h2>
             <Button
@@ -428,61 +421,68 @@ export function FinanceDashboard() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Categoria</TableHead>
+                    <TableHead className="w-[110px]">Data</TableHead>
+                    <TableHead className="w-[140px]">Tipo</TableHead>
+                    <TableHead className="w-[160px]">Categoria</TableHead>
                     <TableHead>Descrizione</TableHead>
-                    <TableHead className="text-right">Importo</TableHead>
-                    <TableHead className="w-16" />
+                    <TableHead className="text-right w-[140px]">Importo</TableHead>
+                    <TableHead className="w-20" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredExpenses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-sm">
                         Nessuna spesa corrisponde ai filtri.
                         <button onClick={resetExpFilters} className="ml-1 underline cursor-pointer">Azzera</button>
                       </TableCell>
                     </TableRow>
-                  ) : filteredExpenses.map((exp) => (
-                    <TableRow key={exp.id}>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {formatDate(exp.date)}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`text-xs font-medium ${EXPENSE_TYPE_COLORS[exp.type] ?? ""}`}>
-                          {EXPENSE_TYPE_LABELS[exp.type] ?? exp.type}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">{exp.category}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm max-w-[180px] truncate">{exp.description}</TableCell>
-                      <TableCell className="text-right font-semibold text-red-400">
-                        -{formatCurrency(exp.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 cursor-pointer"
-                            onClick={() => { setEditingExpense(exp); setShowExpenseForm(true); }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-destructive"
-                            onClick={() => setDeletingExpense(exp)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  ) : filteredExpenses.map((exp) => {
+                    const cfg = EXPENSE_TYPE_CONFIG[exp.type];
+                    const Icon = cfg?.icon ?? Receipt;
+                    return (
+                      <TableRow key={exp.id} className="group">
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                          {formatDate(exp.date)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg?.color ?? ""}`}>
+                            <span className={`p-1 rounded-md ${cfg?.bg ?? ""}`}>
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            {cfg?.label ?? exp.type}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs font-normal">{exp.category}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{exp.description}</TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-base font-bold text-red-500">-{formatCurrency(exp.amount)}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 cursor-pointer"
+                              onClick={() => { setEditingExpense(exp); setShowExpenseForm(true); }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeletingExpense(exp)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               {isExpFiltered && filteredExpenses.length > 0 && (
@@ -493,7 +493,6 @@ export function FinanceDashboard() {
             </div>
           )}
         </div>
-      </div>
 
       <ExpenseForm
         open={showExpenseForm}

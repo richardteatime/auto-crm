@@ -94,42 +94,35 @@ export default function MrrPage() {
             {deals.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center gap-4 rounded-xl border bg-card px-5 py-4 hover:bg-muted/30 transition-colors"
+                className="flex items-center gap-5 rounded-xl border bg-card px-6 py-5 hover:bg-muted/30 transition-colors"
               >
                 {/* Icon */}
-                <div className="shrink-0 p-2.5 rounded-xl bg-blue-500/10">
-                  <RefreshCw className="h-5 w-5 text-blue-500" />
+                <div className="shrink-0 p-3 rounded-xl bg-blue-500/10">
+                  <RefreshCw className="h-6 w-6 text-blue-500" />
                 </div>
 
                 {/* Name + client */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-base truncate">{d.title}</p>
-                  <p className="text-sm text-muted-foreground truncate">{d.contactName ?? "—"}</p>
-                </div>
-
-                {/* Duration badge */}
-                <div className="shrink-0 hidden sm:block">
-                  <Badge variant="outline" className="text-blue-500 border-blue-500/40 whitespace-nowrap">
-                    ×{d.recurringMonths} mesi
-                  </Badge>
-                </div>
-
-                {/* Period */}
-                <div className="shrink-0 text-right hidden md:block min-w-[160px]">
-                  <p className="text-xs text-muted-foreground">Periodo</p>
-                  <p className="text-sm font-medium">
-                    {formatDate(new Date(d.startDate))} → {formatDate(new Date(d.endDate))}
-                  </p>
+                  <p className="font-semibold text-base">{d.title}</p>
+                  <p className="text-sm text-muted-foreground">{d.contactName ?? "—"}</p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <Badge variant="outline" className="text-blue-500 border-blue-500/40 whitespace-nowrap text-xs">
+                      ×{d.recurringMonths} mesi
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(new Date(d.startDate))} → {formatDate(new Date(d.endDate))}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Total contract value */}
-                <div className="shrink-0 text-right hidden sm:block min-w-[110px]">
+                <div className="shrink-0 text-right hidden md:block min-w-[120px]">
                   <p className="text-xs text-muted-foreground">Valore contratto</p>
                   <p className="text-sm font-medium">{formatCurrency(d.totalContractValue)}</p>
                 </div>
 
                 {/* MRR contribution */}
-                <div className="shrink-0 text-right min-w-[110px]">
+                <div className="shrink-0 text-right min-w-[120px]">
                   <p className="text-xs text-muted-foreground">MRR / mese</p>
                   <p className="text-xl font-bold text-blue-500">{formatCurrency(d.value)}</p>
                 </div>
