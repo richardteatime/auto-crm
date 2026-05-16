@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listDeals } from "@/lib/db/deals";
 import { listExpenses } from "@/lib/db/expenses";
+import { listRevenues } from "@/lib/db/revenues";
 import { getStages } from "@/lib/db/pipeline";
 import { requireAuth } from "@/lib/auth";
 
@@ -41,10 +42,11 @@ export async function GET(req: NextRequest) {
   const periodStart = startParam ? new Date(startParam) : new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd   = endParam   ? new Date(endParam)   : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-  const [stages, allDeals, allExpenses] = await Promise.all([
+  const [stages, allDeals, allExpenses, allRevenues] = await Promise.all([
     getStages(),
     listDeals(),
     listExpenses(),
+    listRevenues(),
   ]);
 
   const wonStageIds = new Set(stages.filter((s) => s.isWon).map((s) => s.id));
@@ -87,6 +89,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // External revenues
+  for (const r of allRevenues) {
+    if (!r.isRecurring) {
+      const dateMs = toMs(r.date);
+      if (dateMs >= periodStart.getTime() && dateMs <= periodEnd.getTime()) {
+        oneTimeRevenue += r.amount;
+      }
+    } else {
+      const startMs = toMs(r.startDate) || toMs(r.date) || toMs(r.createdAt);
+      if (!startMs) continue;
+      const rStart = new Date(startMs);
+      const recurMonths = r.recurringMonths ?? 12;
+      const rEnd = new Date(rStart);
+      rEnd.setMonth(rEnd.getMonth() + recurMonths);
+
+      if (rStart <= now && rEnd >= now) mrr += r.amount;
+
+      const overlap = clampMonths(rStart, recurMonths, periodStart, periodEnd);
+      if (overlap > 0) recurringRevenue += r.amount * overlap;
+    }
+  }
+
   const totalRevenue = oneTimeRevenue + recurringRevenue;
 
   // Expenses in period
@@ -124,6 +148,19 @@ export async function GET(req: NextRequest) {
         const dStart = new Date(startMs);
         const overlap = clampMonths(dStart, d.recurringMonths ?? 12, mStart, mEnd);
         if (overlap > 0) mRecurring += d.value * overlap;
+      }
+    }
+
+    for (const r of allRevenues) {
+      if (!r.isRecurring) {
+        const dateMs = toMs(r.date);
+        if (dateMs >= mStart.getTime() && dateMs <= mEnd.getTime()) mOneTime += r.amount;
+      } else {
+        const startMs = toMs(r.startDate) || toMs(r.date) || toMs(r.createdAt);
+        if (!startMs) continue;
+        const rStart = new Date(startMs);
+        const overlap = clampMonths(rStart, r.recurringMonths ?? 12, mStart, mEnd);
+        if (overlap > 0) mRecurring += r.amount * overlap;
       }
     }
 

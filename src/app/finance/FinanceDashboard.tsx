@@ -30,11 +30,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ExpenseForm } from "@/components/finance/ExpenseForm";
+import { RevenueForm } from "@/components/finance/RevenueForm";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, ArrowRight } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, ArrowRight, Banknote } from "lucide-react";
 import { toast } from "sonner";
-import type { FinanceSummary, Expense } from "@/types";
+import type { FinanceSummary, Expense, Revenue } from "@/types";
 import { ReportDialog } from "@/components/shared/ReportDialog";
 
 type QuickPeriod = "month" | "quarter" | "year" | "custom";
@@ -122,9 +123,15 @@ export function FinanceDashboard() {
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+
+  const [revenues, setRevenues] = useState<Revenue[]>([]);
+  const [showRevenueForm, setShowRevenueForm] = useState(false);
+  const [editingRevenue, setEditingRevenue] = useState<Revenue | undefined>(undefined);
+  const [deletingRevenue, setDeletingRevenue] = useState<Revenue | null>(null);
 
   // Expense filters
   const [expSearch, setExpSearch] = useState("");
@@ -142,21 +149,32 @@ export function FinanceDashboard() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const { start, end } = getRange();
-    const [summaryRes, expensesRes] = await Promise.all([
+    const [summaryRes, expensesRes, revenuesRes] = await Promise.all([
       fetch(`/api/finance/summary?start=${start}&end=${end}`),
       fetch(`/api/expenses?start=${start}&end=${end}`),
+      fetch("/api/revenues"),
     ]);
-    const [summaryData, expensesData] = await Promise.all([
+    const [summaryData, expensesData, revenuesData] = await Promise.all([
       summaryRes.json(),
       expensesRes.json(),
+      revenuesRes.json(),
     ]);
     setSummary(summaryData);
     setExpenses(Array.isArray(expensesData) ? expensesData : []);
+    setRevenues(Array.isArray(revenuesData) ? revenuesData : []);
     setLoading(false);
   }, [getRange]);
 
   useEffect(() => {
     loadData();
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((users: Array<{ id: string; name: string; email: string }>) => {
+        const map: Record<string, string> = {};
+        for (const u of users) map[u.id] = u.name || u.email;
+        setUsersMap(map);
+      })
+      .catch(() => {});
   }, [loadData]);
 
   const confirmDelete = async () => {
@@ -170,6 +188,20 @@ export function FinanceDashboard() {
       toast.error("Errore durante l'eliminazione");
     } finally {
       setDeletingExpense(null);
+    }
+  };
+
+  const confirmDeleteRevenue = async () => {
+    if (!deletingRevenue) return;
+    try {
+      const res = await fetch(`/api/revenues/${deletingRevenue.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.success("Incasso eliminato");
+      loadData();
+    } catch {
+      toast.error("Errore durante l'eliminazione");
+    } finally {
+      setDeletingRevenue(null);
     }
   };
 
@@ -311,6 +343,87 @@ export function FinanceDashboard() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      {/* Revenues */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <Banknote className="h-4 w-4 text-green-500" />
+            Incassi
+          </h2>
+          <Button
+            size="sm"
+            className="cursor-pointer"
+            onClick={() => { setEditingRevenue(undefined); setShowRevenueForm(true); }}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Aggiungi incasso
+          </Button>
+        </div>
+
+        {revenues.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
+            Nessun incasso registrato. Clicca "Aggiungi incasso" per registrare il primo.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {revenues.map((r) => (
+              <div
+                key={r.id}
+                className={`flex items-center gap-4 rounded-xl border bg-card px-6 py-5 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-green-500/30" : "border-border"}`}
+              >
+                <div className={`shrink-0 p-3 rounded-xl ${r.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
+                  {r.isRecurring
+                    ? <RefreshCw className="h-6 w-6 text-blue-500" />
+                    : <Banknote className="h-6 w-6 text-green-500" />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-base">{r.description}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <Badge variant="outline" className={`text-xs ${r.isRecurring ? "text-blue-500 border-blue-500/30" : "text-green-500 border-green-500/30"}`}>
+                      {r.isRecurring ? `Ricorrente${r.recurringMonths ? ` ×${r.recurringMonths}m` : ""}` : "Una tantum"}
+                    </Badge>
+                    {r.isExternal && (
+                      <Badge variant="outline" className="text-xs text-purple-500 border-purple-500/30">
+                        Esterno
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">{formatDate(r.date)}</span>
+                  </div>
+                  {r.collectedBy.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Incassato da: {r.collectedBy.map((uid) => usersMap[uid] ?? uid).join(", ")}
+                    </p>
+                  )}
+                </div>
+                <div className="shrink-0 text-right min-w-[120px]">
+                  <p className="text-xs text-muted-foreground">Importo</p>
+                  <p className="text-xl font-bold text-green-500">+{formatCurrency(r.amount)}</p>
+                </div>
+                <div className="shrink-0 flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 cursor-pointer"
+                    onClick={() => { setEditingRevenue(r); setShowRevenueForm(true); }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-destructive"
+                    onClick={() => setDeletingRevenue(r)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Category breakdown */}
       <Card>
@@ -514,6 +627,32 @@ export function FinanceDashboard() {
               Annulla
             </Button>
             <Button variant="destructive" className="cursor-pointer" onClick={confirmDelete}>
+              Elimina
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <RevenueForm
+        open={showRevenueForm}
+        onClose={() => { setShowRevenueForm(false); setEditingRevenue(undefined); }}
+        initialData={editingRevenue}
+        onSaved={loadData}
+      />
+
+      <Dialog open={!!deletingRevenue} onOpenChange={(v) => !v && setDeletingRevenue(null)}>
+        <DialogContent showCloseButton={false} className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminare l'incasso?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Stai per eliminare <strong>{deletingRevenue?.description}</strong> ({deletingRevenue ? formatCurrency(deletingRevenue.amount) : ""}). Questa azione è irreversibile.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingRevenue(null)}>
+              Annulla
+            </Button>
+            <Button variant="destructive" className="cursor-pointer" onClick={confirmDeleteRevenue}>
               Elimina
             </Button>
           </div>

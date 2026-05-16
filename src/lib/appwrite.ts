@@ -19,6 +19,7 @@ export const COLLECTIONS = {
   projects: "projects",
   projectLogs: "project_logs",
   notifications: "notifications",
+  revenues: "revenues",
 } as const;
 
 // ---------------------------------------------------------------------------

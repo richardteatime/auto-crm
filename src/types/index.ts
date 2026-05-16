@@ -173,6 +173,22 @@ export interface ProjectLog {
   createdAt: Date;
 }
 
+export interface Revenue {
+  id: string;
+  description: string;
+  amount: number;
+  date: Date;
+  isRecurring: boolean;
+  recurringMonths: number | null;
+  startDate: Date | null;
+  collectedBy: string[];
+  isExternal: boolean;
+  dealId: string | null;
+  opportunityId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // API response types
 export interface DealWithContact extends Deal {
   contact?: Contact;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listDeals } from "@/lib/db/deals";
+import { listRevenues } from "@/lib/db/revenues";
 import { requireAuth } from "@/lib/auth";
 import type { DealWithContact } from "@/types";
 import { getStages } from "@/lib/db/pipeline";
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
   const periodStart = startParam ? new Date(startParam) : new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = endParam ? new Date(endParam) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-  const [stages, allDeals] = await Promise.all([getStages(), listDeals()]);
+  const [stages, allDeals, allRevenues] = await Promise.all([getStages(), listDeals(), listRevenues()]);
 
   const wonStageIds = new Set(stages.filter((s) => s.isWon).map((s) => s.id));
 
@@ -101,6 +102,26 @@ export async function GET(req: NextRequest) {
           isPaid: d.isPaid ?? false,
         });
       }
+    }
+  }
+
+  // Add one-time external revenues in period
+  for (const r of allRevenues) {
+    if (r.isRecurring) continue;
+    const dateMs = toMs(r.date);
+    if (dateMs >= periodStart.getTime() && dateMs <= periodEnd.getTime()) {
+      result.push({
+        id: r.id,
+        title: r.description,
+        contactName: r.isExternal ? "Collaborazione esterna" : null,
+        value: r.amount,
+        isRecurring: false,
+        recurringMonths: null,
+        revenueContribution: r.amount,
+        overlapMonths: null,
+        wonAt: new Date(dateMs).toISOString(),
+        isPaid: true,
+      });
     }
   }
 

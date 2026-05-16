@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listDeals } from "@/lib/db/deals";
+import { listRevenues } from "@/lib/db/revenues";
 import { requireAuth } from "@/lib/auth";
 import { getStages } from "@/lib/db/pipeline";
 import type { DealWithContact } from "@/types";
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const now = new Date();
-  const [stages, allDeals] = await Promise.all([getStages(), listDeals()]);
+  const [stages, allDeals, allRevenues] = await Promise.all([getStages(), listDeals(), listRevenues()]);
   const wonStageIds = new Set(stages.filter((s) => s.isWon).map((s) => s.id));
 
   const result: Array<{
@@ -64,6 +65,29 @@ export async function GET(request: NextRequest) {
       endDate: dEnd.toISOString(),
       totalContractValue: d.value * recurMonths,
       wonAt: d.wonAt ? new Date(toMs(d.wonAt as Date | number | null)).toISOString() : null,
+    });
+  }
+
+  // Add active recurring external revenues
+  for (const r of allRevenues) {
+    if (!r.isRecurring) continue;
+    const startMs = toMs(r.startDate) || toMs(r.date) || toMs(r.createdAt);
+    if (!startMs) continue;
+    const rStart = new Date(startMs);
+    const recurMonths = r.recurringMonths ?? 12;
+    const rEnd = new Date(rStart);
+    rEnd.setMonth(rEnd.getMonth() + recurMonths);
+    if (rStart > now || rEnd < now) continue;
+    result.push({
+      id: r.id,
+      title: r.description,
+      contactName: r.isExternal ? "Collaborazione esterna" : null,
+      value: r.amount,
+      recurringMonths: recurMonths,
+      startDate: rStart.toISOString(),
+      endDate: rEnd.toISOString(),
+      totalContractValue: r.amount * recurMonths,
+      wonAt: r.date ? new Date(toMs(r.date)).toISOString() : null,
     });
   }
 
