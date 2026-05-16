@@ -80,6 +80,7 @@ export async function createExpense(data: {
   date: Date | string | number;
   createdBy: string;
 }): Promise<Expense> {
+  const now = new Date().toISOString();
   const doc = await databases.createDocument(
     DB_ID,
     COLLECTIONS.expenses,
@@ -91,6 +92,8 @@ export async function createExpense(data: {
       amount: data.amount,
       date: toIsoDate(data.date),
       createdBy: data.createdBy,
+      createdAt: now,
+      updatedAt: now,
     },
   );
   return normalizeExpense(fromDoc<Expense>(doc));
