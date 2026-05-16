@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ProjectForm } from "@/components/timeline/ProjectForm";
 import { PROJECT_STATUS_CONFIG, PROJECT_STATUS_OPTIONS, PROJECT_PRIORITY_CONFIG } from "@/components/timeline/projectConstants";
 import {
-  Plus, Search, CalendarDays, Users, User, ArrowRight, Flag,
+  Plus, Search, CalendarDays, Users, User, ArrowRight, Flag, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectStatus } from "@/types";
@@ -28,6 +28,7 @@ export default function TimelinePage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<ProjectStatus | "">("");
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  const [contactsMap, setContactsMap] = useState<Record<string, string>>({});
 
   const load = () => {
     fetch("/api/projects")
@@ -46,6 +47,14 @@ export default function TimelinePage() {
         setUsersMap(map);
       })
       .catch(() => {});
+    fetch("/api/contacts")
+      .then((r) => r.json())
+      .then((contacts: Array<{ id: string; name: string }>) => {
+        const map: Record<string, string> = {};
+        for (const c of contacts) map[c.id] = c.name;
+        setContactsMap(map);
+      })
+      .catch(() => {});
   }, []);
 
   const filtered = useMemo(() => projects.filter((p) => {
@@ -54,6 +63,7 @@ export default function TimelinePage() {
       const q = search.toLowerCase();
       return p.title.toLowerCase().includes(q) ||
         p.assignedTo.some((uid) => (usersMap[uid] ?? uid).toLowerCase().includes(q)) ||
+        (p.contactId && (contactsMap[p.contactId] ?? "").toLowerCase().includes(q)) ||
         p.description?.toLowerCase().includes(q);
     }
     return true;
@@ -180,6 +190,12 @@ export default function TimelinePage() {
                       )}
 
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                        {project.contactId && contactsMap[project.contactId] && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Building2 className="h-3 w-3" />
+                            {contactsMap[project.contactId]}
+                          </span>
+                        )}
                         {project.assignedTo.length > 0 && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Users className="h-3 w-3" />
