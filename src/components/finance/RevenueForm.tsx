@@ -27,12 +27,13 @@ function toDateInput(val: Date | null | undefined): string {
 export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueFormProps) {
   const isEdit = !!initialData;
   const [description, setDescription] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
-  const [isRecurring, setIsRecurring] = useState(false);
   const [recurringMonths, setRecurringMonths] = useState("12");
   const [startDate, setStartDate] = useState("");
   const [collectedBy, setCollectedBy] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
   const [isExternal, setIsExternal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,21 +42,23 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
     if (!open) return;
     if (isEdit && initialData) {
       setDescription(initialData.description);
+      setIsRecurring(initialData.isRecurring);
       setAmount((initialData.amount / 100).toFixed(2));
       setDate(toDateInput(initialData.date));
-      setIsRecurring(initialData.isRecurring);
       setRecurringMonths(String(initialData.recurringMonths ?? 12));
       setStartDate(toDateInput(initialData.startDate));
       setCollectedBy(initialData.collectedBy ?? []);
+      setNotes(initialData.notes ?? "");
       setIsExternal(initialData.isExternal);
     } else {
       setDescription("");
+      setIsRecurring(false);
       setAmount("");
       setDate(new Date().toISOString().slice(0, 10));
-      setIsRecurring(false);
       setRecurringMonths("12");
       setStartDate("");
       setCollectedBy([]);
+      setNotes("");
       setIsExternal(false);
     }
     setErrors({});
@@ -84,6 +87,7 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
         recurringMonths: isRecurring ? Number(recurringMonths || 12) : null,
         startDate: isRecurring ? (startDate || date) : null,
         collectedBy,
+        notes: notes.trim() || null,
         isExternal,
       };
       const res = isEdit
@@ -113,28 +117,18 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
             {errors.description && <p className="text-xs text-destructive">{errors.description}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Importo (€) *</Label>
-              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
-              {errors.amount && <p className="text-xs text-destructive">{errors.amount}</p>}
+          <div className="space-y-2">
+            <Label>Tipo incasso *</Label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="tipo" className="accent-primary" checked={!isRecurring} onChange={() => setIsRecurring(false)} />
+                Una tantum
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="tipo" className="accent-primary" checked={isRecurring} onChange={() => setIsRecurring(true)} />
+                Ricorrente
+              </label>
             </div>
-            <div className="space-y-2">
-              <Label>Data *</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox checked={isRecurring} onCheckedChange={(v) => setIsRecurring(!!v)} />
-              Ricorrente
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox checked={isExternal} onCheckedChange={(v) => setIsExternal(!!v)} />
-              Collaborazione esterna
-            </label>
           </div>
 
           {isRecurring && (
@@ -150,13 +144,45 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
             </div>
           )}
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Valore (€) *</Label>
+              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              {errors.amount && <p className="text-xs text-destructive">{errors.amount}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Data incasso *</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              {errors.date && <p className="text-xs text-destructive">{errors.date}</p>}
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label>Incassato da</Label>
+            <Label>Chi ha incassato</Label>
             <UserMultiSelect
               value={collectedBy}
               onChange={setCollectedBy}
               placeholder="Seleziona chi ha incassato"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Note</Label>
+            <Textarea rows={2} placeholder="Note aggiuntive..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Collaborazione esterna</Label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="esterno" className="accent-primary" checked={!isExternal} onChange={() => setIsExternal(false)} />
+                No
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="esterno" className="accent-primary" checked={isExternal} onChange={() => setIsExternal(true)} />
+                Sì
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t">

@@ -37,6 +37,7 @@ function fromDoc(doc: Models.Document): Revenue {
     startDate: rest.startDate ? new Date(rest.startDate) : null,
     collectedBy: parseCollectedBy(rest.collectedBy),
     isExternal: rest.isExternal ?? false,
+    notes: rest.notes ?? null,
     dealId: rest.dealId ?? null,
     opportunityId: rest.opportunityId ?? null,
     deleteReason: rest.deleteReason ?? null,
@@ -77,6 +78,7 @@ export async function createRevenue(data: {
   startDate?: Date | string | null;
   collectedBy?: string[] | null;
   isExternal?: boolean;
+  notes?: string | null;
   dealId?: string | null;
   opportunityId?: string | null;
 }): Promise<Revenue> {
@@ -90,6 +92,7 @@ export async function createRevenue(data: {
     startDate: toIso(data.startDate) ?? null,
     collectedBy: serializeCollectedBy(data.collectedBy),
     isExternal: data.isExternal ?? false,
+    notes: data.notes ?? null,
     dealId: data.dealId ?? null,
     opportunityId: data.opportunityId ?? null,
     createdAt: now,

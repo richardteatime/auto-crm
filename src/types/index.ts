@@ -183,6 +183,7 @@ export interface Revenue {
   startDate: Date | null;
   collectedBy: string[];
   isExternal: boolean;
+  notes: string | null;
   dealId: string | null;
   opportunityId: string | null;
   deleteReason: string | null;
