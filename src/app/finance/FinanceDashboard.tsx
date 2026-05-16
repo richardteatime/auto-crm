@@ -378,57 +378,56 @@ export function FinanceDashboard() {
             Nessun incasso registrato. Clicca "Aggiungi incasso" per registrare il primo.
           </div>
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="space-y-2">
             {revenues.map((r) => (
               <div
                 key={r.id}
-                className={`flex items-center gap-4 rounded-xl border bg-card px-6 py-5 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-green-500/30" : "border-border"}`}
+                className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-green-500/30" : "border-border"}`}
               >
-                <div className={`shrink-0 p-3 rounded-xl ${r.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
+                <div className={`shrink-0 p-2 rounded-lg ${r.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
                   {r.isRecurring
-                    ? <RefreshCw className="h-6 w-6 text-blue-500" />
-                    : <Banknote className="h-6 w-6 text-green-500" />
+                    ? <RefreshCw className="h-4 w-4 text-blue-500" />
+                    : <Banknote className="h-4 w-4 text-green-500" />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-base">{r.description}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <Badge variant="outline" className={`text-xs ${r.isRecurring ? "text-blue-500 border-blue-500/30" : "text-green-500 border-green-500/30"}`}>
+                  <p className="font-medium text-sm">{r.description}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <Badge variant="outline" className={`text-[10px] ${r.isRecurring ? "text-blue-500 border-blue-500/30" : "text-green-500 border-green-500/30"}`}>
                       {r.isRecurring ? `Ricorrente${r.recurringMonths ? ` ×${r.recurringMonths}m` : ""}` : "Una tantum"}
                     </Badge>
                     {r.isExternal && (
-                      <Badge variant="outline" className="text-xs text-purple-500 border-purple-500/30">
+                      <Badge variant="outline" className="text-[10px] text-purple-500 border-purple-500/30">
                         Esterno
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">{formatDate(r.date)}</span>
+                    <span className="text-[10px] text-muted-foreground">{formatDate(r.date)}</span>
+                    {r.collectedBy.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        · {r.collectedBy.map((uid) => usersMap[uid] ?? uid).join(", ")}
+                      </span>
+                    )}
                   </div>
-                  {r.collectedBy.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Incassato da: {r.collectedBy.map((uid) => usersMap[uid] ?? uid).join(", ")}
-                    </p>
-                  )}
                 </div>
-                <div className="shrink-0 text-right min-w-[120px]">
-                  <p className="text-xs text-muted-foreground">Importo</p>
-                  <p className="text-xl font-bold text-green-500">+{formatCurrency(r.amount)}</p>
+                <div className="shrink-0 text-right min-w-[100px]">
+                  <p className="text-sm font-bold text-green-500">+{formatCurrency(r.amount)}</p>
                 </div>
-                <div className="shrink-0 flex items-center gap-1">
+                <div className="shrink-0 flex items-center gap-0.5">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 cursor-pointer"
+                    className="h-7 w-7 cursor-pointer"
                     onClick={() => { setEditingRevenue(r); setShowRevenueForm(true); }}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-destructive"
+                    className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-destructive"
                     onClick={() => setDeletingRevenue(r)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
