@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ProjectForm } from "@/components/timeline/ProjectForm";
 import { PROJECT_STATUS_CONFIG, PROJECT_STATUS_OPTIONS, PROJECT_PRIORITY_CONFIG } from "@/components/timeline/projectConstants";
 import {
-  Plus, Search, CalendarDays, User, ArrowRight, Flag,
+  Plus, Search, CalendarDays, Users, User, ArrowRight, Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectStatus } from "@/types";
@@ -53,11 +53,11 @@ export default function TimelinePage() {
     if (search) {
       const q = search.toLowerCase();
       return p.title.toLowerCase().includes(q) ||
-        p.assignedTo?.toLowerCase().includes(q) ||
+        p.assignedTo.some((uid) => (usersMap[uid] ?? uid).toLowerCase().includes(q)) ||
         p.description?.toLowerCase().includes(q);
     }
     return true;
-  }), [projects, filterStatus, search]);
+  }), [projects, filterStatus, search, usersMap]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { "": projects.length };
@@ -180,10 +180,10 @@ export default function TimelinePage() {
                       )}
 
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                        {project.assignedTo && (
+                        {project.assignedTo.length > 0 && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <User className="h-3 w-3" />
-                            {usersMap[project.assignedTo] ?? project.assignedTo}
+                            <Users className="h-3 w-3" />
+                            {project.assignedTo.map((uid) => usersMap[uid] ?? uid).join(", ")}
                           </span>
                         )}
                         {project.startDate && (

@@ -3,14 +3,39 @@ import { ID, type Models } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { Project, ProjectLog, ProjectStatus } from "@/types";
 
-function fromDoc<T>(doc: Models.Document): T {
+function parseAssignedTo(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter((v): v is string => typeof v === "string");
+      // legacy single string
+      return [value];
+    } catch {
+      return [value];
+    }
+  }
+  return [];
+}
+
+function serializeAssignedTo(value: string[] | undefined | null): string | null {
+  if (!value || value.length === 0) return null;
+  return JSON.stringify(value);
+}
+
+function fromDoc<T extends Project | ProjectLog>(doc: Models.Document): T {
   const { $id, $createdAt, $updatedAt, ...rest } = doc;
-  return {
+  const base = {
     id: $id,
     createdAt: new Date($createdAt),
     updatedAt: new Date($updatedAt),
     ...rest,
-  } as T;
+  } as Record<string, unknown>;
+  if ("assignedTo" in base) {
+    base.assignedTo = parseAssignedTo(base.assignedTo);
+  }
+  return base as T;
 }
 
 function toIso(d: Date | string | null | undefined): string | undefined {
@@ -45,7 +70,7 @@ export async function createProject(data: {
   description?: string | null;
   status?: ProjectStatus;
   priority?: string | null;
-  assignedTo?: string | null;
+  assignedTo?: string[] | null;
   startDate?: Date | string | null;
   dueDate?: Date | string | null;
   notes?: string | null;
@@ -58,7 +83,7 @@ export async function createProject(data: {
     description: data.description ?? null,
     status: data.status ?? "aperto",
     priority: data.priority ?? "media",
-    assignedTo: data.assignedTo ?? null,
+    assignedTo: serializeAssignedTo(data.assignedTo),
     startDate: toIso(data.startDate) ?? null,
     dueDate: toIso(data.dueDate) ?? null,
     deliveredAt: null,
@@ -78,7 +103,7 @@ export async function updateProject(
     description: string | null;
     status: ProjectStatus;
     priority: string | null;
-    assignedTo: string | null;
+    assignedTo: string[] | null;
     startDate: Date | string | null;
     dueDate: Date | string | null;
     deliveredAt: Date | string | null;
@@ -91,6 +116,7 @@ export async function updateProject(
   if (data.startDate !== undefined) payload.startDate = toIso(data.startDate) ?? null;
   if (data.dueDate !== undefined) payload.dueDate = toIso(data.dueDate) ?? null;
   if (data.deliveredAt !== undefined) payload.deliveredAt = toIso(data.deliveredAt) ?? null;
+  if (data.assignedTo !== undefined) payload.assignedTo = serializeAssignedTo(data.assignedTo);
   if (data.status === "consegnato" && !data.deliveredAt) {
     payload.deliveredAt = new Date().toISOString();
   }

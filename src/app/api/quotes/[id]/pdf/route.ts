@@ -159,6 +159,8 @@ export async function GET(
     company.iban ? `<p>IBAN: ${esc(company.iban)}</p>` : "",
   ].filter(Boolean).join("");
 
+  const vociDettaglio = "";
+
   const html = `<!DOCTYPE html>
 <html lang="it">
 <head>

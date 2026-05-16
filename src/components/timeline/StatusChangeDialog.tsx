@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { PROJECT_STATUS_OPTIONS, PROJECT_STATUS_CONFIG } from "./projectConstants";
+import { UserMultiSelect } from "./UserMultiSelect";
 import type { ProjectStatus } from "@/types";
 
 interface StatusChangeDialogProps {
@@ -15,24 +16,19 @@ interface StatusChangeDialogProps {
   onClose: () => void;
   projectId: string;
   currentStatus: ProjectStatus;
-  currentAssignedTo?: string | null;
+  currentAssignedTo?: string[];
 }
 
 export function StatusChangeDialog({ open, onClose, projectId, currentStatus, currentAssignedTo }: StatusChangeDialogProps) {
   const [toStatus, setToStatus] = useState<ProjectStatus>(currentStatus);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [assignedTo, setAssignedTo] = useState<string>(currentAssignedTo ?? "__none__");
-  const [teamUsers, setTeamUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [assignedTo, setAssignedTo] = useState<string[]>(currentAssignedTo ?? []);
 
   useEffect(() => {
     if (!open) return;
     setToStatus(currentStatus);
-    setAssignedTo(currentAssignedTo ?? "__none__");
-    fetch("/api/users")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setTeamUsers(data); })
-      .catch(() => {});
+    setAssignedTo(currentAssignedTo ?? []);
   }, [open, currentStatus, currentAssignedTo]);
 
   const handleSave = async () => {
@@ -42,9 +38,7 @@ export function StatusChangeDialog({ open, onClose, projectId, currentStatus, cu
     }
     setSaving(true);
     try {
-      const body: Record<string, unknown> = { toStatus, notes };
-      if (assignedTo !== "__none__") body.assignedTo = assignedTo;
-      else body.assignedTo = null;
+      const body: Record<string, unknown> = { toStatus, notes, assignedTo };
 
       const res = await fetch(`/api/projects/${projectId}/logs`, {
         method: "POST",
@@ -88,19 +82,11 @@ export function StatusChangeDialog({ open, onClose, projectId, currentStatus, cu
 
           <div className="space-y-2">
             <Label>Assegnato a</Label>
-            <Select value={assignedTo} onValueChange={setAssignedTo}>
-              <SelectTrigger className="cursor-pointer">
-                <SelectValue placeholder="Seleziona membro del team" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Nessuno</SelectItem>
-                {teamUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name || u.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <UserMultiSelect
+              value={assignedTo}
+              onChange={setAssignedTo}
+              placeholder="Seleziona membri del team"
+            />
           </div>
 
           <div className="space-y-2">

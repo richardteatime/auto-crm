@@ -10,7 +10,7 @@ import { StatusChangeDialog } from "./StatusChangeDialog";
 import { PROJECT_STATUS_CONFIG, PROJECT_PRIORITY_CONFIG } from "./projectConstants";
 import {
   ArrowLeft, Pencil, Trash2, RefreshCw, CalendarDays,
-  User, Flag, FileText, Clock, CheckCircle2, AlertCircle,
+  User, Users, Flag, FileText, Clock, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Project, ProjectLog, ProjectStatus } from "@/types";
@@ -134,10 +134,20 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
             <CardTitle className="text-base">Dettagli</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {project.assignedTo && (
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span>{usersMap[project.assignedTo] ?? project.assignedTo}</span>
+            {project.assignedTo.length > 0 && (
+              <div className="flex items-start gap-2">
+                <Users className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="flex flex-wrap gap-1">
+                  {project.assignedTo.map((uid) => (
+                    <span
+                      key={uid}
+                      className="inline-flex items-center gap-1 text-xs bg-muted rounded-full px-2 py-0.5"
+                    >
+                      <User className="h-3 w-3 text-muted-foreground" />
+                      {usersMap[uid] ?? uid}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
             <div className="flex items-center gap-2">

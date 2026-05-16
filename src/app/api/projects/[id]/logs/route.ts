@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     const project = await getProject(id);
     if (!project) return NextResponse.json({ error: "Progetto non trovato" }, { status: 404 });
 
-    const newAssignedTo: string | null = body.assignedTo ?? null;
+    const newAssignedTo: string[] = Array.isArray(body.assignedTo) ? body.assignedTo : [];
     const projectUpdate: Parameters<typeof updateProject>[1] = {
       status: body.toStatus as ProjectStatus,
       deliveredAt:
@@ -52,16 +52,19 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       updateProject(id, projectUpdate),
     ]);
 
-    if (newAssignedTo && newAssignedTo !== project.assignedTo) {
-      await notifyAssignment({
-        assignedToUserId: newAssignedTo,
-        fromUserId: auth.user.id,
-        fromUserName: auth.user.name || auth.user.email,
-        type: "project_assigned",
-        title: `Progetto assegnato: ${project.title}`,
-        body: `Assegnato da ${auth.user.name || auth.user.email}`,
-        relatedId: id,
-      });
+    if (body.assignedTo !== undefined) {
+      const newlyAssigned = newAssignedTo.filter((uid) => !project.assignedTo.includes(uid));
+      for (const userId of newlyAssigned) {
+        await notifyAssignment({
+          assignedToUserId: userId,
+          fromUserId: auth.user.id,
+          fromUserName: auth.user.name || auth.user.email,
+          type: "project_assigned",
+          title: `Progetto assegnato: ${project.title}`,
+          body: `Assegnato da ${auth.user.name || auth.user.email}`,
+          relatedId: id,
+        });
+      }
     }
 
     return NextResponse.json(log, { status: 201 });

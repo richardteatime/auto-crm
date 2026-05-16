@@ -24,11 +24,12 @@ export async function POST(request: NextRequest) {
     if (!body.title?.trim()) {
       return NextResponse.json({ error: "title obbligatorio" }, { status: 400 });
     }
-    const project = await createProject(body);
+    const assignedTo: string[] = Array.isArray(body.assignedTo) ? body.assignedTo : [];
+    const project = await createProject({ ...body, assignedTo });
 
-    if (body.assignedTo) {
+    for (const userId of assignedTo) {
       await notifyAssignment({
-        assignedToUserId: body.assignedTo,
+        assignedToUserId: userId,
         fromUserId: auth.user.id,
         fromUserName: auth.user.name || auth.user.email,
         type: "project_assigned",

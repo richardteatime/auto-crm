@@ -23,11 +23,11 @@ export interface AppNotification {
 function fromDoc(doc: Models.Document): AppNotification {
   const { $id, $createdAt, $updatedAt, ...rest } = doc;
   return {
+    ...rest,
     id: $id,
     createdAt: new Date($createdAt),
     updatedAt: new Date($updatedAt),
-    ...rest,
-  } as AppNotification;
+  } as unknown as AppNotification;
 }
 
 export async function listNotifications(userId: string): Promise<AppNotification[]> {

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { PROJECT_STATUS_OPTIONS, PROJECT_STATUS_CONFIG } from "./projectConstants";
+import { UserMultiSelect } from "./UserMultiSelect";
 import type { Project } from "@/types";
 
 const schema = z.object({
@@ -19,7 +20,7 @@ const schema = z.object({
   description: z.string().optional(),
   status: z.enum(["aperto", "in_lavorazione", "bloccato", "in_pausa", "revisione_cto", "consegnato"]),
   priority: z.enum(["bassa", "media", "alta"]),
-  assignedTo: z.string().optional(),
+  assignedTo: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   dueDate: z.string().optional(),
   notes: z.string().optional(),
@@ -44,7 +45,6 @@ interface ProjectFormProps {
 export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
   const isEdit = !!initialData;
   const [contacts, setContacts] = useState<Array<{ id: string; name: string }>>([]);
-  const [teamUsers, setTeamUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -53,7 +53,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
       description: "",
       status: "aperto",
       priority: "media",
-      assignedTo: "",
+      assignedTo: [],
       startDate: "",
       dueDate: "",
       notes: "",
@@ -65,14 +65,13 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
   useEffect(() => {
     if (!open) return;
     fetch("/api/contacts").then((r) => r.json()).then(setContacts).catch(() => {});
-    fetch("/api/users").then((r) => r.json()).then(setTeamUsers).catch(() => {});
     if (isEdit && initialData) {
       reset({
         title: initialData.title,
         description: initialData.description ?? "",
         status: initialData.status,
         priority: initialData.priority,
-        assignedTo: initialData.assignedTo ?? "",
+        assignedTo: initialData.assignedTo ?? [],
         startDate: toDateInput(initialData.startDate),
         dueDate: toDateInput(initialData.dueDate),
         notes: initialData.notes ?? "",
@@ -80,7 +79,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
         dealId: initialData.dealId ?? "",
       });
     } else {
-      reset({ title: "", description: "", status: "aperto", priority: "media", assignedTo: "", startDate: "", dueDate: "", notes: "", contactId: "", dealId: "" });
+      reset({ title: "", description: "", status: "aperto", priority: "media", assignedTo: [], startDate: "", dueDate: "", notes: "", contactId: "", dealId: "" });
     }
   }, [open, isEdit, initialData, reset]);
 
@@ -89,7 +88,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
       const payload = {
         ...data,
         description: data.description || null,
-        assignedTo: data.assignedTo || null,
+        assignedTo: data.assignedTo ?? [],
         startDate: data.startDate || null,
         dueDate: data.dueDate || null,
         notes: data.notes || null,
@@ -110,7 +109,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
   const status = watch("status");
   const priority = watch("priority");
   const contactId = watch("contactId");
-  const assignedTo = watch("assignedTo");
+  const assignedTo = watch("assignedTo") ?? [];
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -163,22 +162,11 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
 
           <div className="space-y-2">
             <Label>Assegnato a</Label>
-            <Select
-              value={assignedTo || "__none__"}
-              onValueChange={(v) => setValue("assignedTo", v === "__none__" ? "" : v)}
-            >
-              <SelectTrigger className="cursor-pointer">
-                <SelectValue placeholder="Seleziona membro del team" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Nessuno</SelectItem>
-                {teamUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name || u.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <UserMultiSelect
+              value={assignedTo}
+              onChange={(v) => setValue("assignedTo", v)}
+              placeholder="Seleziona membri del team"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

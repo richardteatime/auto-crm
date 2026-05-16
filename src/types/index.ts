@@ -153,7 +153,7 @@ export interface Project {
   description: string | null;
   status: ProjectStatus;
   priority: ProjectPriority;
-  assignedTo: string | null;
+  assignedTo: string[];
   startDate: Date | null;
   dueDate: Date | null;
   deliveredAt: Date | null;

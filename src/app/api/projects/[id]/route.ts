@@ -22,27 +22,32 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   try {
     const body = await request.json();
+    const assignedTo: string[] | undefined = body.assignedTo !== undefined
+      ? (Array.isArray(body.assignedTo) ? body.assignedTo : [])
+      : undefined;
 
     // Detect assignedTo changes before updating
-    let previousAssignedTo: string | null = null;
-    if (body.assignedTo !== undefined) {
+    let previousAssignedTo: string[] = [];
+    if (assignedTo !== undefined) {
       const current = await getProject(id);
-      previousAssignedTo = current?.assignedTo ?? null;
+      previousAssignedTo = current?.assignedTo ?? [];
     }
 
-    const project = await updateProject(id, body);
+    const project = await updateProject(id, assignedTo !== undefined ? { ...body, assignedTo } : body);
 
-    const newAssignedTo = body.assignedTo ?? null;
-    if (newAssignedTo && newAssignedTo !== previousAssignedTo) {
-      await notifyAssignment({
-        assignedToUserId: newAssignedTo,
-        fromUserId: auth.user.id,
-        fromUserName: auth.user.name || auth.user.email,
-        type: "project_assigned",
-        title: `Progetto assegnato: ${project.title}`,
-        body: `Assegnato da ${auth.user.name || auth.user.email}`,
-        relatedId: id,
-      });
+    if (assignedTo !== undefined) {
+      const newlyAssigned = assignedTo.filter((uid) => !previousAssignedTo.includes(uid));
+      for (const userId of newlyAssigned) {
+        await notifyAssignment({
+          assignedToUserId: userId,
+          fromUserId: auth.user.id,
+          fromUserName: auth.user.name || auth.user.email,
+          type: "project_assigned",
+          title: `Progetto assegnato: ${project.title}`,
+          body: `Assegnato da ${auth.user.name || auth.user.email}`,
+          relatedId: id,
+        });
+      }
     }
 
     return NextResponse.json(project);
