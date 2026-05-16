@@ -540,80 +540,58 @@ export function FinanceDashboard() {
             <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
               Nessuna spesa nel periodo selezionato.
             </div>
+          ) : filteredExpenses.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
+              Nessuna spesa corrisponde ai filtri.{" "}
+              <button onClick={resetExpFilters} className="underline cursor-pointer">Azzera</button>
+            </div>
           ) : (
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[110px]">Data</TableHead>
-                    <TableHead className="w-[140px]">Tipo</TableHead>
-                    <TableHead className="w-[160px]">Categoria</TableHead>
-                    <TableHead>Descrizione</TableHead>
-                    <TableHead className="text-right w-[140px]">Importo</TableHead>
-                    <TableHead className="w-20" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredExpenses.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-sm">
-                        Nessuna spesa corrisponde ai filtri.
-                        <button onClick={resetExpFilters} className="ml-1 underline cursor-pointer">Azzera</button>
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredExpenses.map((exp) => {
-                    const cfg = EXPENSE_TYPE_CONFIG[exp.type];
-                    const Icon = cfg?.icon ?? Receipt;
-                    return (
-                      <TableRow key={exp.id} className="group">
-                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                          {formatDate(exp.date)}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg?.color ?? ""}`}>
-                            <span className={`p-1 rounded-md ${cfg?.bg ?? ""}`}>
-                              <Icon className="h-3.5 w-3.5" />
-                            </span>
-                            {cfg?.label ?? exp.type}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs font-normal">{exp.category}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{exp.description}</TableCell>
-                        <TableCell className="text-right">
-                          <span className="text-base font-bold text-red-500">-{formatCurrency(exp.amount)}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 cursor-pointer"
-                              onClick={() => { setEditingExpense(exp); setShowExpenseForm(true); }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeletingExpense(exp)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              {isExpFiltered && filteredExpenses.length > 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  {filteredExpenses.length} di {expenses.length} spese
-                </p>
-              )}
+            <div className="space-y-2">
+              {filteredExpenses.map((exp) => {
+                const cfg = EXPENSE_TYPE_CONFIG[exp.type];
+                const Icon = cfg?.icon ?? Receipt;
+                return (
+                  <div
+                    key={exp.id}
+                    className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${cfg?.border ?? "border-border"}`}
+                  >
+                    <div className={`shrink-0 p-2 rounded-lg ${cfg?.bg ?? "bg-muted"}`}>
+                      <Icon className={`h-4 w-4 ${cfg?.color ?? ""}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{exp.description}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <Badge variant="outline" className={`text-[10px] ${cfg?.color ?? ""} ${cfg?.border ?? ""}`}>
+                          {cfg?.label ?? exp.type}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">{exp.category}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{formatDate(exp.date)}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right min-w-[100px]">
+                      <p className="text-sm font-bold text-red-500">-{formatCurrency(exp.amount)}</p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 cursor-pointer"
+                        onClick={() => { setEditingExpense(exp); setShowExpenseForm(true); }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeletingExpense(exp)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
