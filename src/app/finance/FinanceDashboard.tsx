@@ -136,6 +136,10 @@ export function FinanceDashboard() {
   const [deletingRevenue, setDeletingRevenue] = useState<Revenue | null>(null);
   const [revenueDeleteReason, setRevenueDeleteReason] = useState("");
 
+  // Revenue filters
+  const [revSearch, setRevSearch] = useState("");
+  const [revFilterType, setRevFilterType] = useState<"" | "onetime" | "recurring" | "external">("");
+
   // Expense filters
   const [expSearch, setExpSearch] = useState("");
   const [expFilterType, setExpFilterType] = useState("");
@@ -228,6 +232,20 @@ export function FinanceDashboard() {
     if (expFilterCategory && e.category !== expFilterCategory) return false;
     return true;
   }), [expenses, expSearch, expFilterType, expFilterCategory]);
+
+  const filteredRevenues = useMemo(() => revenues.filter((r) => {
+    if (revFilterType === "onetime" && r.isRecurring) return false;
+    if (revFilterType === "recurring" && !r.isRecurring) return false;
+    if (revFilterType === "external" && !r.isExternal) return false;
+    if (revSearch) {
+      const q = revSearch.toLowerCase();
+      return r.description.toLowerCase().includes(q) ||
+        r.collectedBy.some((uid) => (usersMap[uid] ?? uid).toLowerCase().includes(q));
+    }
+    return true;
+  }), [revenues, revSearch, revFilterType, usersMap]);
+  const isRevFiltered = !!(revSearch || revFilterType);
+  const resetRevFilters = () => { setRevSearch(""); setRevFilterType(""); };
 
   const expenseCategories = useMemo(() => [...new Set(expenses.map((e) => e.category))].sort(), [expenses]);
   const isExpFiltered = !!(expSearch || expFilterType || expFilterCategory);
@@ -373,13 +391,50 @@ export function FinanceDashboard() {
           </Button>
         </div>
 
+        {revenues.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca incasso, chi ha incassato..."
+                  value={revSearch}
+                  onChange={(e) => setRevSearch(e.target.value)}
+                  className="pl-9 h-8 text-sm"
+                />
+              </div>
+              {isRevFiltered && (
+                <button onClick={resetRevFilters}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-1">
+                  <X className="h-3.5 w-3.5" /> Azzera
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[{ value: "" as const, label: "Tutti" }, { value: "onetime" as const, label: "Una tantum" }, { value: "recurring" as const, label: "Ricorrente" }, { value: "external" as const, label: "Esterno" }].map(({ value, label }) => (
+                <button key={value} onClick={() => setRevFilterType(value)}
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                    revFilterType === value ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {revenues.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
             Nessun incasso registrato. Clicca "Aggiungi incasso" per registrare il primo.
           </div>
+        ) : filteredRevenues.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
+            Nessun incasso corrisponde ai filtri.{" "}
+            <button onClick={resetRevFilters} className="underline cursor-pointer">Azzera</button>
+          </div>
         ) : (
           <div className="space-y-2">
-            {revenues.map((r) => (
+            {filteredRevenues.map((r) => (
               <div
                 key={r.id}
                 className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-green-500/30" : "border-border"}`}
