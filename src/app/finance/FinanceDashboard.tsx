@@ -437,40 +437,7 @@ export function FinanceDashboard() {
       </div>
 
       {/* Category breakdown */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Spese per Categoria</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {summary && Object.keys(summary.expenseByCategory).length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(summary.expenseByCategory)
-                .sort((a, b) => b[1] - a[1])
-                .map(([cat, amt]) => {
-                  const pct = summary.totalExpenses > 0
-                    ? Math.round((amt / summary.totalExpenses) * 100)
-                    : 0;
-                  return (
-                    <div key={cat} className="rounded-lg border p-3">
-                      <div className="flex justify-between text-sm mb-1.5">
-                        <span className="font-medium">{cat}</span>
-                        <span className="text-muted-foreground">{pct}%</span>
-                      </div>
-                      <p className="text-lg font-bold">{formatCurrency(amt)}</p>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
-                        <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nessuna spesa nel periodo.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Expense Table */}
+      {/* Expenses */}
       <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold">Spese e Investimenti</h2>
