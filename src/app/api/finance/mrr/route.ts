@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
 
   // Add active recurring external revenues
   for (const r of allRevenues) {
+    if (r.deletedAt) continue;
     if (!r.isRecurring) continue;
     const startMs = toMs(r.startDate) || toMs(r.date) || toMs(r.createdAt);
     if (!startMs) continue;

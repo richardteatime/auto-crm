@@ -91,6 +91,7 @@ export async function GET(req: NextRequest) {
 
   // External revenues
   for (const r of allRevenues) {
+    if (r.deletedAt) continue;
     if (!r.isRecurring) {
       const dateMs = toMs(r.date);
       if (dateMs >= periodStart.getTime() && dateMs <= periodEnd.getTime()) {
@@ -152,6 +153,7 @@ export async function GET(req: NextRequest) {
     }
 
     for (const r of allRevenues) {
+      if (r.deletedAt) continue;
       if (!r.isRecurring) {
         const dateMs = toMs(r.date);
         if (dateMs >= mStart.getTime() && dateMs <= mEnd.getTime()) mOneTime += r.amount;

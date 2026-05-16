@@ -33,7 +33,9 @@ import { ExpenseForm } from "@/components/finance/ExpenseForm";
 import { RevenueForm } from "@/components/finance/RevenueForm";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, ArrowRight, Banknote } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import type { FinanceSummary, Expense, Revenue } from "@/types";
 import { ReportDialog } from "@/components/shared/ReportDialog";
@@ -132,6 +134,7 @@ export function FinanceDashboard() {
   const [showRevenueForm, setShowRevenueForm] = useState(false);
   const [editingRevenue, setEditingRevenue] = useState<Revenue | undefined>(undefined);
   const [deletingRevenue, setDeletingRevenue] = useState<Revenue | null>(null);
+  const [revenueDeleteReason, setRevenueDeleteReason] = useState("");
 
   // Expense filters
   const [expSearch, setExpSearch] = useState("");
@@ -193,10 +196,19 @@ export function FinanceDashboard() {
 
   const confirmDeleteRevenue = async () => {
     if (!deletingRevenue) return;
+    if (!revenueDeleteReason.trim()) {
+      toast.error("Inserisci una motivazione");
+      return;
+    }
     try {
-      const res = await fetch(`/api/revenues/${deletingRevenue.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/revenues/${deletingRevenue.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: revenueDeleteReason.trim() }),
+      });
       if (!res.ok) throw new Error();
       toast.success("Incasso eliminato");
+      setRevenueDeleteReason("");
       loadData();
     } catch {
       toast.error("Errore durante l'eliminazione");
@@ -641,15 +653,24 @@ export function FinanceDashboard() {
       />
 
       <Dialog open={!!deletingRevenue} onOpenChange={(v) => !v && setDeletingRevenue(null)}>
-        <DialogContent showCloseButton={false} className="sm:max-w-sm">
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Eliminare l'incasso?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingRevenue?.description}</strong> ({deletingRevenue ? formatCurrency(deletingRevenue.amount) : ""}). Questa azione è irreversibile.
+            Stai per eliminare <strong>{deletingRevenue?.description}</strong> ({deletingRevenue ? formatCurrency(deletingRevenue.amount) : ""}).
           </p>
+          <div className="space-y-2">
+            <Label>Motivazione eliminazione *</Label>
+            <Textarea
+              value={revenueDeleteReason}
+              onChange={(e) => setRevenueDeleteReason(e.target.value)}
+              rows={3}
+              placeholder="Perché stai eliminando questo incasso? Es. errore registrazione, annullamento..."
+            />
+          </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingRevenue(null)}>
+            <Button variant="outline" className="cursor-pointer" onClick={() => { setDeletingRevenue(null); setRevenueDeleteReason(""); }}>
               Annulla
             </Button>
             <Button variant="destructive" className="cursor-pointer" onClick={confirmDeleteRevenue}>

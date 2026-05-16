@@ -185,6 +185,8 @@ export interface Revenue {
   isExternal: boolean;
   dealId: string | null;
   opportunityId: string | null;
+  deleteReason: string | null;
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

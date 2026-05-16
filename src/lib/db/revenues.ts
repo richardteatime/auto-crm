@@ -39,6 +39,8 @@ function fromDoc(doc: Models.Document): Revenue {
     isExternal: rest.isExternal ?? false,
     dealId: rest.dealId ?? null,
     opportunityId: rest.opportunityId ?? null,
+    deleteReason: rest.deleteReason ?? null,
+    deletedAt: rest.deletedAt ? new Date(rest.deletedAt) : null,
   };
 }
 
@@ -48,11 +50,12 @@ function toIso(d: Date | string | null | undefined): string | undefined {
   return new Date(d).toISOString();
 }
 
-export async function listRevenues(): Promise<Revenue[]> {
-  const res = await databases.listDocuments(DB_ID, COLLECTIONS.revenues, [
-    Query.limit(500),
-    Query.orderDesc("$createdAt"),
-  ]);
+export async function listRevenues(includeDeleted = false): Promise<Revenue[]> {
+  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+  if (!includeDeleted) {
+    queries.push(Query.isNull("deletedAt"));
+  }
+  const res = await databases.listDocuments(DB_ID, COLLECTIONS.revenues, queries);
   return res.documents.map((d) => fromDoc(d));
 }
 
@@ -118,6 +121,9 @@ export async function updateRevenue(
   return fromDoc(doc);
 }
 
-export async function deleteRevenue(id: string): Promise<void> {
-  await databases.deleteDocument(DB_ID, COLLECTIONS.revenues, id);
+export async function softDeleteRevenue(id: string, reason: string): Promise<void> {
+  await databases.updateDocument(DB_ID, COLLECTIONS.revenues, id, {
+    deletedAt: new Date().toISOString(),
+    deleteReason: reason,
+  });
 }

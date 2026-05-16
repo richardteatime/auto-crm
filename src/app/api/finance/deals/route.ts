@@ -107,6 +107,7 @@ export async function GET(req: NextRequest) {
 
   // Add one-time external revenues in period
   for (const r of allRevenues) {
+    if (r.deletedAt) continue;
     if (r.isRecurring) continue;
     const dateMs = toMs(r.date);
     if (dateMs >= periodStart.getTime() && dateMs <= periodEnd.getTime()) {
