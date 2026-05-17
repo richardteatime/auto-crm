@@ -9,6 +9,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import itLocale from "@fullcalendar/core/locales/it";
 import type { EventInput, EventDropArg, EventClickArg } from "@fullcalendar/core";
 import type { EventResizeDoneArg } from "@fullcalendar/interaction";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EventForm } from "@/components/calendar/EventForm";
@@ -95,6 +96,13 @@ export default function CalendarPage() {
       setLoading(false);
     }
   }, []);
+
+  // Initial load — datesSet sometimes doesn't fire on first render
+  useEffect(() => {
+    const start = startOfMonth(new Date()).toISOString();
+    const end = endOfMonth(new Date()).toISOString();
+    fetchEvents(start, end);
+  }, [fetchEvents]);
 
   const handleDatesSet = useCallback(
     (arg: { start: Date; end: Date }) => {
