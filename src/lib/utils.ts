@@ -27,3 +27,12 @@ export const VALID_SOURCES = [
   "llamada_fria", "email", "formulario", "evento", "import", "webhook", "otro"
 ] as const;
 export const VALID_ACTIVITY_TYPES = ["call", "email", "meeting", "note", "follow_up"] as const;
+
+/**
+ * Convert a browser-local datetime string (e.g. "2024-05-20T17:00")
+ * to a UTC ISO string (e.g. "2024-05-20T15:00:00.000Z").
+ * Must run in the browser where the user's timezone is known.
+ */
+export function localDateStrToUtcIso(localDateStr: string): string {
+  return new Date(localDateStr).toISOString();
+}

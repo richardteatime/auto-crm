@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn, localDateStrToUtcIso } from "@/lib/utils";
 import { Trash2, Clock, MapPin, Users, FileText, Tag, Eye, Palette } from "lucide-react";
 
 const EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
@@ -169,8 +169,8 @@ export function EventForm({
     onSubmit({
       title: title.trim(),
       description: description.trim() || null,
-      startAt: allDay ? `${startAt}T00:00:00` : startAt,
-      endAt: allDay ? `${endAt}T23:59:59` : endAt,
+      startAt: allDay ? localDateStrToUtcIso(`${startAt}T00:00:00`) : localDateStrToUtcIso(startAt),
+      endAt: allDay ? localDateStrToUtcIso(`${endAt}T23:59:59`) : localDateStrToUtcIso(endAt),
       allDay,
       type,
       assignedTo,
