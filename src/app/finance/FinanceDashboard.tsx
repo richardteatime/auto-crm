@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -296,6 +297,19 @@ export function FinanceDashboard() {
         )}
       </div>
         <ReportDialog section="finance" />
+        <Button
+          size="sm"
+          variant="outline"
+          className="cursor-pointer gap-1"
+          onClick={async () => {
+            await fetch("/api/finance/auth", { method: "DELETE" });
+            router.push("/finance/login");
+            router.refresh();
+          }}
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Esci
+        </Button>
       </div>
 
       {/* KPI Cards */}
