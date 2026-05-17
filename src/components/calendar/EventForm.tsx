@@ -187,15 +187,15 @@ export function EventForm({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl w-full h-[90vh] p-0 flex flex-col">
+      <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 flex flex-col">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-xl">
             {event ? "Modifica evento" : "Nuovo evento"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-2">
-          <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-4">
+          <div className="space-y-8">
             {/* Titolo */}
             <div className="space-y-2">
               <Label htmlFor="evt-title" className="text-sm font-semibold flex items-center gap-1.5">
@@ -356,11 +356,11 @@ export function EventForm({
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Note / Descrizione</Label>
               <Textarea
-                rows={4}
+                rows={6}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Dettagli aggiuntivi sull'evento..."
-                className="resize-none"
+                className="resize-none text-base"
               />
             </div>
 
