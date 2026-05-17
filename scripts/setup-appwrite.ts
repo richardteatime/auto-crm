@@ -223,6 +223,28 @@ async function main() {
     console.log("  Pipeline stages already exist, skipping seed");
   }
 
+  // === CALENDAR EVENTS ===
+  await ensureCollection("calendar_events", "Calendar Events");
+  await addAttr("calendar_events", str("calendar_events", "title", 255, true));
+  await addAttr("calendar_events", text("calendar_events", "description", false));
+  await addAttr("calendar_events", dt("calendar_events", "startAt", true));
+  await addAttr("calendar_events", dt("calendar_events", "endAt", true));
+  await addAttr("calendar_events", bool("calendar_events", "allDay", true, false));
+  await addAttr("calendar_events", enm("calendar_events", "type", ["activity", "meeting", "call", "travel", "out_of_office", "personal", "other"], true, "activity"));
+  await addAttr("calendar_events", str("calendar_events", "assignedTo", 255, false));
+  await addAttr("calendar_events", str("calendar_events", "createdBy", 255, true));
+  await addAttr("calendar_events", str("calendar_events", "contactId", 128, false));
+  await addAttr("calendar_events", str("calendar_events", "dealId", 128, false));
+  await addAttr("calendar_events", str("calendar_events", "projectId", 128, false));
+  await addAttr("calendar_events", str("calendar_events", "location", 500, false));
+  await addAttr("calendar_events", str("calendar_events", "color", 7, false));
+  await addAttr("calendar_events", bool("calendar_events", "isPrivate", true, false));
+  await addAttr("calendar_events", dt("calendar_events", "createdAt", true));
+  await addAttr("calendar_events", dt("calendar_events", "updatedAt", true));
+  await addIndex("calendar_events", "idx_startAt", DatabasesIndexType.Key, ["startAt"]);
+  await addIndex("calendar_events", "idx_endAt", DatabasesIndexType.Key, ["endAt"]);
+  await addIndex("calendar_events", "idx_createdBy", DatabasesIndexType.Key, ["createdBy"]);
+
   // === STORAGE BUCKET ===
   console.log("\n--- Creating Storage Bucket ---\n");
   try {

@@ -94,3 +94,12 @@ export {
   deleteNotification,
 } from "./notifications";
 export type { AppNotification, NotificationType } from "./notifications";
+
+// Calendar
+export {
+  listCalendarEvents,
+  getCalendarEvent,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+} from "./calendar";

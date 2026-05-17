@@ -20,6 +20,7 @@ export const COLLECTIONS = {
   projectLogs: "project_logs",
   notifications: "notifications",
   revenues: "revenues",
+  calendarEvents: "calendar_events",
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -217,3 +217,32 @@ export interface DashboardStats {
   conversionRate: number;
   hotLeads: number;
 }
+
+export type CalendarEventType =
+  | "activity"
+  | "meeting"
+  | "call"
+  | "travel"
+  | "out_of_office"
+  | "personal"
+  | "other";
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  startAt: Date;
+  endAt: Date;
+  allDay: boolean;
+  type: CalendarEventType;
+  assignedTo: string[];
+  createdBy: string;
+  contactId: string | null;
+  dealId: string | null;
+  projectId: string | null;
+  location: string | null;
+  color: string | null;
+  isPrivate: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
