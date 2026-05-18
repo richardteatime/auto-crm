@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import { cookies } from "next/headers";
 import { verifyFinanceToken } from "@/lib/finance-auth";
 
@@ -10,7 +12,7 @@ export default async function FinanceLayout({
   const cookieStore = await cookies();
   const token = cookieStore.get("finance-session")?.value;
   if (!token || !verifyFinanceToken(token)) {
-    redirect("/finance/login");
+    redirect("/finance-login");
   }
   return <>{children}</>;
 }

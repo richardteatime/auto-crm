@@ -303,7 +303,7 @@ export function FinanceDashboard() {
           className="cursor-pointer gap-1"
           onClick={async () => {
             await fetch("/api/finance/auth", { method: "DELETE" });
-            router.push("/finance/login");
+            router.push("/finance-login");
             router.refresh();
           }}
         >
