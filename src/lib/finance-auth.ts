@@ -52,7 +52,6 @@ export function setFinanceCookie(response: NextResponse, userId: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: FINANCE_MAX_AGE,
   });
   return response;
 }

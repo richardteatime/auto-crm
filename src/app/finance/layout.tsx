@@ -1,18 +1,35 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export const dynamic = "force-dynamic";
-import { cookies } from "next/headers";
-import { verifyFinanceToken } from "@/lib/finance-auth";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default async function FinanceLayout({
+export default function FinanceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("finance-session")?.value;
-  if (!token || !verifyFinanceToken(token)) {
-    redirect("/finance-login");
-  }
+  const router = useRouter();
+
+  useEffect(() => {
+    let mounted = true;
+
+    // Verify finance session on mount
+    fetch("/api/finance/auth")
+      .then((res) => {
+        if (!res.ok && mounted) {
+          router.push("/finance-login");
+        }
+      })
+      .catch(() => {
+        if (mounted) router.push("/finance-login");
+      });
+
+    // Clear finance session when leaving /finance/*
+    return () => {
+      mounted = false;
+      fetch("/api/finance/auth", { method: "DELETE", keepalive: true });
+    };
+  }, [router]);
+
   return <>{children}</>;
 }
