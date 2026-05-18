@@ -14,6 +14,7 @@ import type { AppNotification } from "@/lib/db/notifications";
 interface NotificationCounts {
   activities: number;
   timeline: number;
+  calendar: number;
   total: number;
 }
 
@@ -28,7 +29,7 @@ interface NotificationContextValue {
 
 const NotificationContext = createContext<NotificationContextValue>({
   notifications: [],
-  counts: { activities: 0, timeline: 0, total: 0 },
+  counts: { activities: 0, timeline: 0, calendar: 0, total: 0 },
   loading: false,
   refresh: async () => {},
   markRead: async () => {},
@@ -91,12 +92,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const counts = useMemo<NotificationCounts>(() => {
     let activities = 0;
     let timeline = 0;
+    let calendar = 0;
     for (const n of notifications) {
       if (n.read) continue;
       if (n.type === "activity_assigned") activities++;
       if (n.type === "project_assigned") timeline++;
+      if (n.type === "calendar_assigned") calendar++;
     }
-    return { activities, timeline, total: activities + timeline };
+    return { activities, timeline, calendar, total: activities + timeline + calendar };
   }, [notifications]);
 
   return (

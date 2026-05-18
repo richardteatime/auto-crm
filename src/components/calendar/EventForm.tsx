@@ -108,6 +108,17 @@ export function EventForm({
   onSubmit,
   onDelete,
 }: EventFormProps) {
+  // Mark notification as read when opening an existing event
+  useEffect(() => {
+    if (event?.id) {
+      fetch("/api/notifications/read-by-related", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ relatedId: event.id, relatedType: "calendar_event" }),
+      }).catch(() => {});
+    }
+  }, [event?.id]);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startAt, setStartAt] = useState("");

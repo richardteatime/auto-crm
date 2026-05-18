@@ -78,6 +78,16 @@ export function ActivityForm({
   preselectedDealId,
   initialData,
 }: ActivityFormProps) {
+  // Mark notification as read when opening an existing activity
+  useEffect(() => {
+    if (initialData?.id) {
+      fetch("/api/notifications/read-by-related", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ relatedId: initialData.id, relatedType: "activity" }),
+      }).catch(() => {});
+    }
+  }, [initialData?.id]);
   const isEdit = !!initialData;
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);

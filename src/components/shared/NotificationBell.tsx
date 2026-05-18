@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bell, Activity, GitBranch, CheckCheck, X } from "lucide-react";
+import { Bell, Activity, GitBranch, CalendarDays, CheckCheck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "./NotificationContext";
@@ -23,10 +23,13 @@ function NotificationItem({
       ? "/activities"
       : notification.relatedType === "project"
         ? "/timeline"
-        : null;
+        : notification.relatedType === "calendar_event"
+          ? "/calendar"
+          : null;
 
   function handleClick() {
-    if (!notification.read) onRead(notification.id);
+    // Note: notification is NOT marked as read here.
+    // It will be marked as read when the user opens the specific item.
     if (href) router.push(href);
   }
 
@@ -48,6 +51,8 @@ function NotificationItem({
       >
         {notification.type === "activity_assigned" ? (
           <Activity className="h-4 w-4" />
+        ) : notification.type === "calendar_assigned" ? (
+          <CalendarDays className="h-4 w-4" />
         ) : (
           <GitBranch className="h-4 w-4" />
         )}
@@ -168,8 +173,8 @@ export function NotificationBell() {
                   key={n.id}
                   notification={n}
                   onRead={(id) => {
+                    // Only mark as read from the bell if user explicitly wants to dismiss
                     markRead(id);
-                    setOpen(false);
                   }}
                 />
               ))

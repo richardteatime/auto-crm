@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listCalendarEvents, createCalendarEvent } from "@/lib/db/calendar";
 import { requireAuth } from "@/lib/auth";
+import { notifyAssignment } from "@/lib/notify";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -55,6 +56,19 @@ export async function POST(request: NextRequest) {
       color: body.color ?? null,
       isPrivate: body.isPrivate ?? false,
     });
+
+    for (const userId of assignedTo) {
+      await notifyAssignment({
+        assignedToUserId: userId,
+        fromUserId: auth.user.id,
+        fromUserName: auth.user.name || auth.user.email,
+        type: "calendar_assigned",
+        title: `Nuovo evento calendar assegnato: ${body.title}`,
+        body: `Assegnato da ${auth.user.name || auth.user.email}`,
+        relatedId: event.id,
+      });
+    }
+
     return NextResponse.json(event, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

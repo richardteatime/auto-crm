@@ -1,4 +1,4 @@
-import { createNotification, type NotificationType } from "@/lib/db/notifications";
+import { createNotification, type NotificationType, type NotificationRelatedType } from "@/lib/db/notifications";
 
 export async function notifyAssignment({
   assignedToUserId,
@@ -19,7 +19,10 @@ export async function notifyAssignment({
 }) {
   if (!assignedToUserId || assignedToUserId === fromUserId) return;
 
-  const relatedType = type === "activity_assigned" ? "activity" : "project";
+  const relatedType: NotificationRelatedType =
+    type === "activity_assigned" ? "activity" :
+    type === "calendar_assigned" ? "calendar_event" :
+    "project";
 
   try {
     await createNotification({

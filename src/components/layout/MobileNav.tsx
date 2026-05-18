@@ -26,7 +26,7 @@ const navItems = [
   { href: "/deals", label: "Trattative", icon: Briefcase, badge: null },
   { href: "/opportunita", label: "Opportunità", icon: Target, badge: null },
   { href: "/activities", label: "Attività", icon: Activity, badge: "activities" as const },
-  { href: "/calendar", label: "Calendario", icon: CalendarDays, badge: null },
+  { href: "/calendar", label: "Calendario", icon: CalendarDays, badge: "calendar" as const },
   { href: "/timeline", label: "Timeline", icon: GitBranch, badge: "timeline" as const },
   { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: null },
   { href: "/preventivi", label: "Preventivi", icon: FileText, badge: null },

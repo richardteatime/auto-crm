@@ -44,6 +44,18 @@ interface ProjectFormProps {
 
 export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
   const isEdit = !!initialData;
+
+  // Mark notification as read when opening an existing project
+  useEffect(() => {
+    if (initialData?.id) {
+      fetch("/api/notifications/read-by-related", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ relatedId: initialData.id, relatedType: "project" }),
+      }).catch(() => {});
+    }
+  }, [initialData?.id]);
+
   const [contacts, setContacts] = useState<Array<{ id: string; name: string }>>([]);
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormData>({

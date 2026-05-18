@@ -47,6 +47,17 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
   const [showStatus, setShowStatus] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
+  // Mark notification as read when viewing project detail
+  useEffect(() => {
+    if (project?.id) {
+      fetch("/api/notifications/read-by-related", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ relatedId: project.id, relatedType: "project" }),
+      }).catch(() => {});
+    }
+  }, [project?.id]);
+
   useEffect(() => {
     fetch("/api/users")
       .then((r) => r.json())
