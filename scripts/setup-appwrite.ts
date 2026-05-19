@@ -245,6 +245,20 @@ async function main() {
   await addIndex("calendar_events", "idx_endAt", DatabasesIndexType.Key, ["endAt"]);
   await addIndex("calendar_events", "idx_createdBy", DatabasesIndexType.Key, ["createdBy"]);
 
+  // === NOTIFICATIONS ===
+  await ensureCollection("notifications", "Notifications");
+  await addAttr("notifications", str("notifications", "userId", 255, true));
+  await addAttr("notifications", str("notifications", "type", 100, true));
+  await addAttr("notifications", str("notifications", "title", 500, true));
+  await addAttr("notifications", str("notifications", "body", 1000, false));
+  await addAttr("notifications", str("notifications", "relatedId", 255, false));
+  await addAttr("notifications", str("notifications", "relatedType", 50, false));
+  await addAttr("notifications", str("notifications", "fromUserId", 255, false));
+  await addAttr("notifications", str("notifications", "fromUserName", 255, false));
+  await addAttr("notifications", bool("notifications", "read", true, false));
+  await addIndex("notifications", "idx_userId", DatabasesIndexType.Key, ["userId"]);
+  await addIndex("notifications", "idx_read", DatabasesIndexType.Key, ["read"]);
+
   // === STORAGE BUCKET ===
   console.log("\n--- Creating Storage Bucket ---\n");
   try {
