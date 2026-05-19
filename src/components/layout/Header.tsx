@@ -4,7 +4,7 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileNav } from "./MobileNav";
-import { NotificationBell } from "@/components/shared/NotificationBell";
+
 
 export function Header() {
   return (
@@ -21,8 +21,6 @@ export function Header() {
       </Sheet>
 
       <div className="flex-1" />
-
-      <NotificationBell />
     </header>
   );
 }
