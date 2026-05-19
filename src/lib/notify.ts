@@ -17,7 +17,7 @@ export async function notifyAssignment({
   body?: string;
   relatedId: string;
 }) {
-  if (!assignedToUserId || assignedToUserId === fromUserId) return;
+  if (!assignedToUserId) return;
 
   const relatedType: NotificationRelatedType =
     type === "activity_assigned" ? "activity" :
@@ -35,7 +35,7 @@ export async function notifyAssignment({
       fromUserId,
       fromUserName,
     });
-  } catch {
-    // Notifications are non-critical — never fail the main request
+  } catch (err) {
+    console.error("[notify] failed to create notification:", err);
   }
 }

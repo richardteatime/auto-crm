@@ -16,13 +16,14 @@ import {
   GitBranch,
   CalendarDays,
   LogOut,
+  Bell,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, badge: null as null | "activities" | "timeline" },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, badge: null as null | "activities" | "timeline" | "calendar" | "total" },
   { href: "/pipeline", label: "Pipeline", icon: Kanban, badge: null },
   { href: "/contacts", label: "Contatti", icon: Users, badge: null },
   { href: "/deals", label: "Trattative", icon: Briefcase, badge: null },
@@ -30,6 +31,7 @@ const navItems = [
   { href: "/activities", label: "Attività", icon: Activity, badge: "activities" as const },
   { href: "/calendar", label: "Calendario", icon: CalendarDays, badge: "calendar" as const },
   { href: "/timeline", label: "Timeline", icon: GitBranch, badge: "timeline" as const },
+  { href: "/notifications", label: "Notifiche", icon: Bell, badge: "total" as const },
   { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: null },
   { href: "/preventivi", label: "Preventivi", icon: FileText, badge: null },
   { href: "/finance", label: "Finance", icon: TrendingUp, badge: null },
