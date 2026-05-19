@@ -31,10 +31,10 @@ const navItems = [
   { href: "/activities", label: "Attività", icon: Activity, badge: "activities" as const },
   { href: "/calendar", label: "Calendario", icon: CalendarDays, badge: "calendar" as const },
   { href: "/timeline", label: "Timeline", icon: GitBranch, badge: "timeline" as const },
-  { href: "/notifications", label: "Notifiche", icon: Bell, badge: "total" as const },
-  { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: null },
   { href: "/preventivi", label: "Preventivi", icon: FileText, badge: null },
   { href: "/finance", label: "Finance", icon: TrendingUp, badge: null },
+  { href: "/notifications", label: "Notifiche", icon: Bell, badge: "total" as const },
+  { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: null },
   { href: "/settings", label: "Impostazioni", icon: Settings, badge: null },
 ];
 
