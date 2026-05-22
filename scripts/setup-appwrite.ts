@@ -66,8 +66,8 @@ async function main() {
     () => db.createStringAttribute(DB_ID, col, key, size, def !== undefined ? false : req, def);
   const email = (col: string, key: string, req: boolean) =>
     () => db.createEmailAttribute(DB_ID, col, key, req);
-  const text = (col: string, key: string, req: boolean) =>
-    () => db.createStringAttribute(DB_ID, col, key, 16384, req);
+  const text = (col: string, key: string, req: boolean, size = 16384) =>
+    () => db.createStringAttribute(DB_ID, col, key, size, req);
   const int = (col: string, key: string, req: boolean, def?: number, min?: number, max?: number) =>
     () => db.createIntegerAttribute(DB_ID, col, key, def !== undefined ? false : req, min, max, def);
   const bool = (col: string, key: string, req: boolean, def?: boolean) =>
@@ -192,8 +192,8 @@ async function main() {
   await addAttr("quotes", str("quotes", "dealId", 128, true));
   await addAttr("quotes", str("quotes", "number", 64, true));
   await addAttr("quotes", str("quotes", "title", 255, true));
-  await addAttr("quotes", text("quotes", "items", true));
-  await addAttr("quotes", text("quotes", "notes", false));
+  await addAttr("quotes", text("quotes", "items", true, 100000));
+  await addAttr("quotes", text("quotes", "notes", false, 100000));
   await addAttr("quotes", enm("quotes", "status", ["bozza", "inviato", "accettato", "rifiutato"], true, "bozza"));
   await addAttr("quotes", int("quotes", "vatRate", true, 22));
   await addAttr("quotes", dt("quotes", "validUntil", false));
