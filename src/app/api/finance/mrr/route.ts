@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
   for (const d of allDeals) {
     if (!wonStageIds.has(d.stageId)) continue;
-    if (!d.isRecurring) continue;
+    if (d.billingType === "una_tantum") continue;
 
     const startMs =
       toMs(d.recurringStartDate as Date | number | null) ||
@@ -55,15 +55,16 @@ export async function GET(request: NextRequest) {
     // Only currently active
     if (dStart > now || dEnd < now) continue;
 
+    const monthlyValue = d.billingType === "annuale" ? d.value / 12 : d.value;
     result.push({
       id: d.id,
       title: d.title,
       contactName: (d as DealWithContact).contactName ?? null,
-      value: d.value,
+      value: monthlyValue,
       recurringMonths: recurMonths,
       startDate: dStart.toISOString(),
       endDate: dEnd.toISOString(),
-      totalContractValue: d.value * recurMonths,
+      totalContractValue: monthlyValue * recurMonths,
       wonAt: d.wonAt ? new Date(toMs(d.wonAt as Date | number | null)).toISOString() : null,
     });
   }
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
   // Add active recurring external revenues
   for (const r of allRevenues) {
     if (r.deletedAt) continue;
-    if (!r.isRecurring) continue;
+    if (r.billingType === "una_tantum") continue;
     const startMs = toMs(r.startDate) || toMs(r.date) || toMs(r.createdAt);
     if (!startMs) continue;
     const rStart = new Date(startMs);
@@ -79,15 +80,16 @@ export async function GET(request: NextRequest) {
     const rEnd = new Date(rStart);
     rEnd.setMonth(rEnd.getMonth() + recurMonths);
     if (rStart > now || rEnd < now) continue;
+    const monthlyValue = r.billingType === "annuale" ? r.amount / 12 : r.amount;
     result.push({
       id: r.id,
       title: r.description,
       contactName: r.isExternal ? "Collaborazione esterna" : null,
-      value: r.amount,
+      value: monthlyValue,
       recurringMonths: recurMonths,
       startDate: rStart.toISOString(),
       endDate: rEnd.toISOString(),
-      totalContractValue: r.amount * recurMonths,
+      totalContractValue: monthlyValue * recurMonths,
       wonAt: r.date ? new Date(toMs(r.date)).toISOString() : null,
     });
   }

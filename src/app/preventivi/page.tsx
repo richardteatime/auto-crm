@@ -57,12 +57,12 @@ interface QuoteRow {
 
 function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
   try {
-    return (JSON.parse(itemsJson) as { id: string; description: string; quantity: number; unitPrice: number; billingType?: "one_time" | "recurring" }[]).map((i) => ({
+    return (JSON.parse(itemsJson) as { id: string; description: string; quantity: number; unitPrice: number; billingType?: "una_tantum" | "mensile" | "annuale" }[]).map((i) => ({
       id: i.id,
       description: i.description,
       quantity: i.quantity,
       unitPrice: i.unitPrice / 100,
-      billingType: i.billingType ?? "one_time",
+      billingType: i.billingType ?? "una_tantum",
     }));
   } catch {
     return [];

@@ -28,7 +28,7 @@ interface DbQuoteItem {
   description: string;
   quantity: number;
   unitPrice: number; // cents
-  billingType?: "one_time" | "recurring";
+  billingType?: "una_tantum" | "mensile" | "annuale";
 }
 
 interface QuoteRow {
@@ -70,7 +70,7 @@ function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
       description: i.description,
       quantity: i.quantity,
       unitPrice: i.unitPrice / 100,
-      billingType: i.billingType ?? "one_time",
+      billingType: i.billingType ?? "una_tantum",
     }));
   } catch {
     return [];

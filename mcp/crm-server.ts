@@ -414,7 +414,7 @@ async function handleTool(
           notes: (args.notes as string) || null,
           expectedClose: null,
           attachments: null,
-          isRecurring: false,
+          billingType: "una_tantum",
           recurringMonths: null,
           recurringStartDate: null,
           wonAt: wonAt ?? null,

@@ -16,7 +16,7 @@ interface RevenueDeal {
   title: string;
   contactName: string | null;
   value: number;
-  isRecurring: boolean;
+  billingType: import("@/types").BillingType;
   recurringMonths: number | null;
   revenueContribution: number;
   overlapMonths: number | null;
@@ -45,8 +45,8 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
       .finally(() => setLoading(false));
   }, [open, start, end]);
 
-  const totalOneTime = deals.filter((d) => !d.isRecurring).reduce((s, d) => s + d.revenueContribution, 0);
-  const totalRecurring = deals.filter((d) => d.isRecurring).reduce((s, d) => s + d.revenueContribution, 0);
+  const totalOneTime = deals.filter((d) => d.billingType === "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
+  const totalRecurring = deals.filter((d) => d.billingType !== "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -105,10 +105,10 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
                   className="flex items-center gap-4 rounded-xl border bg-card px-4 py-3 hover:bg-muted/30 transition-colors"
                 >
                   {/* Type icon */}
-                  <div className={`shrink-0 p-2 rounded-lg ${d.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
-                    {d.isRecurring
-                      ? <RefreshCw className="h-4 w-4 text-blue-500" />
-                      : <Zap className="h-4 w-4 text-green-600" />
+                  <div className={`shrink-0 p-2 rounded-lg ${d.billingType === "una_tantum" ? "bg-green-500/10" : d.billingType === "annuale" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
+                    {d.billingType === "una_tantum"
+                      ? <Zap className="h-4 w-4 text-green-600" />
+                      : <RefreshCw className="h-4 w-4 text-blue-500" />
                     }
                   </div>
 
@@ -122,16 +122,16 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
 
                   {/* Type badge */}
                   <div className="shrink-0 hidden sm:block">
-                    {d.isRecurring ? (
-                      <Badge variant="outline" className="text-blue-500 border-blue-500/40 text-xs whitespace-nowrap">
-                        Ricorrente {d.recurringMonths ? `×${d.recurringMonths}m` : ""}
+                    {d.billingType === "una_tantum" ? (
+                      <Badge variant="outline" className="text-green-600 border-green-600/40 text-xs">
+                        Una Tantum
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className={`text-xs whitespace-nowrap ${d.billingType === "annuale" ? "text-emerald-500 border-emerald-500/40" : "text-blue-500 border-blue-500/40"}`}>
+                        {d.billingType === "annuale" ? "Ricorrente/anno" : "Ricorrente/mese"} {d.recurringMonths ? `×${d.recurringMonths}m` : ""}
                         {d.overlapMonths && d.overlapMonths < (d.recurringMonths ?? 12)
                           ? ` · ${d.overlapMonths}m nel periodo`
                           : ""}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-green-600 border-green-600/40 text-xs">
-                        Una Tantum
                       </Badge>
                     )}
                   </div>
@@ -145,7 +145,7 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
                   </div>
 
                   {/* Value/month (recurring only) */}
-                  {d.isRecurring && (
+                  {d.billingType !== "una_tantum" && (
                     <div className="shrink-0 text-right hidden lg:block">
                       <p className="text-xs text-muted-foreground">€/mese</p>
                       <p className="text-sm font-medium text-blue-500">{formatCurrency(d.value)}</p>

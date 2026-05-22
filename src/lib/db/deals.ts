@@ -110,7 +110,7 @@ export async function createDeal(data: {
   probability?: number;
   notes?: string | null;
   attachments?: string | null;
-  isRecurring?: boolean;
+  billingType?: import("@/types").BillingType;
   recurringMonths?: number | null;
   isPaid?: boolean;
 }): Promise<DealWithContact> {
@@ -121,9 +121,9 @@ export async function createDeal(data: {
   const wonAt =
     stage?.isWon ? new Date().toISOString() : undefined;
 
-  const isRecurring = data.isRecurring ?? false;
+  const billingType = data.billingType ?? "una_tantum";
   const recurringStartDate =
-    isRecurring ? new Date().toISOString() : undefined;
+    billingType !== "una_tantum" ? new Date().toISOString() : undefined;
 
   const now = new Date().toISOString();
   const payload: Record<string, unknown> = {
@@ -135,7 +135,7 @@ export async function createDeal(data: {
     probability: stage?.isWon ? 100 : (data.probability ?? 0),
     notes: data.notes ?? null,
     attachments: data.attachments ?? null,
-    isRecurring,
+    billingType,
     recurringMonths: data.recurringMonths ?? null,
     recurringStartDate,
     wonAt,
@@ -172,7 +172,7 @@ export async function updateDeal(
     probability: number;
     notes: string | null;
     attachments: string | null;
-    isRecurring: boolean;
+    billingType: import("@/types").BillingType;
     recurringMonths: number | null;
     isPaid: boolean;
   }>,
@@ -203,8 +203,8 @@ export async function updateDeal(
     }
   }
 
-  // If isRecurring turned on and no recurringStartDate, set it
-  if (data.isRecurring && !existing?.recurringStartDate) {
+  // If billingType changed to recurring and no recurringStartDate, set it
+  if (data.billingType && data.billingType !== "una_tantum" && !existing?.recurringStartDate) {
     payload.recurringStartDate = new Date().toISOString();
   }
 

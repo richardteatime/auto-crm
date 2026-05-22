@@ -119,7 +119,7 @@ async function main() {
   await addAttr("deals", int("deals", "probability", true, 0, 0, 100));
   await addAttr("deals", text("deals", "notes", false));
   await addAttr("deals", text("deals", "attachments", false));
-  await addAttr("deals", bool("deals", "isRecurring", true, false));
+  await addAttr("deals", enm("deals", "billingType", ["una_tantum", "mensile", "annuale"], false, "una_tantum"));
   await addAttr("deals", int("deals", "recurringMonths", false, 12));
   await addAttr("deals", dt("deals", "recurringStartDate", false));
   await addAttr("deals", dt("deals", "wonAt", false));

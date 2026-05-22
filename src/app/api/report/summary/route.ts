@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       totalValue: rows.reduce((s, d) => s + d.value, 0),
       wonCount: wonRows.length,
       wonValue: wonRows.reduce((s, d) => s + d.value, 0),
-      recurring: rows.filter((d) => d.isRecurring).length,
+      recurring: rows.filter((d) => d.billingType !== "una_tantum").length,
     });
   }
 
@@ -129,14 +129,15 @@ export async function GET(request: NextRequest) {
         getTs(d.createdAt);
       if (!startMs) continue;
 
-      if (d.isRecurring && d.recurringMonths) {
+      if (d.billingType !== "una_tantum" && d.recurringMonths) {
         const endMs = startMs + d.recurringMonths * 30 * 86400000;
         if (endMs > fromMs && startMs < maxMs) {
           const months =
             Math.max(0, Math.min(endMs, maxMs) - Math.max(startMs, fromMs)) /
             (30 * 86400000);
-          revenue += Math.round(d.value * months);
-          if (startMs <= now && endMs >= now) mrr += d.value;
+          const monthlyValue = d.billingType === "annuale" ? d.value / 12 : d.value;
+          revenue += Math.round(monthlyValue * months);
+          if (startMs <= now && endMs >= now) mrr += monthlyValue;
         }
       } else {
         const wonTs = getTs(d.wonAt as Date | number | null);

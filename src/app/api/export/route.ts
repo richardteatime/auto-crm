@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
         const stage = stages.find((s) => s.id === d.stageId);
         return [
           d.title, d.contactName || d.contact?.name || "", formatCurrency(d.value),
-          d.isRecurring ? "Ricorrente" : "Una Tantum",
+          d.billingType === "una_tantum" ? "Una Tantum" : d.billingType === "mensile" ? "Ricorrente/mese" : "Ricorrente/anno",
           d.recurringMonths ? String(d.recurringMonths) : "",
           stage?.name || "", `${d.probability}%`,
           formatDate(d.wonAt as Date | null),
@@ -190,14 +190,15 @@ export async function GET(request: NextRequest) {
         getTs(d.createdAt);
       if (!startMs) continue;
 
-      if (d.isRecurring && d.recurringMonths) {
+      if (d.billingType !== "una_tantum" && d.recurringMonths) {
         const endMs = startMs + d.recurringMonths * 30 * 86400000;
         if (endMs > fromMs && startMs < effectiveMax) {
           const months =
             Math.max(0, Math.min(endMs, effectiveMax) - Math.max(startMs, fromMs)) /
             (30 * 86400000);
-          revenue += Math.round(d.value * months);
-          if (startMs <= now && endMs >= now) mrr += d.value;
+          const monthlyValue = d.billingType === "annuale" ? d.value / 12 : d.value;
+          revenue += Math.round(monthlyValue * months);
+          if (startMs <= now && endMs >= now) mrr += monthlyValue;
         }
       } else {
         const wonTs = getTs(d.wonAt as Date | number | null);

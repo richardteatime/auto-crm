@@ -32,7 +32,7 @@ function fromDoc(doc: Models.Document): Revenue {
     description: rest.description ?? "",
     amount: rest.amount ?? 0,
     date: rest.date ? new Date(rest.date) : new Date(),
-    isRecurring: rest.isRecurring ?? false,
+    billingType: rest.billingType ?? "una_tantum",
     recurringMonths: rest.recurringMonths ?? null,
     startDate: rest.startDate ? new Date(rest.startDate) : null,
     collectedBy: parseCollectedBy(rest.collectedBy),
@@ -73,7 +73,7 @@ export async function createRevenue(data: {
   description: string;
   amount: number;
   date: Date | string;
-  isRecurring?: boolean;
+  billingType?: import("@/types").BillingType;
   recurringMonths?: number | null;
   startDate?: Date | string | null;
   collectedBy?: string[] | null;
@@ -87,7 +87,7 @@ export async function createRevenue(data: {
     description: data.description,
     amount: data.amount,
     date: toIso(data.date) ?? now,
-    isRecurring: data.isRecurring ?? false,
+    billingType: data.billingType ?? "una_tantum",
     recurringMonths: data.recurringMonths ?? null,
     startDate: toIso(data.startDate) ?? null,
     collectedBy: serializeCollectedBy(data.collectedBy),
@@ -107,7 +107,7 @@ export async function updateRevenue(
     description: string;
     amount: number;
     date: Date | string;
-    isRecurring: boolean;
+    billingType: import("@/types").BillingType;
     recurringMonths: number | null;
     startDate: Date | string | null;
     collectedBy: string[] | null;

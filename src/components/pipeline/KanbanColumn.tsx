@@ -15,7 +15,7 @@ interface Deal {
   contactName: string | null;
   contactTemperature: string | null;
   probability: number;
-  isRecurring?: boolean;
+  billingType?: import("@/types").BillingType;
   recurringMonths?: number | null;
   isPaid?: boolean;
 }

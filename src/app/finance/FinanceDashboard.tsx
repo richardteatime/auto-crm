@@ -235,8 +235,8 @@ export function FinanceDashboard() {
   }), [expenses, expSearch, expFilterType, expFilterCategory]);
 
   const filteredRevenues = useMemo(() => revenues.filter((r) => {
-    if (revFilterType === "onetime" && r.isRecurring) return false;
-    if (revFilterType === "recurring" && !r.isRecurring) return false;
+    if (revFilterType === "onetime" && r.billingType !== "una_tantum") return false;
+    if (revFilterType === "recurring" && r.billingType === "una_tantum") return false;
     if (revFilterType === "external" && !r.isExternal) return false;
     if (revSearch) {
       const q = revSearch.toLowerCase();
@@ -453,8 +453,8 @@ export function FinanceDashboard() {
                 key={r.id}
                 className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-green-500/30" : "border-border"}`}
               >
-                <div className={`shrink-0 p-2 rounded-lg ${r.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
-                  {r.isRecurring
+                <div className={`shrink-0 p-2 rounded-lg ${r.billingType === "una_tantum" ? "bg-green-500/10" : r.billingType === "annuale" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
+                  {r.billingType !== "una_tantum"
                     ? <RefreshCw className="h-4 w-4 text-blue-500" />
                     : <Banknote className="h-4 w-4 text-green-500" />
                   }
@@ -462,8 +462,8 @@ export function FinanceDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{r.description}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <Badge variant="outline" className={`text-[10px] ${r.isRecurring ? "text-blue-500 border-blue-500/30" : "text-green-500 border-green-500/30"}`}>
-                      {r.isRecurring ? `Ricorrente${r.recurringMonths ? ` ×${r.recurringMonths}m` : ""}` : "Una tantum"}
+                    <Badge variant="outline" className={`text-[10px] ${r.billingType === "annuale" ? "text-emerald-500 border-emerald-500/30" : r.billingType === "mensile" ? "text-blue-500 border-blue-500/30" : "text-green-500 border-green-500/30"}`}>
+                      {r.billingType === "annuale" ? `Ricorrente/anno${r.recurringMonths ? ` ×${r.recurringMonths}m` : ""}` : r.billingType === "mensile" ? `Ricorrente/mese${r.recurringMonths ? ` ×${r.recurringMonths}m` : ""}` : "Una tantum"}
                     </Badge>
                     {r.isExternal && (
                       <Badge variant="outline" className="text-[10px] text-purple-500 border-purple-500/30">

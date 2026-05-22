@@ -26,7 +26,7 @@ export interface QuoteItem {
   description: string;
   quantity: number;
   unitPrice: number; // EUR
-  billingType: "one_time" | "recurring";
+  billingType: "una_tantum" | "mensile" | "annuale";
 }
 
 export interface QuoteInitialData {
@@ -55,7 +55,7 @@ const STATUS_OPTIONS = [
 ];
 
 function newItem(): QuoteItem {
-  return { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, billingType: "one_time" };
+  return { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, billingType: "una_tantum" };
 }
 
 export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps) {
@@ -103,7 +103,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
     setItems((prev) =>
       prev.map((i) =>
         i.id === id
-          ? { ...i, billingType: i.billingType === "recurring" ? "one_time" : "recurring" }
+          ? { ...i, billingType: i.billingType === "una_tantum" ? "mensile" : i.billingType === "mensile" ? "annuale" : "una_tantum" }
           : i
       )
     );
@@ -113,8 +113,8 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
     if (items.length > 1) setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const oneTimeSub = items.filter((i) => i.billingType !== "recurring").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const recurringSub = items.filter((i) => i.billingType === "recurring").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const oneTimeSub = items.filter((i) => i.billingType === "una_tantum").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const recurringSub = items.filter((i) => i.billingType !== "una_tantum").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const subtotal = oneTimeSub + recurringSub;
   const vatAmount = subtotal * vatRate / 100;
   const total = subtotal + vatAmount;
@@ -245,14 +245,16 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           type="button"
                           onClick={() => toggleBilling(item.id)}
                           className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer flex items-center gap-1 transition-colors ${
-                            item.billingType === "recurring"
+                            item.billingType !== "una_tantum"
                               ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300"
                               : "bg-muted border-muted-foreground/20 text-muted-foreground"
                           }`}
                           title="Clicca per cambiare tipo"
                         >
-                          {item.billingType === "recurring" ? (
+                          {item.billingType === "mensile" ? (
                             <><RefreshCw className="h-2.5 w-2.5" /> /mese</>
+                          ) : item.billingType === "annuale" ? (
+                            <><RefreshCw className="h-2.5 w-2.5" /> /anno</>
                           ) : (
                             <><Minus className="h-2.5 w-2.5" /> Una tantum</>
                           )}

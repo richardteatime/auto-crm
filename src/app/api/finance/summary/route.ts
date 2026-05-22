@@ -61,9 +61,9 @@ export async function GET(req: NextRequest) {
   for (const d of allDeals) {
     if (!wonStageIds.has(d.stageId)) continue;
     // One-time: require isPaid (invoice confirmed). Recurring: won = contract active, no isPaid needed.
-    if (!d.isRecurring && !d.isPaid) continue;
+    if (d.billingType === "una_tantum" && !d.isPaid) continue;
 
-    if (!d.isRecurring) {
+    if (d.billingType === "una_tantum") {
       const wonMs = toMs(d.wonAt as Date | number | null) || toMs(d.updatedAt as Date | number | null);
       if (wonMs >= periodStart.getTime() && wonMs <= periodEnd.getTime()) {
         oneTimeRevenue += d.value;
@@ -80,19 +80,21 @@ export async function GET(req: NextRequest) {
       const dEnd = new Date(dStart);
       dEnd.setMonth(dEnd.getMonth() + recurMonths);
 
+      const monthlyValue = d.billingType === "annuale" ? d.value / 12 : d.value;
+
       // MRR: currently active
-      if (dStart <= now && dEnd >= now) mrr += d.value;
+      if (dStart <= now && dEnd >= now) mrr += monthlyValue;
 
       // Recurring revenue in period: months_overlap × monthly_value
       const overlap = clampMonths(dStart, recurMonths, periodStart, periodEnd);
-      if (overlap > 0) recurringRevenue += d.value * overlap;
+      if (overlap > 0) recurringRevenue += monthlyValue * overlap;
     }
   }
 
   // External revenues
   for (const r of allRevenues) {
     if (r.deletedAt) continue;
-    if (!r.isRecurring) {
+    if (r.billingType === "una_tantum") {
       const dateMs = toMs(r.date);
       if (dateMs >= periodStart.getTime() && dateMs <= periodEnd.getTime()) {
         oneTimeRevenue += r.amount;
@@ -105,10 +107,12 @@ export async function GET(req: NextRequest) {
       const rEnd = new Date(rStart);
       rEnd.setMonth(rEnd.getMonth() + recurMonths);
 
-      if (rStart <= now && rEnd >= now) mrr += r.amount;
+      const monthlyValue = r.billingType === "annuale" ? r.amount / 12 : r.amount;
+
+      if (rStart <= now && rEnd >= now) mrr += monthlyValue;
 
       const overlap = clampMonths(rStart, recurMonths, periodStart, periodEnd);
-      if (overlap > 0) recurringRevenue += r.amount * overlap;
+      if (overlap > 0) recurringRevenue += monthlyValue * overlap;
     }
   }
 
@@ -136,8 +140,8 @@ export async function GET(req: NextRequest) {
 
     for (const d of allDeals) {
       if (!wonStageIds.has(d.stageId)) continue;
-      if (!d.isRecurring && !d.isPaid) continue;
-      if (!d.isRecurring) {
+      if (d.billingType === "una_tantum" && !d.isPaid) continue;
+      if (d.billingType === "una_tantum") {
         const wonMs = toMs(d.wonAt as Date | number | null) || toMs(d.updatedAt as Date | number | null);
         if (wonMs >= mStart.getTime() && wonMs <= mEnd.getTime()) mOneTime += d.value;
       } else {
@@ -148,13 +152,14 @@ export async function GET(req: NextRequest) {
         if (!startMs) continue;
         const dStart = new Date(startMs);
         const overlap = clampMonths(dStart, d.recurringMonths ?? 12, mStart, mEnd);
-        if (overlap > 0) mRecurring += d.value * overlap;
+        const monthlyValue = d.billingType === "annuale" ? d.value / 12 : d.value;
+        if (overlap > 0) mRecurring += monthlyValue * overlap;
       }
     }
 
     for (const r of allRevenues) {
       if (r.deletedAt) continue;
-      if (!r.isRecurring) {
+      if (r.billingType === "una_tantum") {
         const dateMs = toMs(r.date);
         if (dateMs >= mStart.getTime() && dateMs <= mEnd.getTime()) mOneTime += r.amount;
       } else {
@@ -162,7 +167,8 @@ export async function GET(req: NextRequest) {
         if (!startMs) continue;
         const rStart = new Date(startMs);
         const overlap = clampMonths(rStart, r.recurringMonths ?? 12, mStart, mEnd);
-        if (overlap > 0) mRecurring += r.amount * overlap;
+        const monthlyValue = r.billingType === "annuale" ? r.amount / 12 : r.amount;
+        if (overlap > 0) mRecurring += monthlyValue * overlap;
       }
     }
 

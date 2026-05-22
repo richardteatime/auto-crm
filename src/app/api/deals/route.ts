@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { title, value, stageId, contactId, expectedClose, probability, notes, attachments, isRecurring, recurringMonths } = body;
+  const { title, value, stageId, contactId, expectedClose, probability, notes, attachments, billingType, recurringMonths } = body;
 
   if (!title || typeof title !== "string" || title.trim().length === 0) {
     return NextResponse.json(
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
       probability: Math.max(0, Math.min(100, Number(probability) || 0)),
       notes: notes || null,
       attachments: attachments ? JSON.stringify(attachments) : "[]",
-      isRecurring: !!isRecurring,
-      recurringMonths: isRecurring ? (Number(recurringMonths) || 12) : null,
+      billingType: ["una_tantum", "mensile", "annuale"].includes(billingType) ? billingType : "una_tantum",
+      recurringMonths: billingType !== "una_tantum" ? (Number(recurringMonths) || 12) : null,
     });
 
     return NextResponse.json(result, { status: 201 });

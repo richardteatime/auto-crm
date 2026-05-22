@@ -12,7 +12,7 @@ interface RevenueDeal {
   title: string;
   contactName: string | null;
   value: number;
-  isRecurring: boolean;
+  billingType: import("@/types").BillingType;
   recurringMonths: number | null;
   revenueContribution: number;
   overlapMonths: number | null;
@@ -39,8 +39,8 @@ function FatturatoContent() {
   }, [start, end]);
 
   const totalRevenue = deals.reduce((s, d) => s + d.revenueContribution, 0);
-  const totalOneTime = deals.filter((d) => !d.isRecurring).reduce((s, d) => s + d.revenueContribution, 0);
-  const totalRecurring = deals.filter((d) => d.isRecurring).reduce((s, d) => s + d.revenueContribution, 0);
+  const totalOneTime = deals.filter((d) => d.billingType === "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
+  const totalRecurring = deals.filter((d) => d.billingType !== "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,10 +104,10 @@ function FatturatoContent() {
                 className="flex items-center gap-5 rounded-xl border bg-card px-6 py-5 hover:bg-muted/30 transition-colors"
               >
                 {/* Icon */}
-                <div className={`shrink-0 p-3 rounded-xl ${d.isRecurring ? "bg-blue-500/10" : "bg-green-500/10"}`}>
-                  {d.isRecurring
-                    ? <RefreshCw className="h-6 w-6 text-blue-500" />
-                    : <Zap className="h-6 w-6 text-green-600" />
+                <div className={`shrink-0 p-3 rounded-xl ${d.billingType === "una_tantum" ? "bg-green-500/10" : d.billingType === "annuale" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
+                  {d.billingType === "una_tantum"
+                    ? <Zap className="h-6 w-6 text-green-600" />
+                    : <RefreshCw className="h-6 w-6 text-blue-500" />
                   }
                 </div>
 
@@ -116,16 +116,16 @@ function FatturatoContent() {
                   <p className="font-semibold text-base">{d.title}</p>
                   <p className="text-sm text-muted-foreground">{d.contactName ?? "—"}</p>
                   <div className="flex items-center gap-2 mt-1.5">
-                    {d.isRecurring ? (
-                      <Badge variant="outline" className="text-blue-500 border-blue-500/40 whitespace-nowrap text-xs">
-                        Ricorrente {d.recurringMonths ? `×${d.recurringMonths}m` : ""}
+                    {d.billingType === "una_tantum" ? (
+                      <Badge variant="outline" className="text-green-600 border-green-600/40 text-xs">
+                        Una Tantum
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className={`whitespace-nowrap text-xs ${d.billingType === "annuale" ? "text-emerald-500 border-emerald-500/40" : "text-blue-500 border-blue-500/40"}`}>
+                        {d.billingType === "annuale" ? "Ricorrente/anno" : "Ricorrente/mese"} {d.recurringMonths ? `×${d.recurringMonths}m` : ""}
                         {d.overlapMonths && d.overlapMonths < (d.recurringMonths ?? 12)
                           ? ` · ${d.overlapMonths}m`
                           : ""}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-green-600 border-green-600/40 text-xs">
-                        Una Tantum
                       </Badge>
                     )}
                     <span className="text-xs text-muted-foreground">
@@ -136,7 +136,7 @@ function FatturatoContent() {
 
                 {/* €/mese — recurring only */}
                 <div className="shrink-0 text-right hidden md:block min-w-[100px]">
-                  {d.isRecurring ? (
+                  {d.billingType !== "una_tantum" ? (
                     <>
                       <p className="text-xs text-muted-foreground">€/mese</p>
                       <p className="text-sm font-medium text-blue-500">{formatCurrency(d.value)}</p>

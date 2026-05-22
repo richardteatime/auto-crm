@@ -30,6 +30,8 @@ export interface Contact {
   updatedAt: Date;
 }
 
+export type BillingType = "una_tantum" | "mensile" | "annuale";
+
 export interface Deal {
   id: string;
   title: string;
@@ -40,7 +42,7 @@ export interface Deal {
   probability: number; // 0-100
   notes: string | null;
   attachments?: string | null;
-  isRecurring?: boolean;
+  billingType: BillingType;
   recurringMonths?: number | null;
   recurringStartDate?: Date | null;
   wonAt?: Date | null;
@@ -178,7 +180,7 @@ export interface Revenue {
   description: string;
   amount: number;
   date: Date;
-  isRecurring: boolean;
+  billingType: BillingType;
   recurringMonths: number | null;
   startDate: Date | null;
   collectedBy: string[];

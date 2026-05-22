@@ -40,7 +40,7 @@ interface DealRow {
   expectedClose: number | Date | null;
   notes: string | null;
   attachments: string | null;
-  isRecurring: boolean;
+  billingType: import("@/types").BillingType;
   recurringMonths: number | null;
   createdAt: number | Date;
 }
@@ -64,7 +64,7 @@ export default function DealsPage() {
   // Filters
   const [search, setSearch] = useState("");
   const [filterStage, setFilterStage] = useState("");
-  const [filterTipo, setFilterTipo] = useState<"" | "one_time" | "recurring">("");
+  const [filterTipo, setFilterTipo] = useState<"" | "una_tantum" | "mensile" | "annuale">("");
   const [filterProbMin, setFilterProbMin] = useState(0);
   const [filterValueMin, setFilterValueMin] = useState("");
   const [filterValueMax, setFilterValueMax] = useState("");
@@ -95,8 +95,7 @@ export default function DealsPage() {
       if (!d.title.toLowerCase().includes(q) && !d.contactName?.toLowerCase().includes(q)) return false;
     }
     if (filterStage && d.stageId !== filterStage) return false;
-    if (filterTipo === "one_time" && d.isRecurring) return false;
-    if (filterTipo === "recurring" && !d.isRecurring) return false;
+    if (filterTipo && d.billingType !== filterTipo) return false;
     if (filterProbMin > 0 && d.probability < filterProbMin) return false;
     if (filterValueMin) {
       const min = parseFloat(filterValueMin) * 100;
@@ -136,7 +135,7 @@ export default function DealsPage() {
     setEditingDeal({
       id: deal.id, title: deal.title, value: deal.value, contactId: deal.contactId,
       stageId: deal.stageId, probability: deal.probability, expectedClose: deal.expectedClose,
-      notes: deal.notes, attachments: deal.attachments, isRecurring: deal.isRecurring,
+      notes: deal.notes, attachments: deal.attachments, billingType: deal.billingType,
       recurringMonths: deal.recurringMonths,
     });
     setShowForm(true);
@@ -212,19 +211,27 @@ export default function DealsPage() {
             Tutti ({deals.length})
           </button>
           <button
-            onClick={() => setFilterTipo("one_time")}
+            onClick={() => setFilterTipo("una_tantum")}
             className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
-              filterTipo === "one_time" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted")}
+              filterTipo === "una_tantum" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted")}
           >
-            Una Tantum ({deals.filter((d) => !d.isRecurring).length})
+            Una Tantum ({deals.filter((d) => d.billingType === "una_tantum").length})
           </button>
           <button
-            onClick={() => setFilterTipo("recurring")}
+            onClick={() => setFilterTipo("mensile")}
             className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1",
-              filterTipo === "recurring" ? "bg-blue-600 text-white border-blue-600" : "border-border text-muted-foreground hover:bg-muted")}
+              filterTipo === "mensile" ? "bg-blue-600 text-white border-blue-600" : "border-border text-muted-foreground hover:bg-muted")}
           >
             <RefreshCw className="h-3 w-3" />
-            Ricorrenti ({deals.filter((d) => d.isRecurring).length})
+            / Mese ({deals.filter((d) => d.billingType === "mensile").length})
+          </button>
+          <button
+            onClick={() => setFilterTipo("annuale")}
+            className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1",
+              filterTipo === "annuale" ? "bg-emerald-600 text-white border-emerald-600" : "border-border text-muted-foreground hover:bg-muted")}
+          >
+            <RefreshCw className="h-3 w-3" />
+            / Anno ({deals.filter((d) => d.billingType === "annuale").length})
           </button>
           {stages.map((s) => (
             <button
@@ -329,8 +336,8 @@ export default function DealsPage() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {deal.title}
-                          {deal.isRecurring && (
-                            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">
+                          {deal.billingType !== "una_tantum" && (
+                            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-medium ${deal.billingType === "annuale" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"}`}>
                               <RefreshCw className="h-2.5 w-2.5" />
                               {deal.recurringMonths ?? 12}m
                             </span>
@@ -339,7 +346,7 @@ export default function DealsPage() {
                       </TableCell>
                       <TableCell>{deal.contactName || "-"}</TableCell>
                       <TableCell className="font-semibold text-primary">
-                        {formatCurrency(deal.value)}{deal.isRecurring ? "/mo" : ""}
+                        {formatCurrency(deal.value)}{deal.billingType === "mensile" ? "/mo" : deal.billingType === "annuale" ? "/anno" : ""}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" style={{ borderColor: deal.stageColor || undefined, color: deal.stageColor || undefined }}>

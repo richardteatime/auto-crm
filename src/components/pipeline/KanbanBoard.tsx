@@ -29,8 +29,9 @@ const TEMP_OPTS = [
 
 const TIPO_OPTS = [
   { value: "", label: "Tutti" },
-  { value: "one_time", label: "Una Tantum" },
-  { value: "recurring", label: "Ricorrenti" },
+  { value: "una_tantum", label: "Una Tantum" },
+  { value: "mensile", label: "/ Mese" },
+  { value: "annuale", label: "/ Anno" },
 ];
 
 interface KanbanBoardProps {
@@ -65,9 +66,8 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
           if (!hit) return false;
         }
         if (filterTemp && d.contactTemperature !== filterTemp) return false;
-        const rec = (d as { isRecurring?: boolean }).isRecurring;
-        if (filterTipo === "one_time" && rec) return false;
-        if (filterTipo === "recurring" && !rec) return false;
+        const bt = (d as { billingType?: import("@/types").BillingType }).billingType;
+        if (filterTipo && bt !== filterTipo) return false;
         return true;
       }),
     }));
@@ -185,7 +185,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
               >
-                {value === "recurring" && <RefreshCw className="inline h-3 w-3 mr-0.5" />}
+                {(value === "mensile" || value === "annuale") && <RefreshCw className="inline h-3 w-3 mr-0.5" />}
                 {label}
               </button>
             ))}
@@ -221,7 +221,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
                 contactName: d.contactName || (d.contact?.name ?? null),
                 contactTemperature: d.contactTemperature || (d.contact?.temperature ?? null),
                 probability: d.probability,
-                isRecurring: (d as { isRecurring?: boolean }).isRecurring,
+                billingType: (d as { billingType?: import("@/types").BillingType }).billingType,
                 recurringMonths: (d as { recurringMonths?: number | null }).recurringMonths,
                 isPaid: (d as { isPaid?: boolean }).isPaid,
               }))}
@@ -238,7 +238,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
               contactName={activeDeal.contactName || (activeDeal.contact?.name ?? null)}
               contactTemperature={activeDeal.contactTemperature || (activeDeal.contact?.temperature ?? null)}
               probability={activeDeal.probability}
-              isRecurring={(activeDeal as { isRecurring?: boolean }).isRecurring}
+              billingType={(activeDeal as { billingType?: import("@/types").BillingType }).billingType}
               recurringMonths={(activeDeal as { recurringMonths?: number | null }).recurringMonths}
               isPaid={(activeDeal as { isPaid?: boolean }).isPaid}
             />

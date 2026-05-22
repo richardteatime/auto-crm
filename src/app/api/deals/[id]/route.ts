@@ -68,7 +68,7 @@ export async function PUT(
     }
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.attachments !== undefined) updateData.attachments = JSON.stringify(body.attachments ?? []);
-    if (body.isRecurring !== undefined) updateData.isRecurring = !!body.isRecurring;
+    if (body.billingType !== undefined) updateData.billingType = ["una_tantum", "mensile", "annuale"].includes(body.billingType) ? body.billingType : "una_tantum";
     if (body.recurringMonths !== undefined) updateData.recurringMonths = Number(body.recurringMonths) || 12;
     if (body.isPaid !== undefined) updateData.isPaid = !!body.isPaid;
 

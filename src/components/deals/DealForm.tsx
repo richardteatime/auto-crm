@@ -50,7 +50,7 @@ export interface DealInitialData {
   expectedClose?: number | Date | null;
   notes?: string | null;
   attachments?: string | null;
-  isRecurring?: boolean;
+  billingType?: import("@/types").BillingType;
   recurringMonths?: number | null;
   isPaid?: boolean;
 }
@@ -76,7 +76,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
   const [stagesList, setStages] = useState<Array<{ id: string; name: string }>>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [billingType, setBillingType] = useState<import("@/types").BillingType>("una_tantum");
   const [recurringMonths, setRecurringMonths] = useState(12);
   const [isPaid, setIsPaid] = useState(false);
 
@@ -112,7 +112,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
         let parsedAttachments: Attachment[] = [];
         try { parsedAttachments = JSON.parse(initialData.attachments || "[]"); } catch { /* */ }
         setAttachments(parsedAttachments);
-        setIsRecurring(initialData.isRecurring ?? false);
+        setBillingType(initialData.billingType ?? "una_tantum");
         setRecurringMonths(initialData.recurringMonths ?? 12);
         setIsPaid(initialData.isPaid ?? false);
 
@@ -127,7 +127,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
         });
       } else {
         setAttachments([]);
-        setIsRecurring(false);
+        setBillingType("una_tantum");
         setRecurringMonths(12);
         setIsPaid(false);
         reset({
@@ -171,8 +171,8 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
       value: Math.round(parseFloat(data.value || "0") * 100),
       probability: parseInt(data.probability || "0"),
       attachments,
-      isRecurring,
-      recurringMonths: isRecurring ? recurringMonths : null,
+      billingType,
+      recurringMonths: billingType !== "una_tantum" ? recurringMonths : null,
       isPaid,
     };
 
@@ -265,13 +265,13 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
           {/* Tipo contratto */}
           <div className="space-y-2">
             <Label>Tipo Contratto</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setIsRecurring(false)}
+                onClick={() => setBillingType("una_tantum")}
                 className={cn(
                   "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
-                  !isRecurring
+                  billingType === "una_tantum"
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
@@ -280,21 +280,34 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
               </button>
               <button
                 type="button"
-                onClick={() => setIsRecurring(true)}
+                onClick={() => setBillingType("mensile")}
                 className={cn(
                   "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
-                  isRecurring
+                  billingType === "mensile"
                     ? "bg-blue-600 text-white border-blue-600"
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-                Ricorrente / Mese
+                / Mese
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingType("annuale")}
+                className={cn(
+                  "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                  billingType === "annuale"
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                / Anno
               </button>
             </div>
           </div>
 
-          {isRecurring && (
+          {billingType !== "una_tantum" && (
             <div className="space-y-2">
               <Label>Durata Contratto</Label>
               <Select value={String(recurringMonths)} onValueChange={(v) => setRecurringMonths(Number(v))}>
@@ -311,7 +324,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Valore mensile: {isNaN(parseFloat(watch("value") || "0")) ? "—" : new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(parseFloat(watch("value") || "0"))} × {recurringMonths} = {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(parseFloat(watch("value") || "0") * recurringMonths)} totale
+                {billingType === "annuale" ? "Valore annuale" : "Valore mensile"}: {isNaN(parseFloat(watch("value") || "0")) ? "—" : new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(parseFloat(watch("value") || "0"))} × {recurringMonths} {billingType === "annuale" ? "mesi" : "mesi"} = {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(parseFloat(watch("value") || "0") * recurringMonths)} totale
               </p>
             </div>
           )}

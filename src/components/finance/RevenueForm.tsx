@@ -27,7 +27,7 @@ function toDateInput(val: Date | null | undefined): string {
 export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueFormProps) {
   const isEdit = !!initialData;
   const [description, setDescription] = useState("");
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [billingType, setBillingType] = useState<import("@/types").BillingType>("una_tantum");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [recurringMonths, setRecurringMonths] = useState("12");
@@ -42,7 +42,7 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
     if (!open) return;
     if (isEdit && initialData) {
       setDescription(initialData.description);
-      setIsRecurring(initialData.isRecurring);
+      setBillingType(initialData.billingType);
       setAmount((initialData.amount / 100).toFixed(2));
       setDate(toDateInput(initialData.date));
       setRecurringMonths(String(initialData.recurringMonths ?? 12));
@@ -52,7 +52,7 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
       setIsExternal(initialData.isExternal);
     } else {
       setDescription("");
-      setIsRecurring(false);
+      setBillingType("una_tantum");
       setAmount("");
       setDate(new Date().toISOString().slice(0, 10));
       setRecurringMonths("12");
@@ -83,9 +83,9 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
         description: description.trim(),
         amount: Math.round(Number(amount) * 100),
         date,
-        isRecurring,
-        recurringMonths: isRecurring ? Number(recurringMonths || 12) : null,
-        startDate: isRecurring ? (startDate || date) : null,
+        billingType,
+        recurringMonths: billingType !== "una_tantum" ? Number(recurringMonths || 12) : null,
+        startDate: billingType !== "una_tantum" ? (startDate || date) : null,
         collectedBy,
         notes: notes.trim() || null,
         isExternal,
@@ -121,17 +121,21 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
             <Label>Tipo incasso *</Label>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="tipo" className="accent-primary" checked={!isRecurring} onChange={() => setIsRecurring(false)} />
+                <input type="radio" name="tipo" className="accent-primary" checked={billingType === "una_tantum"} onChange={() => setBillingType("una_tantum")} />
                 Una tantum
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" name="tipo" className="accent-primary" checked={isRecurring} onChange={() => setIsRecurring(true)} />
-                Ricorrente
+                <input type="radio" name="tipo" className="accent-primary" checked={billingType === "mensile"} onChange={() => setBillingType("mensile")} />
+                Ricorrente / Mese
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="tipo" className="accent-primary" checked={billingType === "annuale"} onChange={() => setBillingType("annuale")} />
+                Ricorrente / Anno
               </label>
             </div>
           </div>
 
-          {isRecurring && (
+          {billingType !== "una_tantum" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Mesi ricorrenza</Label>

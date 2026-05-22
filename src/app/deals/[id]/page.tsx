@@ -79,7 +79,7 @@ export default async function DealDetailPage({
               : null,
             notes: deal.notes,
             attachments: deal.attachments,
-            isRecurring: deal.isRecurring,
+            billingType: deal.billingType,
             recurringMonths: deal.recurringMonths,
             isPaid: deal.isPaid,
           }}

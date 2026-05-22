@@ -15,7 +15,7 @@ interface DealCardProps {
   contactName: string | null;
   contactTemperature: string | null;
   probability: number;
-  isRecurring?: boolean;
+  billingType?: import("@/types").BillingType;
   recurringMonths?: number | null;
   isPaid?: boolean;
   isWon?: boolean;
@@ -28,7 +28,7 @@ export function DealCard({
   contactName,
   contactTemperature,
   probability,
-  isRecurring,
+  billingType,
   recurringMonths,
   isPaid,
   isWon,
@@ -59,8 +59,8 @@ export function DealCard({
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-1">
           <p className="text-sm font-medium leading-tight flex-1">{title}</p>
-          {isRecurring && (
-            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium shrink-0">
+          {billingType && billingType !== "una_tantum" && (
+            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${billingType === "annuale" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"}`}>
               <RefreshCw className="h-2.5 w-2.5" />
               {recurringMonths ?? 12}m
             </span>
@@ -68,7 +68,7 @@ export function DealCard({
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-primary">
-            {formatCurrency(value)}{isRecurring ? "/mo" : ""}
+            {formatCurrency(value)}{billingType === "mensile" ? "/mo" : billingType === "annuale" ? "/anno" : ""}
           </span>
           {contactTemperature && (
             <StatusBadge

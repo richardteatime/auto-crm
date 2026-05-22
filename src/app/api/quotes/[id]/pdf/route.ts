@@ -13,7 +13,7 @@ interface DbQuoteItem {
   description: string;
   quantity: number;
   unitPrice: number; // cents
-  billingType?: "one_time" | "recurring";
+  billingType?: "una_tantum" | "mensile" | "annuale";
 }
 
 interface CompanyConfig {
@@ -94,10 +94,10 @@ export async function GET(
   }
 
   const oneTimeSub = items
-    .filter((i) => i.billingType !== "recurring")
+    .filter((i) => i.billingType === "una_tantum")
     .reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const recurringSub = items
-    .filter((i) => i.billingType === "recurring")
+    .filter((i) => i.billingType !== "una_tantum")
     .reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const subtotal = oneTimeSub + recurringSub;
   const vatAmount = Math.round((subtotal * quote.vatRate) / 100);
@@ -108,10 +108,9 @@ export async function GET(
   const itemRows = items
     .map(
       (item, idx) => {
-        const isRecurring = item.billingType === "recurring";
-        const tipo = isRecurring ? "Ricorrente/mese" : "Una tantum";
-        const importo = isRecurring
-          ? `${formatEur(item.unitPrice)}/mese`
+        const tipo = item.billingType === "mensile" ? "Ricorrente/mese" : item.billingType === "annuale" ? "Ricorrente/anno" : "Una tantum";
+        const importo = item.billingType !== "una_tantum"
+          ? `${formatEur(item.unitPrice)}/${item.billingType === "annuale" ? "anno" : "mese"}`
           : formatEur(item.unitPrice * item.quantity);
         return `
           <tr>

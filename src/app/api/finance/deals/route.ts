@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     title: string;
     contactName: string | null;
     value: number;
-    isRecurring: boolean;
+    billingType: import("@/types").BillingType;
     recurringMonths: number | null;
     revenueContribution: number;
     overlapMonths: number | null;
@@ -61,9 +61,9 @@ export async function GET(req: NextRequest) {
 
   for (const d of allDeals) {
     if (!wonStageIds.has(d.stageId)) continue;
-    if (!d.isRecurring && !d.isPaid) continue;
+    if (d.billingType === "una_tantum" && !d.isPaid) continue;
 
-    if (!d.isRecurring) {
+    if (d.billingType === "una_tantum") {
       const wonMs = toMs(d.wonAt as Date | number | null) || toMs(d.updatedAt as Date | number | null);
       if (wonMs >= periodStart.getTime() && wonMs <= periodEnd.getTime()) {
         result.push({
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
           title: d.title,
           contactName: (d as DealWithContact).contactName ?? null,
           value: d.value,
-          isRecurring: false,
+          billingType: "una_tantum",
           recurringMonths: null,
           revenueContribution: d.value,
           overlapMonths: null,
@@ -89,14 +89,15 @@ export async function GET(req: NextRequest) {
       const recurMonths = d.recurringMonths ?? 12;
       const overlap = clampMonths(dStart, recurMonths, periodStart, periodEnd);
       if (overlap > 0) {
+        const monthlyValue = d.billingType === "annuale" ? d.value / 12 : d.value;
         result.push({
           id: d.id,
           title: d.title,
           contactName: (d as DealWithContact).contactName ?? null,
           value: d.value,
-          isRecurring: true,
+          billingType: d.billingType,
           recurringMonths: recurMonths,
-          revenueContribution: d.value * overlap,
+          revenueContribution: monthlyValue * overlap,
           overlapMonths: overlap,
           wonAt: d.wonAt ? new Date(toMs(d.wonAt as Date | number | null)).toISOString() : null,
           isPaid: d.isPaid ?? false,
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest) {
   // Add one-time external revenues in period
   for (const r of allRevenues) {
     if (r.deletedAt) continue;
-    if (r.isRecurring) continue;
+    if (r.billingType !== "una_tantum") continue;
     const dateMs = toMs(r.date);
     if (dateMs >= periodStart.getTime() && dateMs <= periodEnd.getTime()) {
       result.push({
@@ -116,7 +117,7 @@ export async function GET(req: NextRequest) {
         title: r.description,
         contactName: r.isExternal ? "Collaborazione esterna" : null,
         value: r.amount,
-        isRecurring: false,
+        billingType: "una_tantum",
         recurringMonths: null,
         revenueContribution: r.amount,
         overlapMonths: null,
