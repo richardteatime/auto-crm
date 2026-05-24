@@ -120,9 +120,7 @@ export async function GET(
         item.billingType === "annuale" ? "/anno" : item.billingType === "mensile" ? "/mese" : "";
 
       const gross = item.quantity * item.unitPrice;
-      const netLabel = (item.discount ?? 0) > 0
-        ? `<div class="item-net">${item.quantity > 1 ? item.quantity + ' x ' : ''}${formatEur(item.unitPrice)} = ${formatEur(gross)}</div>`
-        : `<div class="item-net">${formatEur(gross)}${unitLabel}</div>`;
+      const netLabel = `<div class="item-net">${formatEur(gross)}${unitLabel}</div>`;
 
       return `
         <div class="item-row">
