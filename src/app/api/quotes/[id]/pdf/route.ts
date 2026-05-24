@@ -116,34 +116,25 @@ export async function GET(
   const itemRows = items
     .map((item) => {
       const lt = lineTotal(item);
-      const tipo =
-        item.billingType === "mensile"
-          ? "Ricorrente/mese"
-          : item.billingType === "annuale"
-            ? "Ricorrente/anno"
-            : "Una tantum";
       const unitLabel =
         item.billingType === "annuale" ? "/anno" : item.billingType === "mensile" ? "/mese" : "";
-      const qtyLabel = item.quantity > 1 ? `×${item.quantity}` : "";
-      const discountLabel =
-        (item.discount ?? 0) > 0
-          ? `<div class="item-discount">Sconto ${item.discount}% applicato</div>`
-          : "";
-      const detailLabel =
-        item.quantity > 1 || (item.discount ?? 0) > 0
-          ? `<div class="item-detail">${item.quantity} x ${formatEur(item.unitPrice)}${(item.discount ?? 0) > 0 ? ` · sconto ${item.discount}%` : ""}</div>`
-          : "";
+
+      const gross = item.quantity * item.unitPrice;
+      const netLabel = (item.discount ?? 0) > 0
+        ? `<div class="item-net">${item.quantity > 1 ? item.quantity + ' x ' : ''}${formatEur(item.unitPrice)} = ${formatEur(gross)}</div>`
+        : `<div class="item-net">${formatEur(gross)}${unitLabel}</div>`;
 
       return `
         <div class="item-row">
-          <div class="item-left">
+          <div class="item-col item-col-left">
             <div class="item-title">${esc(item.description) || "—"}</div>
-            <div class="item-meta">${tipo} ${qtyLabel}</div>
-            ${detailLabel}
+            ${netLabel}
           </div>
-          <div class="item-right">
-            <div class="item-price">${formatEur(lt)}${unitLabel}</div>
-            ${discountLabel}
+          <div class="item-col item-col-center">
+            ${(item.discount ?? 0) > 0 ? `<div class="item-discount">-${item.discount}%</div>` : '<div class="item-discount">—</div>'}
+          </div>
+          <div class="item-col item-col-right">
+            <div class="item-total">${formatEur(lt)}${unitLabel}</div>
           </div>
         </div>`;
     })
@@ -274,13 +265,12 @@ export async function GET(
 
         /* === CLIENTE === */
         .cliente {
-            background: var(--colore-sfondo);
-            padding: 15px;
-            border-radius: 4px;
             margin-bottom: 25px;
             page-break-inside: avoid;
+            border-bottom: 1px solid var(--bordo);
+            padding-bottom: 15px;
         }
-        .cliente h3 { margin: 0 0 8px; font-size: 15px; border-bottom: 1px solid var(--bordo); padding-bottom: 5px; }
+        .cliente h3 { margin: 0 0 8px; font-size: 15px; color: var(--colore-primario); }
         .cliente p { margin: 3px 0; font-size: 13px; }
 
         /* === NOTE / CONDIZIONI === */
@@ -312,20 +302,20 @@ export async function GET(
         }
         .item-row {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             padding: 14px 0;
             border-bottom: 1px solid #eee;
             page-break-inside: avoid;
         }
         .item-row:last-child { border-bottom: none; }
-        .item-left { flex: 1; padding-right: 20px; }
-        .item-right { text-align: right; min-width: 140px; }
+        .item-col { display: flex; flex-direction: column; }
+        .item-col-left { flex: 1; padding-right: 20px; }
+        .item-col-center { width: 80px; text-align: center; }
+        .item-col-right { width: 140px; text-align: right; }
         .item-title { font-weight: 600; font-size: 14px; color: var(--testo); margin-bottom: 3px; }
-        .item-meta { font-size: 12px; color: #777; }
-        .item-detail { font-size: 12px; color: #999; margin-top: 2px; }
-        .item-price { font-weight: 700; font-size: 15px; color: var(--colore-primario); }
-        .item-discount { font-size: 12px; color: #c0392b; margin-top: 2px; }
+        .item-net { font-size: 12px; color: #777; }
+        .item-discount { font-size: 13px; color: #c0392b; font-weight: 600; }
+        .item-total { font-weight: 700; font-size: 15px; color: var(--colore-primario); }
 
         /* === TOTALI === */
         .totals {
