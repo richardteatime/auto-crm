@@ -28,6 +28,7 @@ interface DbQuoteItem {
   description: string;
   quantity: number;
   unitPrice: number; // cents
+  discount?: number;
   billingType?: "una_tantum" | "mensile" | "annuale";
 }
 
@@ -56,7 +57,7 @@ const STATUS_CONFIG: Record<
 function calcTotal(q: QuoteRow): number {
   try {
     const items = JSON.parse(q.items) as DbQuoteItem[];
-    const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const subtotal = items.reduce((s, i) => s + Math.round(i.quantity * i.unitPrice * (1 - (i.discount ?? 0) / 100)), 0);
     return subtotal + Math.round((subtotal * q.vatRate) / 100);
   } catch {
     return 0;
@@ -70,6 +71,7 @@ function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
       description: i.description,
       quantity: i.quantity,
       unitPrice: i.unitPrice / 100,
+      discount: i.discount ?? 0,
       billingType: i.billingType ?? "una_tantum",
     }));
   } catch {

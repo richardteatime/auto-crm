@@ -57,11 +57,12 @@ interface QuoteRow {
 
 function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
   try {
-    return (JSON.parse(itemsJson) as { id: string; description: string; quantity: number; unitPrice: number; billingType?: "una_tantum" | "mensile" | "annuale" }[]).map((i) => ({
+    return (JSON.parse(itemsJson) as { id: string; description: string; quantity: number; unitPrice: number; discount?: number; billingType?: "una_tantum" | "mensile" | "annuale" }[]).map((i) => ({
       id: i.id,
       description: i.description,
       quantity: i.quantity,
       unitPrice: i.unitPrice / 100,
+      discount: i.discount ?? 0,
       billingType: i.billingType ?? "una_tantum",
     }));
   } catch {
@@ -77,8 +78,8 @@ function toDateInputValue(val: number | Date | null | undefined): string {
 
 function calcTotal(itemsJson: string, vatRate: number): number {
   try {
-    const items = JSON.parse(itemsJson) as { quantity: number; unitPrice: number }[];
-    const sub = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const items = JSON.parse(itemsJson) as { quantity: number; unitPrice: number; discount?: number }[];
+    const sub = items.reduce((s, i) => s + Math.round(i.quantity * i.unitPrice * (1 - (i.discount ?? 0) / 100)), 0);
     return sub + Math.round((sub * vatRate) / 100);
   } catch {
     return 0;

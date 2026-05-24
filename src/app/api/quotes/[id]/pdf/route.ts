@@ -13,6 +13,7 @@ interface DbQuoteItem {
   description: string;
   quantity: number;
   unitPrice: number; // cents
+  discount?: number; // %
   billingType?: "una_tantum" | "mensile" | "annuale";
 }
 
@@ -68,6 +69,10 @@ function formatDateIt(date: Date | number | string | null | undefined): string {
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+function lineTotal(item: DbQuoteItem): number {
+  return Math.round(item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100));
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -93,50 +98,67 @@ export async function GET(
     items = [];
   }
 
-  const oneTimeSub = items
-    .filter((i) => i.billingType === "una_tantum")
-    .reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const recurringSub = items
-    .filter((i) => i.billingType !== "una_tantum")
-    .reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const subtotal = oneTimeSub + recurringSub;
+  const oneTimeItems = items.filter((i) => i.billingType === "una_tantum");
+  const monthlyItems = items.filter((i) => i.billingType === "mensile");
+  const annualItems = items.filter((i) => i.billingType === "annuale");
+
+  const oneTimeSub = oneTimeItems.reduce((s, i) => s + lineTotal(i), 0);
+  const monthlySub = monthlyItems.reduce((s, i) => s + lineTotal(i), 0);
+  const annualSub = annualItems.reduce((s, i) => s + lineTotal(i), 0);
+  const subtotal = oneTimeSub + monthlySub + annualSub;
   const vatAmount = Math.round((subtotal * quote.vatRate) / 100);
   const total = subtotal + vatAmount;
-  const hasRecurring = recurringSub > 0;
+
   const hasOneTime = oneTimeSub > 0;
+  const hasMonthly = monthlySub > 0;
+  const hasAnnual = annualSub > 0;
 
   const itemRows = items
-    .map(
-      (item, idx) => {
-        const tipo = item.billingType === "mensile" ? "Ricorrente/mese" : item.billingType === "annuale" ? "Ricorrente/anno" : "Una tantum";
-        const importo = item.billingType !== "una_tantum"
-          ? `${formatEur(item.unitPrice)}/${item.billingType === "annuale" ? "anno" : "mese"}`
-          : formatEur(item.unitPrice * item.quantity);
-        return `
-          <tr>
-            <td>${idx + 1}</td>
-            <td>${esc(item.description) || "—"}</td>
-            <td>${tipo}</td>
-            <td>${item.quantity}</td>
-            <td>${importo}</td>
-          </tr>`;
-      }
-    )
+    .map((item) => {
+      const lt = lineTotal(item);
+      const tipo =
+        item.billingType === "mensile"
+          ? "Ricorrente/mese"
+          : item.billingType === "annuale"
+            ? "Ricorrente/anno"
+            : "Una tantum";
+      const unitLabel =
+        item.billingType === "annuale" ? "/anno" : item.billingType === "mensile" ? "/mese" : "";
+      const qtyLabel = item.quantity > 1 ? `×${item.quantity}` : "";
+      const discountLabel =
+        (item.discount ?? 0) > 0
+          ? `<div class="item-discount">Sconto ${item.discount}% applicato</div>`
+          : "";
+      const detailLabel =
+        item.quantity > 1 || (item.discount ?? 0) > 0
+          ? `<div class="item-detail">${item.quantity} x ${formatEur(item.unitPrice)}${(item.discount ?? 0) > 0 ? ` · sconto ${item.discount}%` : ""}</div>`
+          : "";
+
+      return `
+        <div class="item-row">
+          <div class="item-left">
+            <div class="item-title">${esc(item.description) || "—"}</div>
+            <div class="item-meta">${tipo} ${qtyLabel}</div>
+            ${detailLabel}
+          </div>
+          <div class="item-right">
+            <div class="item-price">${formatEur(lt)}${unitLabel}</div>
+            ${discountLabel}
+          </div>
+        </div>`;
+    })
     .join("");
 
-  const totaliRows = `
-    ${hasOneTime ? `<tr><td>Subtotale (Una tantum)</td><td class="importo">${formatEur(oneTimeSub)}</td></tr>` : ""}
-    ${hasRecurring ? `<tr><td>Canone 1° mese</td><td class="importo">${formatEur(recurringSub)}</td></tr>` : ""}
-    ${!hasOneTime && !hasRecurring ? `<tr><td>Subtotale</td><td class="importo">${formatEur(subtotal)}</td></tr>` : ""}
-    <tr><td>IVA (${quote.vatRate}% / Regime applicabile)</td><td class="importo">${formatEur(vatAmount)}</td></tr>
-    <tr class="totale-finale">
-      <td><strong>TOTALE DA CORRISPONDERE</strong></td>
-      <td class="importo"><strong>${formatEur(total)}</strong></td>
-    </tr>
-    ${hasRecurring ? `<tr class="ricorrente-row">
-      <td><em>Canone dal secondo mese</em></td>
-      <td class="importo"><em>${formatEur(recurringSub)}/mese</em></td>
-    </tr>` : ""}`;
+  const totalsRows = `
+    ${hasOneTime ? `<div class="total-row"><span>Subtotale una tantum</span><span>${formatEur(oneTimeSub)}</span></div>` : ""}
+    ${hasMonthly ? `<div class="total-row"><span>Subtotale ricorrente/mese</span><span>${formatEur(monthlySub)}/mese</span></div>` : ""}
+    ${hasAnnual ? `<div class="total-row"><span>Subtotale ricorrente/anno</span><span>${formatEur(annualSub)}/anno</span></div>` : ""}
+    ${!hasOneTime && !hasMonthly && !hasAnnual ? `<div class="total-row"><span>Subtotale</span><span>${formatEur(subtotal)}</span></div>` : ""}
+    <div class="total-row"><span>IVA (${quote.vatRate}% / Regime applicabile)</span><span>${formatEur(vatAmount)}</span></div>
+    <div class="total-row total-final">
+      <span>TOTALE DA CORRISPONDERE</span>
+      <span>${formatEur(total)}</span>
+    </div>`;
 
   const companyLines = [
     company.name ? `<h1>${esc(company.name)}</h1>` : "",
@@ -153,12 +175,12 @@ export async function GET(
   ].filter(Boolean).join(" | ");
 
   const paymentBlock = [
-    company.paymentTerms ? `<strong>Modalità di Pagamento:</strong> ${esc(company.paymentTerms)}` : `<strong>Modalità di Pagamento:</strong> Bonifico Bancario`,
+    company.paymentTerms
+      ? `<strong>Modalità di Pagamento:</strong> ${esc(company.paymentTerms)}`
+      : `<strong>Modalità di Pagamento:</strong> Bonifico Bancario`,
     company.bankHolder ? `<p>Intestatario C/C: ${esc(company.bankHolder)}</p>` : "",
     company.iban ? `<p>IBAN: ${esc(company.iban)}</p>` : "",
   ].filter(Boolean).join("");
-
-  const vociDettaglio = "";
 
   const html = `<!DOCTYPE html>
 <html lang="it">
@@ -261,34 +283,72 @@ export async function GET(
         .cliente h3 { margin: 0 0 8px; font-size: 15px; border-bottom: 1px solid var(--bordo); padding-bottom: 5px; }
         .cliente p { margin: 3px 0; font-size: 13px; }
 
-        /* === TABELLA === */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: avoid; }
-        thead { display: table-header-group; }
-        th, td { padding: 10px 12px; border: 1px solid var(--bordo); text-align: left; }
-        th { background-color: var(--colore-sfondo); font-weight: 600; text-align: center; font-size: 13px; }
-        td:nth-child(2) { width: 45%; }
-        td:nth-child(3), td:nth-child(4) { text-align: center; width: 12%; }
-        td:nth-child(5) { text-align: right; width: 18%; font-weight: 500; }
-        tr { page-break-inside: avoid; }
+        /* === NOTE / CONDIZIONI === */
+        .note, .pagamento {
+            margin-bottom: 25px;
+            font-size: 13px;
+            page-break-inside: avoid;
+            line-height: 1.6;
+        }
+        .note h3, .pagamento h3 {
+            margin: 0 0 10px;
+            font-size: 14px;
+            color: var(--colore-primario);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .note p, .pagamento p { margin: 4px 0; }
+
+        /* === RIGHE OFFERTA (CLEAN) === */
+        .items-section { margin-top: 10px; margin-bottom: 25px; }
+        .items-section h3 {
+            margin: 0 0 15px;
+            font-size: 14px;
+            color: var(--colore-primario);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--colore-primario);
+            padding-bottom: 6px;
+        }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 14px 0;
+            border-bottom: 1px solid #eee;
+            page-break-inside: avoid;
+        }
+        .item-row:last-child { border-bottom: none; }
+        .item-left { flex: 1; padding-right: 20px; }
+        .item-right { text-align: right; min-width: 140px; }
+        .item-title { font-weight: 600; font-size: 14px; color: var(--testo); margin-bottom: 3px; }
+        .item-meta { font-size: 12px; color: #777; }
+        .item-detail { font-size: 12px; color: #999; margin-top: 2px; }
+        .item-price { font-weight: 700; font-size: 15px; color: var(--colore-primario); }
+        .item-discount { font-size: 12px; color: #c0392b; margin-top: 2px; }
 
         /* === TOTALI === */
-        .totali { margin-left: auto; width: 45%; margin-bottom: 25px; page-break-inside: avoid; }
-        .totali table { border: none; margin: 0; }
-        .totali td { border: none; padding: 6px 10px; }
-        .totali tr.totale-finale { font-size: 1.15em; font-weight: bold; border-top: 2px solid var(--colore-primario); }
-        .totali tr.ricorrente-row td { color: #555; font-size: 0.92em; padding-top: 4px; border-top: 1px dashed #ccc; }
-        .totali .importo { text-align: right; }
-
-        /* === DESCRIZIONI FORMALI === */
-        .descrizioni { margin-bottom: 25px; page-break-inside: avoid; }
-        .descrizioni h3 { margin: 0 0 12px; font-size: 15px; color: var(--colore-primario); }
-        .voce { margin-bottom: 12px; page-break-inside: avoid; }
-        .voce strong { display: block; margin-bottom: 2px; }
-        .voce p { margin: 0; font-size: 13px; color: #444; }
-
-        /* === PAGAMENTO E NOTE === */
-        .pagamento, .note { margin-bottom: 20px; font-size: 13px; page-break-inside: avoid; }
-        .pagamento p, .note p { margin: 4px 0; }
+        .totals {
+            margin-left: auto;
+            width: 50%;
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+            color: #555;
+        }
+        .total-row.total-final {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: var(--colore-primario);
+            border-top: 2px solid var(--colore-primario);
+            margin-top: 6px;
+            padding-top: 10px;
+        }
 
         /* === FOOTER === */
         .footer {
@@ -318,12 +378,9 @@ export async function GET(
                 page-break-after: auto;
             }
             @page { size: A4 portrait; margin: 20mm; }
-            thead { display: table-header-group; }
-            tr { page-break-inside: avoid; }
             .toolbar, .no-print { display: none !important; }
             .page-sheet { border: none; }
-            /* Evita spezzature sui blocchi principali */
-            .header, .cliente, .totali, .descrizioni, .pagamento, .note, .footer, table, tbody, tr, .voce {
+            .header, .cliente, .note, .pagamento, .items-section, .totals, .footer, .item-row {
                 page-break-inside: avoid;
             }
         }
@@ -357,49 +414,32 @@ export async function GET(
             ${contact?.email ? `<p>${esc(contact.email)}</p>` : ""}
         </section>
 
-        <!-- TABELLA SERVIZI -->
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>DESCRIZIONE</th>
-                    <th>TIPO</th>
-                    <th>QTA</th>
-                    <th>IMPORTO</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${itemRows || `<tr><td colspan="5" style="text-align:center;color:#999;padding:20px">Nessuna voce inserita</td></tr>`}
-            </tbody>
-        </table>
-
-        <!-- TOTALI -->
-        <div class="totali">
-            <table>
-                ${totaliRows}
-            </table>
-        </div>
-
-        <!-- DESCRIZIONI FORMALI -->
-        ${vociDettaglio ? `
-        <section class="descrizioni">
-            <h3>Dettaglio delle Voci di Offerta</h3>
-            ${vociDettaglio}
-        </section>` : ""}
-
-        <!-- NOTE -->
+        <!-- NOTE / CONDIZIONI -->
         ${quote.notes ? `
         <section class="note">
+            <h3>Note e Condizioni</h3>
             <p>${esc(quote.notes).replace(/\n/g, "<br>")}</p>
         </section>` : ""}
 
         <!-- MODALITÀ DI PAGAMENTO -->
         <section class="pagamento">
+            <h3>Modalità di Pagamento</h3>
             ${paymentBlock || `
             <strong>Modalità di Pagamento:</strong> Bonifico Bancario
             <p>Scadenza: 30 giorni data fattura</p>
             `}
         </section>
+
+        <!-- RIGHE OFFERTA -->
+        <section class="items-section">
+            <h3>Dettaglio Offerta</h3>
+            ${itemRows || `<p style="color:#999;font-style:italic;">Nessuna voce inserita</p>`}
+        </section>
+
+        <!-- TOTALI -->
+        <div class="totals">
+            ${totalsRows}
+        </div>
 
         <!-- FOOTER -->
         <footer class="footer">
@@ -428,7 +468,6 @@ export async function GET(
         page.contentEditable = 'true';
         page.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#bbb;font-style:italic;">Pagina vuota — clicca per scrivere</div>';
         container.appendChild(page);
-        // Posiziona il cursore nel div vuoto
         const emptyDiv = page.querySelector('div');
         const range = document.createRange();
         const sel = window.getSelection();

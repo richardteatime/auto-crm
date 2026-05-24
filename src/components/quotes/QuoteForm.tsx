@@ -26,6 +26,7 @@ export interface QuoteItem {
   description: string;
   quantity: number;
   unitPrice: number; // EUR
+  discount: number; // %
   billingType: "una_tantum" | "mensile" | "annuale";
 }
 
@@ -55,7 +56,7 @@ const STATUS_OPTIONS = [
 ];
 
 function newItem(): QuoteItem {
-  return { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, billingType: "una_tantum" };
+  return { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, discount: 0, billingType: "una_tantum" };
 }
 
 export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps) {
@@ -94,6 +95,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
         if (i.id !== id) return i;
         if (field === "quantity") return { ...i, quantity: Math.max(1, parseFloat(raw) || 1) };
         if (field === "unitPrice") return { ...i, unitPrice: parseFloat(raw) || 0 };
+        if (field === "discount") return { ...i, discount: Math.min(100, Math.max(0, parseFloat(raw) || 0)) };
         return { ...i, [field]: raw };
       })
     );
@@ -113,8 +115,9 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
     if (items.length > 1) setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const oneTimeSub = items.filter((i) => i.billingType === "una_tantum").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const recurringSub = items.filter((i) => i.billingType !== "una_tantum").reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const lineTotal = (i: QuoteItem) => i.quantity * i.unitPrice * (1 - i.discount / 100);
+  const oneTimeSub = items.filter((i) => i.billingType === "una_tantum").reduce((s, i) => s + lineTotal(i), 0);
+  const recurringSub = items.filter((i) => i.billingType !== "una_tantum").reduce((s, i) => s + lineTotal(i), 0);
   const subtotal = oneTimeSub + recurringSub;
   const vatAmount = subtotal * vatRate / 100;
   const total = subtotal + vatAmount;
@@ -135,6 +138,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
           description: i.description,
           quantity: i.quantity,
           unitPrice: Math.round(i.unitPrice * 100),
+          discount: i.discount,
           billingType: i.billingType,
         })),
         notes: notes.trim() || null,
@@ -222,7 +226,8 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                     <th className="text-left px-3 py-2 font-medium">Descrizione</th>
                     <th className="text-left px-3 py-2 font-medium w-28">Tipo</th>
                     <th className="text-right px-3 py-2 font-medium w-20">Qtà</th>
-                    <th className="text-right px-3 py-2 font-medium w-32">Prezzo (€)</th>
+                    <th className="text-right px-3 py-2 font-medium w-28">Prezzo (€)</th>
+                    <th className="text-right px-3 py-2 font-medium w-20">Sconto %</th>
                     <th className="text-right px-3 py-2 font-medium w-28">Totale</th>
                     <th className="w-9" />
                   </tr>
@@ -283,8 +288,22 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           placeholder="0.00"
                         />
                       </td>
+                      <td className="px-3 py-1.5">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          className="h-8 border-0 shadow-none px-0 focus-visible:ring-0 text-right bg-transparent"
+                          value={item.discount || ""}
+                          onChange={(e) =>
+                            updateItem(item.id, "discount", e.target.value)
+                          }
+                          placeholder="0"
+                        />
+                      </td>
                       <td className="px-3 py-1.5 text-right font-medium tabular-nums">
-                        €{(item.quantity * item.unitPrice).toFixed(2)}
+                        €{(item.quantity * item.unitPrice * (1 - item.discount / 100)).toFixed(2)}
                       </td>
                       <td className="px-1 py-1.5">
                         <Button
