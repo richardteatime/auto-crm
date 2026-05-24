@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bell, Activity, GitBranch, CalendarDays, CheckCheck, X } from "lucide-react";
+import { Bell, Activity, GitBranch, CalendarDays, MessageSquare, CheckCheck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "./NotificationContext";
@@ -25,7 +25,9 @@ function NotificationItem({
         ? "/timeline"
         : notification.relatedType === "calendar_event"
           ? "/calendar"
-          : null;
+          : notification.relatedType === "message"
+            ? "/messages"
+            : null;
 
   function handleClick() {
     // Note: notification is NOT marked as read here.
@@ -53,6 +55,8 @@ function NotificationItem({
           <Activity className="h-4 w-4" />
         ) : notification.type === "calendar_assigned" ? (
           <CalendarDays className="h-4 w-4" />
+        ) : notification.type === "chat_message" ? (
+          <MessageSquare className="h-4 w-4" />
         ) : (
           <GitBranch className="h-4 w-4" />
         )}

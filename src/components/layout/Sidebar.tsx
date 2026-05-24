@@ -34,7 +34,7 @@ const navItems = [
   { href: "/preventivi", label: "Preventivi", icon: FileText, badge: null },
   { href: "/finance", label: "Finance", icon: TrendingUp, badge: null },
   { href: "/notifications", label: "Notifiche", icon: Bell, badge: "total" as const },
-  { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: null },
+  { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: "chat" as const },
   { href: "/settings", label: "Impostazioni", icon: Settings, badge: null },
 ];
 

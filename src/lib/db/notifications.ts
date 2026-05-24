@@ -2,8 +2,8 @@ import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
 import { ID, type Models } from "node-appwrite";
 import { Query } from "@/lib/query17";
 
-export type NotificationType = "activity_assigned" | "project_assigned" | "calendar_assigned";
-export type NotificationRelatedType = "activity" | "project" | "calendar_event";
+export type NotificationType = "activity_assigned" | "project_assigned" | "calendar_assigned" | "chat_message";
+export type NotificationRelatedType = "activity" | "project" | "calendar_event" | "message";
 
 export interface AppNotification {
   id: string;
@@ -111,6 +111,25 @@ export async function markNotificationsReadByRelated(
     Query.equal("userId", userId),
     Query.equal("relatedId", relatedId),
     Query.equal("relatedType", relatedType),
+    Query.equal("read", false),
+    Query.limit(200),
+  ]);
+  await Promise.all(
+    res.documents.map((doc) =>
+      databases.updateDocument(DB_ID, COLLECTIONS.notifications, doc.$id, {
+        read: true,
+      }),
+    ),
+  );
+}
+
+export async function markNotificationsReadByType(
+  userId: string,
+  type: NotificationType,
+): Promise<void> {
+  const res = await databases.listDocuments(DB_ID, COLLECTIONS.notifications, [
+    Query.equal("userId", userId),
+    Query.equal("type", type),
     Query.equal("read", false),
     Query.limit(200),
   ]);

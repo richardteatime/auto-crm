@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Send, MessageSquare, User } from "lucide-react";
 import { formatRelativeDate } from "@/lib/constants";
 import { toast } from "sonner";
+import { useNotifications } from "@/components/shared/NotificationContext";
 
 interface Message {
   id: string;
@@ -30,6 +31,7 @@ export default function MessagesPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastTimestampRef = useRef<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { refresh: refreshNotifications } = useNotifications();
 
   // Load real user from session
   useEffect(() => {
@@ -92,6 +94,19 @@ export default function MessagesPage() {
     const interval = setInterval(() => loadMessages(false), 4000);
     return () => clearInterval(interval);
   }, [loadMessages]);
+
+  // Mark chat notifications as read when opening the page
+  useEffect(() => {
+    fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "chat_message" }),
+    }).then(() => {
+      refreshNotifications();
+    }).catch(() => {
+      // ignore
+    });
+  }, [refreshNotifications]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

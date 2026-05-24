@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listMessages, createMessage } from "@/lib/db/messages";
+import { createNotification } from "@/lib/db/notifications";
+import { users } from "@/lib/appwrite";
 import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +36,29 @@ export async function POST(req: NextRequest) {
       author: auth.user.name,
       content: content.trim(),
     });
+
+    // Create notifications for all other users
+    try {
+      const allUsers = await users.list();
+      await Promise.all(
+        allUsers.users
+          .filter((u) => u.$id !== auth.user.id)
+          .map((u) =>
+            createNotification({
+              userId: u.$id,
+              type: "chat_message",
+              title: `Nuovo messaggio da ${auth.user.name}`,
+              body: content.trim().slice(0, 200),
+              relatedId: msg.id,
+              relatedType: "message",
+              fromUserId: auth.user.id,
+              fromUserName: auth.user.name,
+            })
+          )
+      );
+    } catch (err) {
+      console.error("[messages] failed to create notifications:", err);
+    }
 
     return NextResponse.json(msg, { status: 201 });
   } catch {

@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import {
   listNotifications,
   markAllNotificationsRead,
+  markNotificationsReadByType,
 } from "@/lib/db/notifications";
 
 export async function GET(request: NextRequest) {
@@ -20,13 +21,24 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PATCH /api/notifications — mark all as read
+// PATCH /api/notifications — mark all as read (or by type if body.type is provided)
 export async function PATCH(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
   try {
-    await markAllNotificationsRead(auth.user.id);
+    let body: { type?: string } = {};
+    try {
+      body = await request.json();
+    } catch {
+      // empty body is fine
+    }
+
+    if (body.type) {
+      await markNotificationsReadByType(auth.user.id, body.type as "chat_message");
+    } else {
+      await markAllNotificationsRead(auth.user.id);
+    }
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(

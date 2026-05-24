@@ -4,7 +4,7 @@ import { useNotifications } from "@/components/shared/NotificationContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Activity, GitBranch, CalendarDays, Bell, CheckCheck, Trash2 } from "lucide-react";
+import { Activity, GitBranch, CalendarDays, MessageSquare, Bell, CheckCheck, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const typeConfig = {
   activity_assigned: { label: "Attività", icon: Activity, color: "text-blue-600", bg: "bg-blue-100" },
   project_assigned: { label: "Progetto", icon: GitBranch, color: "text-purple-600", bg: "bg-purple-100" },
   calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-100" },
+  chat_message: { label: "Chat", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-100" },
 };
 
 export default function NotificationsPage() {
@@ -83,7 +84,9 @@ export default function NotificationsPage() {
                       ? "/timeline"
                       : n.relatedType === "calendar_event"
                         ? "/calendar"
-                        : null;
+                        : n.relatedType === "message"
+                          ? "/messages"
+                          : null;
 
                 return (
                   <div
