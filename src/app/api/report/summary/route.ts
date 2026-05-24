@@ -63,7 +63,8 @@ export async function GET(request: NextRequest) {
       totalValue: rows.reduce((s, d) => s + d.value, 0),
       wonCount: wonRows.length,
       wonValue: wonRows.reduce((s, d) => s + d.value, 0),
-      recurring: rows.filter((d) => d.billingType !== "una_tantum").length,
+      monthly: rows.filter((d) => d.billingType === "mensile").length,
+      annual: rows.filter((d) => d.billingType === "annuale").length,
     });
   }
 

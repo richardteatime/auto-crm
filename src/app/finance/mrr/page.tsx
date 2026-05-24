@@ -12,6 +12,7 @@ interface MrrDeal {
   title: string;
   contactName: string | null;
   value: number;
+  billingType: import("@/types").BillingType;
   recurringMonths: number;
   startDate: string;
   endDate: string;
@@ -23,6 +24,8 @@ export default function MrrPage() {
   const router = useRouter();
   const [deals, setDeals] = useState<MrrDeal[]>([]);
   const [totalMrr, setTotalMrr] = useState(0);
+  const [monthlyMrr, setMonthlyMrr] = useState(0);
+  const [annualMrr, setAnnualMrr] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,6 +34,8 @@ export default function MrrPage() {
       .then((data) => {
         setDeals(data.deals ?? []);
         setTotalMrr(data.totalMrr ?? 0);
+        setMonthlyMrr(data.monthlyMrr ?? 0);
+        setAnnualMrr(data.annualMrr ?? 0);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -64,11 +69,20 @@ export default function MrrPage() {
               <span className="text-sm text-muted-foreground">MRR Totale</span>
               <span className="text-xl font-bold text-blue-500">{formatCurrency(totalMrr)}</span>
             </div>
-            <div className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
-              <CalendarRange className="h-4 w-4 text-blue-400" />
-              <span className="text-sm text-muted-foreground">ARR</span>
-              <span className="text-lg font-semibold text-blue-400">{formatCurrency(totalArr)}</span>
-            </div>
+            {monthlyMrr > 0 && (
+              <div className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
+                <RefreshCw className="h-4 w-4 text-blue-400" />
+                <span className="text-sm text-muted-foreground">MRR Mensile</span>
+                <span className="text-lg font-semibold text-blue-400">{formatCurrency(monthlyMrr)}</span>
+              </div>
+            )}
+            {annualMrr > 0 && (
+              <div className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
+                <CalendarRange className="h-4 w-4 text-emerald-400" />
+                <span className="text-sm text-muted-foreground">MRR da Annuali</span>
+                <span className="text-lg font-semibold text-emerald-400">{formatCurrency(annualMrr)}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
               <span className="text-sm text-muted-foreground">Valore totale contratti</span>
               <span className="text-lg font-semibold">{formatCurrency(totalContractValue)}</span>
@@ -97,8 +111,8 @@ export default function MrrPage() {
                 className="flex items-center gap-5 rounded-xl border bg-card px-6 py-5 hover:bg-muted/30 transition-colors"
               >
                 {/* Icon */}
-                <div className="shrink-0 p-3 rounded-xl bg-blue-500/10">
-                  <RefreshCw className="h-6 w-6 text-blue-500" />
+                <div className={`shrink-0 p-3 rounded-xl ${d.billingType === "annuale" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
+                  <RefreshCw className={`h-6 w-6 ${d.billingType === "annuale" ? "text-emerald-500" : "text-blue-500"}`} />
                 </div>
 
                 {/* Name + client */}
@@ -106,8 +120,8 @@ export default function MrrPage() {
                   <p className="font-semibold text-base">{d.title}</p>
                   <p className="text-sm text-muted-foreground">{d.contactName ?? "—"}</p>
                   <div className="flex items-center gap-2 mt-1.5">
-                    <Badge variant="outline" className="text-blue-500 border-blue-500/40 whitespace-nowrap text-xs">
-                      ×{d.recurringMonths} mesi
+                    <Badge variant="outline" className={`whitespace-nowrap text-xs ${d.billingType === "annuale" ? "text-emerald-500 border-emerald-500/40" : "text-blue-500 border-blue-500/40"}`}>
+                      {d.billingType === "annuale" ? "Ricorrente/anno" : "Ricorrente/mese"} ×{d.recurringMonths} mesi
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                       {formatDate(new Date(d.startDate))} → {formatDate(new Date(d.endDate))}

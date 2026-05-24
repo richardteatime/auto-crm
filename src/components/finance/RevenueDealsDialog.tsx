@@ -46,7 +46,8 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
   }, [open, start, end]);
 
   const totalOneTime = deals.filter((d) => d.billingType === "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
-  const totalRecurring = deals.filter((d) => d.billingType !== "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
+  const totalMensile = deals.filter((d) => d.billingType === "mensile").reduce((s, d) => s + d.revenueContribution, 0);
+  const totalAnnuale = deals.filter((d) => d.billingType === "annuale").reduce((s, d) => s + d.revenueContribution, 0);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -76,11 +77,18 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
                   <span className="text-sm font-semibold text-green-600">{formatCurrency(totalOneTime)}</span>
                 </div>
               )}
-              {totalRecurring > 0 && (
+              {totalMensile > 0 && (
                 <div className="flex items-center gap-1.5 rounded-lg bg-muted/60 px-3 py-1.5">
                   <RefreshCw className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="text-xs text-muted-foreground">Ricorrente</span>
-                  <span className="text-sm font-semibold text-blue-500">{formatCurrency(totalRecurring)}</span>
+                  <span className="text-xs text-muted-foreground">Ricorrente/mese</span>
+                  <span className="text-sm font-semibold text-blue-500">{formatCurrency(totalMensile)}</span>
+                </div>
+              )}
+              {totalAnnuale > 0 && (
+                <div className="flex items-center gap-1.5 rounded-lg bg-muted/60 px-3 py-1.5">
+                  <RefreshCw className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-xs text-muted-foreground">Ricorrente/anno</span>
+                  <span className="text-sm font-semibold text-emerald-500">{formatCurrency(totalAnnuale)}</span>
                 </div>
               )}
             </div>
@@ -108,7 +116,7 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
                   <div className={`shrink-0 p-2 rounded-lg ${d.billingType === "una_tantum" ? "bg-green-500/10" : d.billingType === "annuale" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
                     {d.billingType === "una_tantum"
                       ? <Zap className="h-4 w-4 text-green-600" />
-                      : <RefreshCw className="h-4 w-4 text-blue-500" />
+                      : <RefreshCw className={`h-4 w-4 ${d.billingType === "annuale" ? "text-emerald-500" : "text-blue-500"}`} />
                     }
                   </div>
 

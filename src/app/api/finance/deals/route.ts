@@ -129,5 +129,11 @@ export async function GET(req: NextRequest) {
 
   result.sort((a, b) => b.revenueContribution - a.revenueContribution);
 
-  return NextResponse.json({ deals: result });
+  const totals = {
+    una_tantum: result.filter((d) => d.billingType === "una_tantum").reduce((s, d) => s + d.revenueContribution, 0),
+    mensile: result.filter((d) => d.billingType === "mensile").reduce((s, d) => s + d.revenueContribution, 0),
+    annuale: result.filter((d) => d.billingType === "annuale").reduce((s, d) => s + d.revenueContribution, 0),
+  };
+
+  return NextResponse.json({ deals: result, totals });
 }

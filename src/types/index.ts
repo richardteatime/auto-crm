@@ -67,13 +67,14 @@ export interface FinanceSummary {
   periodStart: string;
   periodEnd: string;
   oneTimeRevenue: number;
-  recurringRevenue: number;
+  monthlyRevenue: number;
+  annualRevenue: number;
   totalRevenue: number;
   mrr: number;
   totalExpenses: number;
   cashFlow: number;
   expenseByCategory: Record<string, number>;
-  monthly: Array<{ month: string; oneTime: number; recurring: number; expenses: number }>;
+  monthly: Array<{ month: string; oneTime: number; monthly: number; annual: number; expenses: number }>;
 }
 
 export interface PipelineStage {

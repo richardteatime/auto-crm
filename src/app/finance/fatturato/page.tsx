@@ -40,7 +40,8 @@ function FatturatoContent() {
 
   const totalRevenue = deals.reduce((s, d) => s + d.revenueContribution, 0);
   const totalOneTime = deals.filter((d) => d.billingType === "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
-  const totalRecurring = deals.filter((d) => d.billingType !== "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
+  const totalMensile = deals.filter((d) => d.billingType === "mensile").reduce((s, d) => s + d.revenueContribution, 0);
+  const totalAnnuale = deals.filter((d) => d.billingType === "annuale").reduce((s, d) => s + d.revenueContribution, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,11 +78,18 @@ function FatturatoContent() {
                 <span className="text-lg font-semibold text-green-600">{formatCurrency(totalOneTime)}</span>
               </div>
             )}
-            {totalRecurring > 0 && (
+            {totalMensile > 0 && (
               <div className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
                 <RefreshCw className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-muted-foreground">Ricorrente</span>
-                <span className="text-lg font-semibold text-blue-500">{formatCurrency(totalRecurring)}</span>
+                <span className="text-sm text-muted-foreground">Ricorrente/mese</span>
+                <span className="text-lg font-semibold text-blue-500">{formatCurrency(totalMensile)}</span>
+              </div>
+            )}
+            {totalAnnuale > 0 && (
+              <div className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
+                <RefreshCw className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm text-muted-foreground">Ricorrente/anno</span>
+                <span className="text-lg font-semibold text-emerald-500">{formatCurrency(totalAnnuale)}</span>
               </div>
             )}
           </div>

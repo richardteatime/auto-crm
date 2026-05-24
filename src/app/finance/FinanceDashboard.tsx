@@ -139,7 +139,7 @@ export function FinanceDashboard() {
 
   // Revenue filters
   const [revSearch, setRevSearch] = useState("");
-  const [revFilterType, setRevFilterType] = useState<"" | "onetime" | "recurring" | "external">("");
+  const [revFilterType, setRevFilterType] = useState<"" | "una_tantum" | "mensile" | "annuale" | "external">("");
 
   // Expense filters
   const [expSearch, setExpSearch] = useState("");
@@ -235,8 +235,7 @@ export function FinanceDashboard() {
   }), [expenses, expSearch, expFilterType, expFilterCategory]);
 
   const filteredRevenues = useMemo(() => revenues.filter((r) => {
-    if (revFilterType === "onetime" && r.billingType !== "una_tantum") return false;
-    if (revFilterType === "recurring" && r.billingType === "una_tantum") return false;
+    if (revFilterType && revFilterType !== "external" && r.billingType !== revFilterType) return false;
     if (revFilterType === "external" && !r.isExternal) return false;
     if (revSearch) {
       const q = revSearch.toLowerCase();
@@ -317,7 +316,7 @@ export function FinanceDashboard() {
         <KpiCard
           title="Fatturato Periodo"
           value={loading ? "..." : formatCurrency(summary?.totalRevenue ?? 0)}
-          sub={loading ? "" : `Ric: ${formatCurrency(summary?.recurringRevenue ?? 0)} · Una t.: ${formatCurrency(summary?.oneTimeRevenue ?? 0)}`}
+          sub={loading ? "" : `Mese: ${formatCurrency(summary?.monthlyRevenue ?? 0)} · Anno: ${formatCurrency(summary?.annualRevenue ?? 0)} · Una t.: ${formatCurrency(summary?.oneTimeRevenue ?? 0)}`}
           icon={TrendingUp}
           color="text-green-400"
           onClick={() => {
@@ -372,16 +371,17 @@ export function FinanceDashboard() {
               <Tooltip
                 formatter={(value: unknown, name: unknown) => [
                   formatCurrency(typeof value === "number" ? value : 0),
-                  name === "oneTime" ? "Una Tantum" : name === "recurring" ? "Ricorrente" : "Spese",
+                  name === "oneTime" ? "Una Tantum" : name === "monthly" ? "Ricorrente/mese" : name === "annual" ? "Ricorrente/anno" : "Spese",
                 ]}
               />
               <Legend
                 formatter={(value) =>
-                  value === "oneTime" ? "Una Tantum" : value === "recurring" ? "Ricorrente" : "Spese"
+                  value === "oneTime" ? "Una Tantum" : value === "monthly" ? "Ricorrente/mese" : value === "annual" ? "Ricorrente/anno" : "Spese"
                 }
               />
               <Bar dataKey="oneTime" stackId="rev" fill="#22c55e" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="recurring" stackId="rev" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="monthly" stackId="rev" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="annual" stackId="rev" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -425,7 +425,7 @@ export function FinanceDashboard() {
               )}
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {[{ value: "" as const, label: "Tutti" }, { value: "onetime" as const, label: "Una tantum" }, { value: "recurring" as const, label: "Ricorrente" }, { value: "external" as const, label: "Esterno" }].map(({ value, label }) => (
+              {[{ value: "" as const, label: "Tutti" }, { value: "una_tantum" as const, label: "Una tantum" }, { value: "mensile" as const, label: "Ricorrente/mese" }, { value: "annuale" as const, label: "Ricorrente/anno" }, { value: "external" as const, label: "Esterno" }].map(({ value, label }) => (
                 <button key={value} onClick={() => setRevFilterType(value)}
                   className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
                     revFilterType === value ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
@@ -454,9 +454,9 @@ export function FinanceDashboard() {
                 className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-green-500/30" : "border-border"}`}
               >
                 <div className={`shrink-0 p-2 rounded-lg ${r.billingType === "una_tantum" ? "bg-green-500/10" : r.billingType === "annuale" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
-                  {r.billingType !== "una_tantum"
-                    ? <RefreshCw className="h-4 w-4 text-blue-500" />
-                    : <Banknote className="h-4 w-4 text-green-500" />
+                  {r.billingType === "una_tantum"
+                    ? <Banknote className="h-4 w-4 text-green-500" />
+                    : <RefreshCw className={`h-4 w-4 ${r.billingType === "annuale" ? "text-emerald-500" : "text-blue-500"}`} />
                   }
                 </div>
                 <div className="flex-1 min-w-0">

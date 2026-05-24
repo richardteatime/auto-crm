@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     title: string;
     contactName: string | null;
     value: number;
+    billingType: import("@/types").BillingType;
     recurringMonths: number;
     startDate: string;
     endDate: string;
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest) {
       title: d.title,
       contactName: (d as DealWithContact).contactName ?? null,
       value: monthlyValue,
+      billingType: d.billingType,
       recurringMonths: recurMonths,
       startDate: dStart.toISOString(),
       endDate: dEnd.toISOString(),
@@ -86,6 +88,7 @@ export async function GET(request: NextRequest) {
       title: r.description,
       contactName: r.isExternal ? "Collaborazione esterna" : null,
       value: monthlyValue,
+      billingType: r.billingType,
       recurringMonths: recurMonths,
       startDate: rStart.toISOString(),
       endDate: rEnd.toISOString(),
@@ -97,6 +100,8 @@ export async function GET(request: NextRequest) {
   result.sort((a, b) => b.value - a.value);
 
   const totalMrr = result.reduce((s, d) => s + d.value, 0);
+  const monthlyMrr = result.filter((d) => d.billingType === "mensile").reduce((s, d) => s + d.value, 0);
+  const annualMrr = result.filter((d) => d.billingType === "annuale").reduce((s, d) => s + d.value, 0);
 
-  return NextResponse.json({ deals: result, totalMrr });
+  return NextResponse.json({ deals: result, totalMrr, monthlyMrr, annualMrr });
 }
