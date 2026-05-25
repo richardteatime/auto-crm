@@ -5,15 +5,27 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { NotificationBanner } from "@/components/dashboard/NotificationBanner";
 import type { DashboardStats } from "@/types";
 import { WHITE_LABEL } from "@/lib/white-label";
+import { AlertTriangle, Wrench } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [allContacts, allDeals, stages] = await Promise.all([
-    listContacts(),
-    listDeals(),
-    getStages(),
-  ]);
+  let allContacts: Awaited<ReturnType<typeof listContacts>> = [];
+  let allDeals: Awaited<ReturnType<typeof listDeals>> = [];
+  let stages: Awaited<ReturnType<typeof getStages>> = [];
+  let recentActivities: Awaited<ReturnType<typeof listActivities>> = [];
+  let error: string | null = null;
+
+  try {
+    [allContacts, allDeals, stages] = await Promise.all([
+      listContacts(),
+      listDeals(),
+      getStages(),
+    ]);
+    recentActivities = await listActivities();
+  } catch (e: any) {
+    error = e.message || "Errore di connessione al database";
+  }
 
   const activeDeals = allDeals.filter((d) => {
     const stage = stages.find((s) => s.id === d.stageId);
@@ -48,9 +60,46 @@ export default async function DashboardPage() {
       color: stage.color,
     }));
 
-  const recentActivities = await listActivities();
-
   const isFirstRun = allContacts.length === 0 && allDeals.length === 0;
+
+  if (error) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="max-w-lg w-full space-y-6 text-center">
+          <div className="mx-auto h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center">
+            <AlertTriangle className="h-8 w-8 text-amber-600" />
+          </div>
+          <h1 className="text-2xl font-bold">Database non inizializzato</h1>
+          <p className="text-muted-foreground">
+            Il CRM non trova le collezioni su Appwrite. È necessario eseguire il setup una volta.
+          </p>
+          <div className="rounded-lg border bg-muted/50 p-4 text-left text-sm space-y-3">
+            <div className="flex items-start gap-2">
+              <Wrench className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium">Soluzione rapida</p>
+                <p className="text-muted-foreground mt-1">
+                  Dal tuo terminale locale, con le stesse variabili d&apos;ambiente del deploy:
+                </p>
+                <pre className="mt-2 p-3 rounded bg-black text-white text-xs font-mono overflow-x-auto">
+                  npm run setup
+                </pre>
+                <p className="text-muted-foreground mt-2">
+                  Oppure entra nel container su Coolify e lancia:
+                </p>
+                <pre className="mt-2 p-3 rounded bg-black text-white text-xs font-mono overflow-x-auto">
+                  npx tsx scripts/setup-appwrite.ts
+                </pre>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Errore: {error}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
