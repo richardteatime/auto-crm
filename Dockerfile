@@ -5,7 +5,7 @@ WORKDIR /app
 # Install ALL dependencies (dev + prod) needed for build
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
