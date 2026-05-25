@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectStatus } from "@/types";
-import { useModules } from "@/lib/hooks/useModules";
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "";
@@ -23,29 +22,7 @@ function formatDate(d: Date | null | undefined): string {
 
 export default function TimelinePage() {
   const router = useRouter();
-  const { enabled, loading: modulesLoading } = useModules();
 
-  if (modulesLoading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Timeline Progetti</h1>
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}
-        </div>
-      </div>
-    );
-  }
-
-  if (!enabled?.includes("timeline")) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <h2 className="text-xl font-semibold">Modulo disabilitato</h2>
-        <p className="text-muted-foreground mt-2">
-          Il modulo Timeline non è attivo per questo cliente.
-        </p>
-      </div>
-    );
-  }
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -54,12 +31,12 @@ export default function TimelinePage() {
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   const [contactsMap, setContactsMap] = useState<Record<string, string>>({});
 
-  const load = () => {
+  const load = useCallback(() => {
     fetch("/api/projects")
       .then((r) => r.json())
       .then((data) => { setProjects(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     load();
@@ -79,7 +56,7 @@ export default function TimelinePage() {
         setContactsMap(map);
       })
       .catch(() => {});
-  }, []);
+  }, [load]);
 
   const filtered = useMemo(() => projects.filter((p) => {
     if (filterStatus && p.status !== filterStatus) return false;
@@ -91,7 +68,7 @@ export default function TimelinePage() {
         p.description?.toLowerCase().includes(q);
     }
     return true;
-  }), [projects, filterStatus, search, usersMap]);
+  }), [projects, filterStatus, search, usersMap, contactsMap]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { "": projects.length };

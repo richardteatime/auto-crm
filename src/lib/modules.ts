@@ -5,7 +5,19 @@
  * per-client via Settings > Modules.
  */
 
-export type ModuleId = "finance" | "timeline" | "messages" | "quotes" | "digest";
+export type ModuleId =
+  | "activities"
+  | "calendar"
+  | "contacts"
+  | "deals"
+  | "opportunita"
+  | "pipeline"
+  | "notifications"
+  | "finance"
+  | "timeline"
+  | "messages"
+  | "quotes"
+  | "digest";
 
 export interface ModuleDef {
   id: ModuleId;
@@ -17,6 +29,55 @@ export interface ModuleDef {
 
 /** Optional modules that can be disabled per-client */
 export const OPTIONAL_MODULES: ModuleDef[] = [
+  {
+    id: "contacts",
+    label: "Contatti",
+    description: "Gestione lead e contatti",
+    pages: ["/contacts"],
+    apiRoutes: ["/api/contacts", "/api/import", "/api/export", "/api/classify"],
+  },
+  {
+    id: "deals",
+    label: "Trattative",
+    description: "Gestione opportunità di vendita",
+    pages: ["/deals"],
+    apiRoutes: ["/api/deals"],
+  },
+  {
+    id: "opportunita",
+    label: "Opportunità",
+    description: "Pipeline avanzato e opportunità",
+    pages: ["/opportunita"],
+    apiRoutes: ["/api/opportunities"],
+  },
+  {
+    id: "pipeline",
+    label: "Pipeline",
+    description: "Visualizzazione Kanban del pipeline",
+    pages: ["/pipeline"],
+    apiRoutes: ["/api/pipeline"],
+  },
+  {
+    id: "activities",
+    label: "Attività",
+    description: "Attività, follow-up e cronologia",
+    pages: ["/activities"],
+    apiRoutes: ["/api/activities", "/api/followups"],
+  },
+  {
+    id: "calendar",
+    label: "Calendario",
+    description: "Eventi e appuntamenti",
+    pages: ["/calendar"],
+    apiRoutes: ["/api/calendar"],
+  },
+  {
+    id: "notifications",
+    label: "Notifiche",
+    description: "Notifiche in-app e avvisi",
+    pages: ["/notifications"],
+    apiRoutes: ["/api/notifications"],
+  },
   {
     id: "finance",
     label: "Finance",

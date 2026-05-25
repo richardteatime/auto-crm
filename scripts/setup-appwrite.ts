@@ -1,5 +1,6 @@
-import { Client, Databases, ID, Query, DatabasesIndexType, Storage } from "node-appwrite";
-import "dotenv/config";
+import { Client, Databases, ID, Query, Storage } from "node-appwrite";
+import { config } from "dotenv";
+config({ path: ".env.local" });
 
 const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
@@ -17,6 +18,22 @@ async function main() {
 
   console.log(`Using database: ${DB_ID}`);
   console.log(`Endpoint: ${APPWRITE_ENDPOINT}`);
+
+  // Helper to create database
+  async function ensureDatabase() {
+    try {
+      await db.create(DB_ID, DB_ID);
+      console.log(`  Database "${DB_ID}" created`);
+    } catch (e: unknown) {
+      if (e instanceof Error && (e.message.includes("already exists") || e.message.includes("Duplicate"))) {
+        console.log(`  Database "${DB_ID}" already exists`);
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  await ensureDatabase();
 
   // Helper to create collection
   async function ensureCollection(collectionId: string, name: string) {
@@ -46,7 +63,7 @@ async function main() {
   }
 
   // Helper to create index (ignore if exists)
-  async function addIndex(collectionId: string, key: string, type: DatabasesIndexType, attrs: string[]) {
+  async function addIndex(collectionId: string, key: string, type: string, attrs: string[]) {
     try {
       await db.createIndex(DB_ID, collectionId, key, type, attrs);
       console.log(`    Index "${key}" created`);
@@ -92,9 +109,9 @@ async function main() {
   await addAttr("contacts", text("contacts", "notes", false));
   await addAttr("contacts", dt("contacts", "createdAt", true));
   await addAttr("contacts", dt("contacts", "updatedAt", true));
-  await addIndex("contacts", "idx_temperature", DatabasesIndexType.Key, ["temperature"]);
-  await addIndex("contacts", "idx_source", DatabasesIndexType.Key, ["source"]);
-  await addIndex("contacts", "idx_createdAt", DatabasesIndexType.Key, ["createdAt"]);
+  await addIndex("contacts", "idx_temperature", "key", ["temperature"]);
+  await addIndex("contacts", "idx_source", "key", ["source"]);
+  await addIndex("contacts", "idx_createdAt", "key", ["createdAt"]);
 
   // === PIPELINE STAGES ===
   await ensureCollection("pipeline_stages", "Pipeline Stages");
@@ -103,7 +120,7 @@ async function main() {
   await addAttr("pipeline_stages", str("pipeline_stages", "color", 7, true, "#64748b"));
   await addAttr("pipeline_stages", bool("pipeline_stages", "isWon", true, false));
   await addAttr("pipeline_stages", bool("pipeline_stages", "isLost", true, false));
-  await addIndex("pipeline_stages", "idx_order", DatabasesIndexType.Key, ["order"]);
+  await addIndex("pipeline_stages", "idx_order", "key", ["order"]);
 
   // === DEALS ===
   await ensureCollection("deals", "Deals");
@@ -126,9 +143,9 @@ async function main() {
   await addAttr("deals", bool("deals", "isPaid", true, false));
   await addAttr("deals", dt("deals", "createdAt", true));
   await addAttr("deals", dt("deals", "updatedAt", true));
-  await addIndex("deals", "idx_stageId", DatabasesIndexType.Key, ["stageId"]);
-  await addIndex("deals", "idx_contactId", DatabasesIndexType.Key, ["contactId"]);
-  await addIndex("deals", "idx_createdAt", DatabasesIndexType.Key, ["createdAt"]);
+  await addIndex("deals", "idx_stageId", "key", ["stageId"]);
+  await addIndex("deals", "idx_contactId", "key", ["contactId"]);
+  await addIndex("deals", "idx_createdAt", "key", ["createdAt"]);
 
   // === ACTIVITIES ===
   await ensureCollection("activities", "Activities");
@@ -146,17 +163,17 @@ async function main() {
   await addAttr("activities", bool("activities", "isCompleted", true, false));
   await addAttr("activities", str("activities", "assignedTo", 128, false));
   await addAttr("activities", dt("activities", "createdAt", true));
-  await addIndex("activities", "idx_contactId", DatabasesIndexType.Key, ["contactId"]);
-  await addIndex("activities", "idx_dealId", DatabasesIndexType.Key, ["dealId"]);
-  await addIndex("activities", "idx_isCompleted", DatabasesIndexType.Key, ["isCompleted"]);
-  await addIndex("activities", "idx_scheduledAt", DatabasesIndexType.Key, ["scheduledAt"]);
-  await addIndex("activities", "idx_assignedTo", DatabasesIndexType.Key, ["assignedTo"]);
+  await addIndex("activities", "idx_contactId", "key", ["contactId"]);
+  await addIndex("activities", "idx_dealId", "key", ["dealId"]);
+  await addIndex("activities", "idx_isCompleted", "key", ["isCompleted"]);
+  await addIndex("activities", "idx_scheduledAt", "key", ["scheduledAt"]);
+  await addIndex("activities", "idx_assignedTo", "key", ["assignedTo"]);
 
   // === CRM SETTINGS ===
   await ensureCollection("crm_settings", "CRM Settings");
   await addAttr("crm_settings", str("crm_settings", "key", 128, true));
   await addAttr("crm_settings", text("crm_settings", "value", true));
-  await addIndex("crm_settings", "idx_key_unique", DatabasesIndexType.Unique, ["key"]);
+  await addIndex("crm_settings", "idx_key_unique", "unique", ["key"]);
 
   // === TASKS ===
   await ensureCollection("tasks", "Tasks");
@@ -185,7 +202,7 @@ async function main() {
   await addAttr("expenses", str("expenses", "createdBy", 255, true, "Team"));
   await addAttr("expenses", dt("expenses", "createdAt", true));
   await addAttr("expenses", dt("expenses", "updatedAt", true));
-  await addIndex("expenses", "idx_date", DatabasesIndexType.Key, ["date"]);
+  await addIndex("expenses", "idx_date", "key", ["date"]);
 
   // === QUOTES ===
   await ensureCollection("quotes", "Quotes");
@@ -199,8 +216,8 @@ async function main() {
   await addAttr("quotes", dt("quotes", "validUntil", false));
   await addAttr("quotes", dt("quotes", "createdAt", true));
   await addAttr("quotes", dt("quotes", "updatedAt", true));
-  await addIndex("quotes", "idx_dealId", DatabasesIndexType.Key, ["dealId"]);
-  await addIndex("quotes", "idx_number", DatabasesIndexType.Key, ["number"]);
+  await addIndex("quotes", "idx_dealId", "key", ["dealId"]);
+  await addIndex("quotes", "idx_number", "key", ["number"]);
 
   // Seed default pipeline stages
   console.log("\n--- Seeding Pipeline Stages ---\n");
@@ -241,9 +258,9 @@ async function main() {
   await addAttr("calendar_events", bool("calendar_events", "isPrivate", true, false));
   await addAttr("calendar_events", dt("calendar_events", "createdAt", true));
   await addAttr("calendar_events", dt("calendar_events", "updatedAt", true));
-  await addIndex("calendar_events", "idx_startAt", DatabasesIndexType.Key, ["startAt"]);
-  await addIndex("calendar_events", "idx_endAt", DatabasesIndexType.Key, ["endAt"]);
-  await addIndex("calendar_events", "idx_createdBy", DatabasesIndexType.Key, ["createdBy"]);
+  await addIndex("calendar_events", "idx_startAt", "key", ["startAt"]);
+  await addIndex("calendar_events", "idx_endAt", "key", ["endAt"]);
+  await addIndex("calendar_events", "idx_createdBy", "key", ["createdBy"]);
 
   // === NOTIFICATIONS ===
   await ensureCollection("notifications", "Notifications");
@@ -256,8 +273,8 @@ async function main() {
   await addAttr("notifications", str("notifications", "fromUserId", 255, false));
   await addAttr("notifications", str("notifications", "fromUserName", 255, false));
   await addAttr("notifications", bool("notifications", "read", true, false));
-  await addIndex("notifications", "idx_userId", DatabasesIndexType.Key, ["userId"]);
-  await addIndex("notifications", "idx_read", DatabasesIndexType.Key, ["read"]);
+  await addIndex("notifications", "idx_userId", "key", ["userId"]);
+  await addIndex("notifications", "idx_read", "key", ["read"]);
 
   // === STORAGE BUCKET ===
   console.log("\n--- Creating Storage Bucket ---\n");
@@ -265,17 +282,14 @@ async function main() {
     await storage.createBucket(
       "uploads",
       "Uploads",
-      [],
-      true,   // fileSecurity
-      true,   // enabled
-      undefined,
-      undefined,
-      undefined,
-      20 * 1024 * 1024, // 20MB
-      ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "mp4", "mov"],
-      undefined,
-      true,   // encryption
-      true    // antivirus
+      [],                 // permissions
+      true,               // fileSecurity
+      true,               // enabled
+      20 * 1024 * 1024,   // maximumFileSize (20MB)
+      ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "mp4", "mov"], // allowedFileExtensions
+      undefined,          // compression
+      true,               // encryption
+      true                // antivirus
     );
     console.log('  Bucket "uploads" created');
   } catch (e: unknown) {

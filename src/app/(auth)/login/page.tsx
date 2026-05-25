@@ -3,7 +3,7 @@
 import { Suspense, useState, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { LogIn, Loader2 } from "lucide-react";
+import { LogIn, Loader2, TestTube } from "lucide-react";
 import { WHITE_LABEL } from "@/lib/white-label";
 
 function LoginForm() {
@@ -15,6 +15,11 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   const next = searchParams.get("next") || "/";
+
+  function fillDemo() {
+    setEmail("demo@easlydev.it");
+    setPassword("Demo123!");
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -114,6 +119,21 @@ function LoginForm() {
             {loading ? "Accesso in corso..." : "Accedi"}
           </button>
         </form>
+
+        <div className="mt-4 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3">
+          <p className="text-xs font-medium text-primary mb-1">Credenziali demo</p>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>demo@easlydev.it / Demo123!</span>
+            <button
+              type="button"
+              onClick={fillDemo}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline cursor-pointer"
+            >
+              <TestTube className="h-3 w-3" />
+              Compila
+            </button>
+          </div>
+        </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Non hai un account?{" "}

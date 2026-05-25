@@ -38,7 +38,6 @@ import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { ReportDialog } from "@/components/shared/ReportDialog";
 import { QuoteForm, type QuoteInitialData } from "@/components/quotes/QuoteForm";
-import { useModules } from "@/lib/hooks/useModules";
 
 interface QuoteRow {
   id: string;
@@ -117,31 +116,6 @@ export default function PreventiviPage() {
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [editingQuote, setEditingQuote] = useState<QuoteInitialData | undefined>(undefined);
   const [showForm, setShowForm] = useState(false);
-  const { enabled, loading: modulesLoading } = useModules();
-
-  if (modulesLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 bg-muted rounded animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!enabled?.includes("quotes")) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <h2 className="text-xl font-semibold">Modulo disabilitato</h2>
-        <p className="text-muted-foreground mt-2">
-          Il modulo Preventivi non è attivo per questo cliente.
-        </p>
-      </div>
-    );
-  }
 
   const loadQuotes = () => {
     fetch("/api/quotes")

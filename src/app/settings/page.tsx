@@ -7,26 +7,16 @@ import { Separator } from "@/components/ui/separator";
 import {
   Briefcase,
   Kanban,
-  Terminal,
-  Zap,
-  Webhook,
   Bell,
-  Copy,
 } from "lucide-react";
-import { toast } from "sonner";
 import { NotificationToggle } from "@/components/shared/NotificationToggle";
 import type { CrmConfig } from "@/types";
-import { useModules } from "@/lib/hooks/useModules";
-import { OPTIONAL_MODULES, isModuleEnabled, type ModuleId } from "@/lib/modules";
 
 export default function SettingsPage() {
   const [config, setConfig] = useState<CrmConfig | null>(null);
   const [stages, setStages] = useState<
     Array<{ id: string; name: string; color: string; order: number }>
   >([]);
-  const { enabled, refresh } = useModules();
-  const [localEnabled, setLocalEnabled] = useState<ModuleId[]>([]);
-
   useEffect(() => {
     fetch("/crm-config.json")
       .then((r) => r.json())
@@ -38,62 +28,12 @@ export default function SettingsPage() {
       .then(setStages);
   }, []);
 
-  useEffect(() => {
-    if (enabled) setLocalEnabled(enabled);
-  }, [enabled]);
-
-  async function toggleModule(id: ModuleId) {
-    const next = localEnabled.includes(id)
-      ? localEnabled.filter((m) => m !== id)
-      : [...localEnabled, id];
-    setLocalEnabled(next);
-    try {
-      const res = await fetch("/api/modules", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: next }),
-      });
-      if (!res.ok) throw new Error("Errore");
-      toast.success("Modulo aggiornato");
-      refresh();
-    } catch {
-      toast.error("Errore nell'aggiornamento del modulo");
-    }
-  }
-
-  const commands = [
-    {
-      name: "/setup",
-      description: "Configura il CRM per la tua azienda",
-    },
-    {
-      name: "/add-lead",
-      description: "Aggiungi un lead in modo conversazionale",
-    },
-    {
-      name: "/analyze-pipeline",
-      description: "Analizza il pipeline e ottieni raccomandazioni",
-    },
-    {
-      name: "/daily-briefing",
-      description: "Riepilogo giornaliero delle vendite",
-    },
-    {
-      name: "/import-contacts",
-      description: "Importa contatti da CSV",
-    },
-    {
-      name: "/customize",
-      description: "Ripersonalizza il tuo CRM",
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Impostazioni</h1>
         <p className="text-muted-foreground">
-          Impostazioni del CRM e comandi disponibili
+          Impostazioni del CRM
         </p>
       </div>
 
@@ -173,49 +113,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Webhook config */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Webhook className="h-4 w-4" />
-              Webhook
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Ricevi lead automaticamente da moduli, landing page, o qualsiasi strumento che supporti i webhook.
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-sm bg-muted p-2 rounded font-mono truncate">
-                  POST {typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}/api/webhook
-                </code>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      `${window.location.origin}/api/webhook`
-                    );
-                    toast.success("URL copiata");
-                  }}
-                  className="p-2 rounded hover:bg-muted cursor-pointer"
-                  title="Copia URL"
-                >
-                  <Copy className="h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-xs font-mono">
-                <p className="text-muted-foreground mb-1">Esempio:</p>
-                <p>curl -X POST {typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}/api/webhook \</p>
-                <p className="pl-4">-H &quot;Content-Type: application/json&quot; \</p>
-                <p className="pl-4">-d &apos;{`{"name":"Juan","email":"j@test.com","phone":"555-1234"}`}&apos;</p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Supporta campi in italiano e inglese: name/nome, email, phone/telefono, company/azienda, notes/note
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Notifications */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -232,78 +129,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Modules */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Moduli
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Attiva o disattiva i moduli opzionali del CRM. I moduli core (Dashboard, Pipeline, Contatti, Trattative, Opportunità, Attività, Calendario) sono sempre attivi.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {OPTIONAL_MODULES.map((mod) => (
-                <div
-                  key={mod.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border"
-                >
-                  <input
-                    id={`module-${mod.id}`}
-                    type="checkbox"
-                    checked={isModuleEnabled(localEnabled, mod.id)}
-                    onChange={() => toggleModule(mod.id)}
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <div>
-                    <label
-                      htmlFor={`module-${mod.id}`}
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      {mod.label}
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {mod.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Claude Code commands */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Terminal className="h-4 w-4" />
-              Comandi di Claude Code
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Questi comandi sono disponibili quando apri il progetto in Claude Code. Scrivi il comando direttamente nel terminale di Claude Code.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {commands.map((cmd) => (
-                <div
-                  key={cmd.name}
-                  className="flex items-start gap-3 p-3 rounded-lg border"
-                >
-                  <Zap className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <code className="text-sm font-semibold">{cmd.name}</code>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {cmd.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
