@@ -105,13 +105,23 @@ export async function GET(
   const oneTimeSub = oneTimeItems.reduce((s, i) => s + lineTotal(i), 0);
   const monthlySub = monthlyItems.reduce((s, i) => s + lineTotal(i), 0);
   const annualSub = annualItems.reduce((s, i) => s + lineTotal(i), 0);
-  const subtotal = oneTimeSub + monthlySub + annualSub;
-  const vatAmount = Math.round((subtotal * quote.vatRate) / 100);
-  const total = subtotal + vatAmount;
+
+  // First year includes setup (one-time) + 12 months of monthly + 1 year of annual
+  const firstYearMonthly = monthlySub * 12;
+  const firstYearSub = oneTimeSub + firstYearMonthly + annualSub;
+  const firstYearVat = Math.round((firstYearSub * quote.vatRate) / 100);
+  const firstYearTotal = firstYearSub + firstYearVat;
+
+  // Recurring yearly cost (from second year onward)
+  const recurringYearly = monthlySub * 12 + annualSub;
 
   const hasOneTime = oneTimeSub > 0;
   const hasMonthly = monthlySub > 0;
   const hasAnnual = annualSub > 0;
+  const hasAny = items.length > 0;
+
+  // Guard: if for some reason totals are NaN, force to 0
+  const safeTotal = isNaN(firstYearTotal) ? 0 : firstYearTotal;
 
   const itemRows = items
     .map((item) => {
@@ -139,15 +149,17 @@ export async function GET(
     .join("");
 
   const totalsRows = `
-    ${hasOneTime ? `<div class="total-row"><span>Subtotale una tantum</span><span>${formatEur(oneTimeSub)}</span></div>` : ""}
-    ${hasMonthly ? `<div class="total-row"><span>Subtotale ricorrente/mese</span><span>${formatEur(monthlySub)}/mese</span></div>` : ""}
-    ${hasAnnual ? `<div class="total-row"><span>Subtotale ricorrente/anno</span><span>${formatEur(annualSub)}/anno</span></div>` : ""}
-    ${!hasOneTime && !hasMonthly && !hasAnnual ? `<div class="total-row"><span>Subtotale</span><span>${formatEur(subtotal)}</span></div>` : ""}
-    <div class="total-row"><span>IVA (${quote.vatRate}% / Regime applicabile)</span><span>${formatEur(vatAmount)}</span></div>
+    ${hasOneTime ? `<div class="total-row"><span>Setup fee (una tantum)</span><span>${formatEur(oneTimeSub)}</span></div>` : ""}
+    ${hasMonthly ? `<div class="total-row"><span>Ricorrente/mese</span><span>${formatEur(monthlySub)}/mese</span></div>` : ""}
+    ${hasAnnual ? `<div class="total-row"><span>Ricorrente/anno</span><span>${formatEur(annualSub)}/anno</span></div>` : ""}
+    ${!hasAny ? `<div class="total-row"><span>Subtotale</span><span>${formatEur(0)}</span></div>` : ""}
+    <div class="total-row" style="border-top:1px solid var(--bordo); margin-top:6px; padding-top:8px;"><span>Subtotale primo anno</span><span>${formatEur(firstYearSub)}</span></div>
+    <div class="total-row"><span>IVA (${quote.vatRate}%)</span><span>${formatEur(firstYearVat)}</span></div>
     <div class="total-row total-final">
-      <span>TOTALE DA CORRISPONDERE</span>
-      <span>${formatEur(total)}</span>
-    </div>`;
+      <span>TOTALE DA CORRISPONDERE (primo anno)</span>
+      <span>${formatEur(firstYearTotal)}</span>
+    </div>
+    ${recurringYearly > 0 ? `<div class="total-row" style="margin-top:8px; color:#777;"><span>Dal secondo anno in poi</span><span>${formatEur(recurringYearly)}/anno</span></div>` : ""}`;
 
   const companyLines = [
     company.name ? `<h1>${esc(company.name)}</h1>` : "",
