@@ -15,6 +15,7 @@ interface DbQuoteItem {
   unitPrice: number; // cents
   discount?: number; // %
   billingType?: "una_tantum" | "mensile" | "annuale";
+  isSetup?: boolean;
 }
 
 interface CompanyConfig {
@@ -101,48 +102,51 @@ export async function GET(
     items = [];
   }
 
-  const oneTimeItems = items.filter((i) => i.billingType === "una_tantum");
-  const monthlyItems = items.filter((i) => i.billingType === "mensile");
-  const annualItems = items.filter((i) => i.billingType === "annuale");
+  const setupItem = items.find((i) => i.isSetup);
+  const normalItems = items.filter((i) => !i.isSetup);
+
+  const setupSub = setupItem ? lineTotal(setupItem) : 0;
+  const oneTimeItems = normalItems.filter((i) => i.billingType === "una_tantum");
+  const monthlyItems = normalItems.filter((i) => i.billingType === "mensile");
+  const annualItems = normalItems.filter((i) => i.billingType === "annuale");
 
   const oneTimeSub = oneTimeItems.reduce((s, i) => s + lineTotal(i), 0);
   const monthlySub = monthlyItems.reduce((s, i) => s + lineTotal(i), 0);
   const annualSub = annualItems.reduce((s, i) => s + lineTotal(i), 0);
 
-  // First year includes setup (one-time) + 12 months of monthly + 1 year of annual
-  const firstYearMonthly = monthlySub * 12;
-  const firstYearSub = oneTimeSub + firstYearMonthly + annualSub;
+  // First year: setup + one-time normal + 12 months monthly + 1 year annual
+  const firstYearSub = setupSub + oneTimeSub + monthlySub * 12 + annualSub;
   const firstYearVat = Math.round((firstYearSub * quote.vatRate) / 100);
   const firstYearTotal = firstYearSub + firstYearVat;
 
-  // Recurring yearly cost (from second year onward)
-  const recurringYearly = monthlySub * 12 + annualSub;
+  // Second year onward: only recurring (no setup, no one-time)
+  const secondYearSub = monthlySub * 12 + annualSub;
 
+  const hasSetup = setupSub > 0;
   const hasOneTime = oneTimeSub > 0;
   const hasMonthly = monthlySub > 0;
   const hasAnnual = annualSub > 0;
-  const hasAny = items.length > 0;
 
-  // Guard: if for some reason totals are NaN, force to 0
-  const safeTotal = isNaN(firstYearTotal) ? 0 : firstYearTotal;
-
-  const itemRows = items
+  const itemRows = normalItems
     .map((item) => {
       const lt = lineTotal(item);
-      const unitLabel =
-        item.billingType === "annuale" ? "/anno" : item.billingType === "mensile" ? "/mese" : "";
+      const unitLabel = item.billingType === "annuale" ? "/anno" : item.billingType === "mensile" ? "/mese" : "";
       const price = typeof item.unitPrice === "number" ? item.unitPrice : parseFloat(item.unitPrice as unknown as string) || 0;
-      const gross = Math.round((typeof item.quantity === "number" ? item.quantity : parseFloat(item.quantity as unknown as string) || 0) * price);
-      const netLabel = `<div class="item-net">${formatEur(gross)}${unitLabel}</div>`;
+      const qty = typeof item.quantity === "number" ? item.quantity : parseFloat(item.quantity as unknown as string) || 0;
+      const gross = Math.round(qty * price);
+      const tipo = item.billingType === "mensile" ? "Ricorrente/mese" : item.billingType === "annuale" ? "Ricorrente/anno" : "Una tantum";
 
       return `
         <div class="item-row">
           <div class="item-col item-col-left">
             <div class="item-title">${esc(item.description) || "—"}</div>
-            ${netLabel}
           </div>
-          <div class="item-col item-col-center">
-            ${(item.discount ?? 0) > 0 ? `<div class="item-discount">-${item.discount}%</div>` : '<div class="item-discount">—</div>'}
+          <div class="item-col item-col-meta">
+            <span class="item-lordo">${formatEur(gross)}${unitLabel}</span>
+            <span class="item-sep">·</span>
+            <span class="item-tipo">${tipo}</span>
+            <span class="item-sep">·</span>
+            <span class="item-sconto">Sconto ${item.discount ?? 0}%</span>
           </div>
           <div class="item-col item-col-right">
             <div class="item-total">${formatEur(lt)}${unitLabel}</div>
@@ -151,18 +155,37 @@ export async function GET(
     })
     .join("");
 
+  const setupRow = setupItem
+    ? `
+      <div class="item-row setup-row">
+        <div class="item-col item-col-left">
+          <div class="item-title">${esc(setupItem.description) || "Sviluppo e installazione"}</div>
+        </div>
+        <div class="item-col item-col-meta">
+          <span class="item-lordo">${formatEur(Math.round((typeof setupItem.quantity === "number" ? setupItem.quantity : parseFloat(setupItem.quantity as unknown as string) || 0) * (typeof setupItem.unitPrice === "number" ? setupItem.unitPrice : parseFloat(setupItem.unitPrice as unknown as string) || 0)))}</span>
+          <span class="item-sep">·</span>
+          <span class="item-tipo">Una tantum</span>
+          <span class="item-sep">·</span>
+          <span class="item-sconto">Sconto ${setupItem.discount ?? 0}%</span>
+        </div>
+        <div class="item-col item-col-right">
+          <div class="item-total">${formatEur(setupSub)}</div>
+        </div>
+      </div>`
+    : "";
+
   const totalsRows = `
-    ${hasOneTime ? `<div class="total-row"><span>Setup fee (una tantum)</span><span>${formatEur(oneTimeSub)}</span></div>` : ""}
+    ${hasSetup ? `<div class="total-row"><span>Sviluppo e installazione</span><span>${formatEur(setupSub)}</span></div>` : ""}
+    ${hasOneTime ? `<div class="total-row"><span>Una tantum</span><span>${formatEur(oneTimeSub)}</span></div>` : ""}
     ${hasMonthly ? `<div class="total-row"><span>Ricorrente/mese</span><span>${formatEur(monthlySub)}/mese</span></div>` : ""}
     ${hasAnnual ? `<div class="total-row"><span>Ricorrente/anno</span><span>${formatEur(annualSub)}/anno</span></div>` : ""}
-    ${!hasAny ? `<div class="total-row"><span>Subtotale</span><span>${formatEur(0)}</span></div>` : ""}
     <div class="total-row" style="border-top:1px solid var(--bordo); margin-top:6px; padding-top:8px;"><span>Subtotale primo anno</span><span>${formatEur(firstYearSub)}</span></div>
     <div class="total-row"><span>IVA (${quote.vatRate}%)</span><span>${formatEur(firstYearVat)}</span></div>
     <div class="total-row total-final">
-      <span>TOTALE DA CORRISPONDERE (primo anno)</span>
+      <span>TOTALE DA CORRISPONDERE</span>
       <span>${formatEur(firstYearTotal)}</span>
     </div>
-    ${recurringYearly > 0 ? `<div class="total-row" style="margin-top:8px; color:#777;"><span>Dal secondo anno in poi</span><span>${formatEur(recurringYearly)}/anno</span></div>` : ""}`;
+    ${secondYearSub > 0 ? `<div class="total-row" style="margin-top:8px; color:#777;"><span>Canone secondo anno in poi</span><span>${formatEur(secondYearSub)}/anno</span></div>` : ""}`;
 
   const companyLines = [
     company.name ? `<h1>${esc(company.name)}</h1>` : "",
@@ -323,12 +346,16 @@ export async function GET(
         .item-row:last-child { border-bottom: none; }
         .item-col { display: flex; flex-direction: column; }
         .item-col-left { flex: 1; padding-right: 20px; }
-        .item-col-center { width: 80px; text-align: center; }
+        .item-col-meta { width: 320px; text-align: center; flex-direction: row; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #555; }
         .item-col-right { width: 140px; text-align: right; }
         .item-title { font-weight: 600; font-size: 14px; color: var(--testo); margin-bottom: 3px; }
-        .item-net { font-size: 12px; color: #777; }
-        .item-discount { font-size: 13px; color: #c0392b; font-weight: 600; }
+        .item-lordo { color: #777; text-decoration: line-through; }
+        .item-sep { color: #bbb; }
+        .item-tipo { font-weight: 500; }
+        .item-sconto { color: #c0392b; font-weight: 600; }
         .item-total { font-weight: 700; font-size: 15px; color: var(--colore-primario); }
+        .setup-row { background: #f4f7fa; border-radius: 6px; padding: 14px 10px; margin-bottom: 4px; }
+        .setup-row .item-title { color: var(--colore-primario); }
 
         /* === TOTALI === */
         .totals {
@@ -436,6 +463,7 @@ export async function GET(
         <!-- RIGHE OFFERTA -->
         <section class="items-section">
             <h3>Dettaglio Offerta</h3>
+            ${setupRow}
             ${itemRows || `<p style="color:#999;font-style:italic;">Nessuna voce inserita</p>`}
         </section>
 

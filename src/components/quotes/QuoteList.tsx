@@ -30,6 +30,7 @@ interface DbQuoteItem {
   unitPrice: number; // cents
   discount?: number;
   billingType?: "una_tantum" | "mensile" | "annuale";
+  isSetup?: boolean;
 }
 
 interface QuoteRow {
@@ -73,6 +74,7 @@ function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
       unitPrice: i.unitPrice / 100,
       discount: i.discount ?? 0,
       billingType: i.billingType ?? "una_tantum",
+      isSetup: i.isSetup,
     }));
   } catch {
     return [];

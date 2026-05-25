@@ -25,9 +25,10 @@ export interface QuoteItem {
   id: string;
   description: string;
   quantity: number;
-  unitPrice: number; // EUR
+  unitPrice: number; // EUR - lordo
   discount: number; // %
   billingType: "una_tantum" | "mensile" | "annuale";
+  isSetup?: boolean;
 }
 
 export interface QuoteInitialData {
@@ -70,6 +71,9 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   const [items, setItems] = useState<QuoteItem[]>([newItem()]);
   const [submitting, setSubmitting] = useState(false);
 
+  const setupItem = items.find((i) => i.isSetup);
+  const normalItems = items.filter((i) => !i.isSetup);
+
   useEffect(() => {
     if (!open) return;
     if (initialData) {
@@ -78,7 +82,8 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       setValidUntil(initialData.validUntil);
       setNotes(initialData.notes ?? "");
       setVatRate(initialData.vatRate);
-      setItems(initialData.items.length > 0 ? initialData.items : [newItem()]);
+      const loaded = initialData.items.length > 0 ? initialData.items : [newItem()];
+      setItems(loaded);
     } else {
       setTitle("");
       setStatus("bozza");
@@ -116,12 +121,16 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   };
 
   const lineTotal = (i: QuoteItem) => i.quantity * i.unitPrice * (1 - i.discount / 100);
-  const oneTimeSub = items.filter((i) => i.billingType === "una_tantum").reduce((s, i) => s + lineTotal(i), 0);
-  const recurringSub = items.filter((i) => i.billingType !== "una_tantum").reduce((s, i) => s + lineTotal(i), 0);
-  const subtotal = oneTimeSub + recurringSub;
+  const netPrice = (i: QuoteItem) => i.unitPrice * (1 - i.discount / 100);
+
+  const setupLineTotal = setupItem ? setupItem.unitPrice * (1 - setupItem.discount / 100) : 0;
+  const oneTimeSub = normalItems.filter((i) => i.billingType === "una_tantum").reduce((s, i) => s + lineTotal(i), 0);
+  const monthlySub = normalItems.filter((i) => i.billingType === "mensile").reduce((s, i) => s + lineTotal(i), 0);
+  const annualSub = normalItems.filter((i) => i.billingType === "annuale").reduce((s, i) => s + lineTotal(i), 0);
+  const subtotal = setupLineTotal + oneTimeSub + monthlySub + annualSub;
   const vatAmount = subtotal * vatRate / 100;
   const total = subtotal + vatAmount;
-  const hasRecurring = recurringSub > 0;
+  const hasRecurring = monthlySub > 0 || annualSub > 0;
   const hasOneTime = oneTimeSub > 0;
 
   const handleSubmit = async () => {
@@ -129,9 +138,13 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       toast.error("Inserisci un titolo per il preventivo");
       return;
     }
-    const emptyItems = items.filter((i) => !i.unitPrice || i.unitPrice <= 0);
+    const emptyItems = normalItems.filter((i) => !i.unitPrice || i.unitPrice <= 0);
     if (emptyItems.length > 0) {
       toast.error("Tutte le righe devono avere un prezzo maggiore di 0");
+      return;
+    }
+    if (setupItem && (!setupItem.unitPrice || setupItem.unitPrice <= 0)) {
+      toast.error("Inserisci il prezzo del costo sviluppo e installazione");
       return;
     }
     setSubmitting(true);
@@ -145,6 +158,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
           unitPrice: Math.round(i.unitPrice * 100),
           discount: i.discount,
           billingType: i.billingType,
+          isSetup: i.isSetup,
         })),
         notes: notes.trim() || null,
         status,
@@ -222,6 +236,68 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
             </div>
           </div>
 
+          {/* SETUP OPZIONALE */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                id="include-setup"
+                type="checkbox"
+                checked={!!setupItem}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setItems((prev) => [
+                      { id: crypto.randomUUID(), description: "Sviluppo e installazione", quantity: 1, unitPrice: 0, discount: 0, billingType: "una_tantum", isSetup: true },
+                      ...prev,
+                    ]);
+                  } else {
+                    setItems((prev) => prev.filter((i) => !i.isSetup));
+                  }
+                }}
+                className="accent-primary h-4 w-4"
+              />
+              <Label htmlFor="include-setup" className="cursor-pointer">Includi costo sviluppo e installazione</Label>
+            </div>
+            {setupItem && (
+              <div className="rounded-lg border p-3 bg-muted/30">
+                <div className="grid grid-cols-4 gap-3 text-sm">
+                  <div className="col-span-1 font-medium text-muted-foreground">{setupItem.description}</div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Prezzo lordo</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="h-8 text-right"
+                      value={setupItem.unitPrice || ""}
+                      onChange={(e) => updateItem(setupItem.id, "unitPrice", e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Sconto %</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      className="h-8 text-right"
+                      value={setupItem.discount || ""}
+                      onChange={(e) => updateItem(setupItem.id, "discount", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Prezzo netto</Label>
+                    <div className="h-8 flex items-center justify-end font-semibold tabular-nums">
+                      €{netPrice(setupItem).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* VOCI DEL PREVENTIVO */}
           <div className="space-y-2">
             <Label>Voci del preventivo</Label>
             <div className="rounded-lg border overflow-hidden">
@@ -230,15 +306,15 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                   <tr className="bg-muted/60 border-b">
                     <th className="text-left px-3 py-2 font-medium">Descrizione</th>
                     <th className="text-left px-3 py-2 font-medium w-28">Tipo</th>
-                    <th className="text-right px-3 py-2 font-medium w-20">Qtà</th>
-                    <th className="text-right px-3 py-2 font-medium w-28">Prezzo (€)</th>
+                    <th className="text-right px-3 py-2 font-medium w-16">Qtà</th>
+                    <th className="text-right px-3 py-2 font-medium w-28">Lordo (€)</th>
                     <th className="text-right px-3 py-2 font-medium w-20">Sconto %</th>
-                    <th className="text-right px-3 py-2 font-medium w-28">Totale</th>
+                    <th className="text-right px-3 py-2 font-medium w-28">Netto (€)</th>
                     <th className="w-9" />
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {normalItems.map((item) => (
                     <tr key={item.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-3 py-1.5">
                         <Input
@@ -308,7 +384,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                         />
                       </td>
                       <td className="px-3 py-1.5 text-right font-medium tabular-nums">
-                        €{(item.quantity * item.unitPrice * (1 - item.discount / 100)).toFixed(2)}
+                        €{netPrice(item).toFixed(2)}
                       </td>
                       <td className="px-1 py-1.5">
                         <Button
@@ -317,7 +393,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           size="icon"
                           className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-destructive"
                           onClick={() => removeItem(item.id)}
-                          disabled={items.length === 1}
+                          disabled={normalItems.length === 1}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -359,43 +435,48 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               </Select>
             </div>
 
-            <div className="text-right space-y-1 text-sm min-w-[220px]">
+            <div className="text-right space-y-1 text-sm min-w-[240px]">
+              {setupItem && setupLineTotal > 0 && (
+                <div className="flex justify-between gap-8 text-muted-foreground">
+                  <span>Sviluppo e installazione</span>
+                  <span className="font-medium text-foreground tabular-nums">€{setupLineTotal.toFixed(2)}</span>
+                </div>
+              )}
               {hasOneTime && (
                 <div className="flex justify-between gap-8 text-muted-foreground">
                   <span className="flex items-center gap-1"><Minus className="h-3 w-3" /> Una tantum</span>
                   <span className="font-medium text-foreground tabular-nums">€{oneTimeSub.toFixed(2)}</span>
                 </div>
               )}
-              {hasRecurring && (
+              {monthlySub > 0 && (
                 <div className="flex justify-between gap-8 text-muted-foreground">
                   <span className="flex items-center gap-1 text-blue-600"><RefreshCw className="h-3 w-3" /> Ricorrente/mese</span>
-                  <span className="font-medium text-blue-600 tabular-nums">€{recurringSub.toFixed(2)}/mese</span>
+                  <span className="font-medium text-blue-600 tabular-nums">€{monthlySub.toFixed(2)}/mese</span>
                 </div>
               )}
-              {hasOneTime && hasRecurring && (
-                <div className="flex justify-between gap-8 text-muted-foreground border-t pt-1">
-                  <span>Subtotale</span>
-                  <span className="font-medium text-foreground tabular-nums">€{subtotal.toFixed(2)}</span>
-                </div>
-              )}
-              {!hasOneTime && !hasRecurring && (
+              {annualSub > 0 && (
                 <div className="flex justify-between gap-8 text-muted-foreground">
-                  <span>Subtotale</span>
-                  <span className="font-medium text-foreground tabular-nums">€{subtotal.toFixed(2)}</span>
+                  <span className="flex items-center gap-1 text-emerald-600"><RefreshCw className="h-3 w-3" /> Ricorrente/anno</span>
+                  <span className="font-medium text-emerald-600 tabular-nums">€{annualSub.toFixed(2)}/anno</span>
                 </div>
               )}
+              <div className="flex justify-between gap-8 text-muted-foreground border-t pt-1">
+                <span>Subtotale primo anno</span>
+                <span className="font-medium text-foreground tabular-nums">€{subtotal.toFixed(2)}</span>
+              </div>
               <div className="flex justify-between gap-8 text-muted-foreground">
                 <span>IVA {vatRate}%</span>
                 <span className="font-medium text-foreground tabular-nums">€{vatAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between gap-8 font-bold text-base border-t pt-2 mt-1">
-                <span>Totale</span>
+                <span>Totale primo anno</span>
                 <span className="text-primary tabular-nums">€{total.toFixed(2)}</span>
               </div>
-              {hasRecurring && (
-                <p className="text-xs text-muted-foreground pt-1">
-                  + €{recurringSub.toFixed(2)}/mese (ricorrente)
-                </p>
+              {(monthlySub > 0 || annualSub > 0) && (
+                <div className="flex justify-between gap-8 text-xs text-muted-foreground pt-1">
+                  <span>Dal secondo anno</span>
+                  <span className="tabular-nums">€{(monthlySub * 12 + annualSub).toFixed(2)}/anno</span>
+                </div>
               )}
             </div>
           </div>
