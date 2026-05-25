@@ -103,3 +103,6 @@ export {
   updateCalendarEvent,
   deleteCalendarEvent,
 } from "./calendar";
+
+// Modules
+export { getModulesConfig, setModulesConfig } from "./modules";

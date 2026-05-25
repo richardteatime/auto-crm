@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
+import { WHITE_LABEL } from "@/lib/white-label";
 
 export function NotificationToggle() {
   const [mounted, setMounted] = useState(false);
@@ -28,7 +29,7 @@ export function NotificationToggle() {
         toast.success("Notifiche attivate");
 
         // Show test notification
-        new Notification("SarconX CRM", {
+        new Notification(WHITE_LABEL.productName, {
           body: "Le notifiche sono attive. Ti avviseremo dei follow-up in sospeso.",
         });
       } else {

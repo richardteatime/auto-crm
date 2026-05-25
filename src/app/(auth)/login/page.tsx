@@ -4,6 +4,7 @@ import { Suspense, useState, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { LogIn, Loader2 } from "lucide-react";
+import { WHITE_LABEL } from "@/lib/white-label";
 
 function LoginForm() {
   const router = useRouter();
@@ -48,7 +49,7 @@ function LoginForm() {
       <div className="rounded-xl border bg-card p-8 shadow-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            SarconX CRM
+            {WHITE_LABEL.productName}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Accedi al tuo account

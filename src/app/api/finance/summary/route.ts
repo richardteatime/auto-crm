@@ -4,6 +4,7 @@ import { listExpenses } from "@/lib/db/expenses";
 import { listRevenues } from "@/lib/db/revenues";
 import { getStages } from "@/lib/db/pipeline";
 import { requireAuth } from "@/lib/auth";
+import { requireModule } from "@/lib/modules-server";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,9 @@ function clampMonths(dealStart: Date, dealMonths: number, periodStart: Date, per
 }
 
 export async function GET(req: NextRequest) {
+  const modCheck = await requireModule("finance", req);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
 

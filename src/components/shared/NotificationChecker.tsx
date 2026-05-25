@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import { WHITE_LABEL } from "@/lib/white-label";
 
 export function NotificationChecker() {
   const checkFollowUps = useCallback(async () => {
@@ -15,7 +16,7 @@ export function NotificationChecker() {
       const overdueCount = data.overdue?.length || 0;
 
       if (overdueCount > 0) {
-        new Notification("SarconX CRM", {
+        new Notification(WHITE_LABEL.productName, {
           body: `Hai ${overdueCount} follow-up scadut${overdueCount > 1 ? "i" : "o"}`,
           icon: "/favicon.ico",
           tag: "crm-followup", // Prevents duplicate notifications

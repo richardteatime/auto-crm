@@ -1,4 +1,4 @@
-# CLAUDE.md — Auto-CRM
+# CLAUDE.md — CRM Pro
 
 > Este es un CRM completo que se personaliza a cada negocio, con backend Appwrite self-hosted.
 > Cuando un usuario abre este proyecto con Claude Code, tu trabajo es ayudarle a configurarlo,
@@ -137,7 +137,7 @@ Agregar a `~/.claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "auto-crm": {
+    "crm-pro": {
       "command": "npx",
       "args": ["tsx", "/ruta/al/proyecto/mcp/crm-server.ts"]
     }

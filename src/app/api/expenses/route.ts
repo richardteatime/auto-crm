@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listExpenses, createExpense } from "@/lib/db/expenses";
 import { requireAuth } from "@/lib/auth";
+import { requireModule } from "@/lib/modules-server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const modCheck = await requireModule("finance", req);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
 
@@ -24,6 +28,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const modCheck = await requireModule("finance", req);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
 

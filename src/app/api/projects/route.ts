@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { listProjects, createProject } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { notifyAssignment } from "@/lib/notify";
+import { requireModule } from "@/lib/modules-server";
 
 export async function GET(request: NextRequest) {
+  const modCheck = await requireModule("timeline", request);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
@@ -16,6 +20,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const modCheck = await requireModule("timeline", request);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 

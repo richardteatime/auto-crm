@@ -21,6 +21,9 @@ import {
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
+import { WHITE_LABEL } from "@/lib/white-label";
+import { useModules } from "@/lib/hooks/useModules";
+import { getModuleForPage } from "@/lib/modules";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, badge: null as null | "activities" | "timeline" | "calendar" | "total" },
@@ -42,6 +45,13 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { counts } = useNotifications();
+  const { enabled } = useModules();
+
+  const visibleItems = navItems.filter((item) => {
+    const mod = getModuleForPage(item.href);
+    if (!mod) return true;
+    return enabled?.includes(mod) ?? true;
+  });
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -53,11 +63,11 @@ export function Sidebar() {
     <aside className="hidden md:flex md:w-64 md:flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] min-h-screen">
       <div className="flex h-16 items-center gap-2 px-6 border-b border-[var(--sidebar-border)]">
         <Briefcase className="h-6 w-6 text-[var(--sidebar-primary)]" />
-        <span className="text-lg font-bold tracking-tight whitespace-nowrap">SarconX CRM</span>
+        <span className="text-lg font-bold tracking-tight whitespace-nowrap">{WHITE_LABEL.productName}</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
@@ -94,7 +104,7 @@ export function Sidebar() {
           Esci
         </button>
         <p className="text-xs text-[var(--sidebar-foreground)]/50 px-3 pt-2">
-          SarconX CRM v1.0
+          {WHITE_LABEL.productName} v{WHITE_LABEL.version}
         </p>
       </div>
     </aside>

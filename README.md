@@ -1,6 +1,6 @@
 <div align="center">
 
-# Auto-CRM
+# CRM Pro
 
 ### Tu CRM Local con Inteligencia Artificial | Your Local AI-Powered CRM
 
@@ -23,11 +23,11 @@
 
 # Espanol
 
-## Que es Auto-CRM?
+## Que es CRM Pro?
 
-Auto-CRM es un CRM open-source que se personaliza automaticamente a tu negocio. Abrelo con Claude Code, ejecuta `/setup`, y el CRM se adapta a tu industria, tu pipeline, y tu forma de trabajar. Todo corre en tu computadora — tus datos nunca salen de tu maquina.
+CRM Pro es un CRM open-source que se personaliza automaticamente a tu negocio. Abrelo con Claude Code, ejecuta `/setup`, y el CRM se adapta a tu industria, tu pipeline, y tu forma de trabajar. Todo corre en tu computadora — tus datos nunca salen de tu maquina.
 
-## Por que Auto-CRM?
+## Por que CRM Pro?
 
 - **Autoadministrado** — Base de datos Appwrite en tu servidor. Sin SaaS. Tus datos son tuyos.
 - **Se personaliza solo** — Ejecuta `/setup` y Claude adapta el pipeline, fuentes de leads, idioma y tema a tu negocio.
@@ -38,8 +38,8 @@ Auto-CRM es un CRM open-source que se personaliza automaticamente a tu negocio. 
 ## Inicio Rapido
 
 ```bash
-git clone https://github.com/Hainrixz/auto-crm.git
-cd auto-crm && npm install
+git clone https://github.com/Your Company/crm-pro.git
+cd crm-pro && npm install
 npm run dev
 ```
 
@@ -141,9 +141,9 @@ Conecta tu CRM directamente a Claude Desktop:
 ```json
 {
   "mcpServers": {
-    "auto-crm": {
+    "crm-pro": {
       "command": "npx",
-      "args": ["tsx", "/ruta/a/auto-crm/mcp/crm-server.ts"]
+      "args": ["tsx", "/ruta/a/crm-pro/mcp/crm-server.ts"]
     }
   }
 }
@@ -187,7 +187,7 @@ Agrega la configuracion MCP mostrada arriba a tu `claude_desktop_config.json`.
 ## Estructura del Proyecto
 
 ```
-auto-crm/
+crm-pro/
 ├── CLAUDE.md                # Instrucciones para Claude Code
 ├── .claude/commands/        # 8 comandos interactivos
 ├── mcp/crm-server.ts        # Servidor MCP (10 herramientas)
@@ -247,11 +247,11 @@ npm run lint       # Verificar codigo
 
 # English
 
-## What is Auto-CRM?
+## What is CRM Pro?
 
-Auto-CRM is an open-source CRM that automatically customizes itself to your business. Open it with Claude Code, run `/setup`, and the CRM adapts to your industry, pipeline, and workflow. Everything runs on your computer — your data never leaves your machine.
+CRM Pro is an open-source CRM that automatically customizes itself to your business. Open it with Claude Code, run `/setup`, and the CRM adapts to your industry, pipeline, and workflow. Everything runs on your computer — your data never leaves your machine.
 
-## Why Auto-CRM?
+## Why CRM Pro?
 
 - **Self-hosted** — Appwrite database on your server. No SaaS. Your data stays yours.
 - **Self-customizing** — Run `/setup` and Claude adapts the pipeline, lead sources, language, and theme to your business.
@@ -262,8 +262,8 @@ Auto-CRM is an open-source CRM that automatically customizes itself to your busi
 ## Quick Start
 
 ```bash
-git clone https://github.com/Hainrixz/auto-crm.git
-cd auto-crm && npm install
+git clone https://github.com/Your Company/crm-pro.git
+cd crm-pro && npm install
 npm run dev
 ```
 
@@ -365,9 +365,9 @@ Connect your CRM directly to Claude Desktop:
 ```json
 {
   "mcpServers": {
-    "auto-crm": {
+    "crm-pro": {
       "command": "npx",
-      "args": ["tsx", "/path/to/auto-crm/mcp/crm-server.ts"]
+      "args": ["tsx", "/path/to/crm-pro/mcp/crm-server.ts"]
     }
   }
 }
@@ -411,7 +411,7 @@ Add the MCP config shown above to your `claude_desktop_config.json`.
 ## Project Structure
 
 ```
-auto-crm/
+crm-pro/
 ├── CLAUDE.md                # Instructions for Claude Code
 ├── .claude/commands/        # 8 interactive commands
 ├── mcp/crm-server.ts        # MCP server (10 tools)
@@ -471,7 +471,7 @@ npm run lint       # Check code
 
 <div align="center">
 
-**Auto-CRM** — Built with Claude Code for the community.
+**CRM Pro** — Built with Claude Code for the community.
 
 Your data. Your machine. Your CRM.
 

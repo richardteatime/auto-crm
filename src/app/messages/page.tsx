@@ -8,6 +8,7 @@ import { Send, MessageSquare, User } from "lucide-react";
 import { formatRelativeDate } from "@/lib/constants";
 import { toast } from "sonner";
 import { useNotifications } from "@/components/shared/NotificationContext";
+import { useModules } from "@/lib/hooks/useModules";
 
 interface Message {
   id: string;
@@ -32,6 +33,27 @@ export default function MessagesPage() {
   const lastTimestampRef = useRef<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const { refresh: refreshNotifications } = useNotifications();
+  const { enabled, loading: modulesLoading } = useModules();
+
+  if (modulesLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <MessageSquare className="h-10 w-10 text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-muted-foreground">Caricamento...</p>
+      </div>
+    );
+  }
+
+  if (!enabled?.includes("messages")) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <h2 className="text-xl font-semibold">Modulo disabilitato</h2>
+        <p className="text-muted-foreground mt-2">
+          Il modulo Chat Team non è attivo per questo cliente.
+        </p>
+      </div>
+    );
+  }
 
   // Load real user from session
   useEffect(() => {

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectStatus } from "@/types";
+import { useModules } from "@/lib/hooks/useModules";
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "";
@@ -22,6 +23,29 @@ function formatDate(d: Date | null | undefined): string {
 
 export default function TimelinePage() {
   const router = useRouter();
+  const { enabled, loading: modulesLoading } = useModules();
+
+  if (modulesLoading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Timeline Progetti</h1>
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (!enabled?.includes("timeline")) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <h2 className="text-xl font-semibold">Modulo disabilitato</h2>
+        <p className="text-muted-foreground mt-2">
+          Il modulo Timeline non è attivo per questo cliente.
+        </p>
+      </div>
+    );
+  }
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

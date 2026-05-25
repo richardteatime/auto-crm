@@ -1,4 +1,4 @@
-# Guia de Uso - Auto-CRM
+# Guia de Uso - CRM Pro
 
 Esta guia te ensena como usar y personalizar tu CRM.
 
@@ -111,9 +111,9 @@ El proyecto incluye un servidor MCP. Agrega esto a tu config de Claude Desktop (
 ```json
 {
   "mcpServers": {
-    "auto-crm": {
+    "crm-pro": {
       "command": "npx",
-      "args": ["tsx", "/ruta/completa/a/auto-crm/mcp/crm-server.ts"]
+      "args": ["tsx", "/ruta/completa/a/crm-pro/mcp/crm-server.ts"]
     }
   }
 }

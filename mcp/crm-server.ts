@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 
 /**
- * Auto-CRM MCP Server
+ * CRM Pro MCP Server
  *
  * Exposes CRM data as MCP tools so Claude (Desktop, Web, or Code)
  * can read and write CRM data directly — no API key needed.
@@ -11,9 +11,9 @@
  * Add to your Claude Desktop config (claude_desktop_config.json):
  * {
  *   "mcpServers": {
- *     "auto-crm": {
+ *     "crm-pro": {
  *       "command": "npx",
- *       "args": ["tsx", "/path/to/auto-crm/mcp/crm-server.ts"],
+ *       "args": ["tsx", "/path/to/crm-pro/mcp/crm-server.ts"],
  *       "env": {
  *         "NEXT_PUBLIC_APPWRITE_ENDPOINT": "http://localhost:80/v1",
  *         "APPWRITE_PROJECT_ID": "...",
@@ -709,7 +709,7 @@ function handleMessage(msg: MCPMessage): void {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
           serverInfo: {
-            name: "auto-crm",
+            name: "crm-pro",
             version: "1.0.0",
           },
         },
@@ -779,4 +779,4 @@ function send(msg: MCPMessage): void {
   process.stdout.write(JSON.stringify(msg) + "\n");
 }
 
-process.stderr.write("Auto-CRM MCP Server running (Appwrite)\n");
+process.stderr.write("CRM Pro MCP Server running (Appwrite)\n");

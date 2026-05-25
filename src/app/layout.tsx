@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { NotificationChecker } from "@/components/shared/NotificationChecker";
+import { WHITE_LABEL } from "@/lib/white-label";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -12,9 +13,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SarconX CRM - Il tuo CRM con Intelligenza Artificiale",
+  title: `${WHITE_LABEL.productName} - Il tuo CRM con Intelligenza Artificiale`,
   description:
-    "CRM conversazionale con pipeline di vendita, classificazione automatica dei lead e follow-up intelligente. Costruito da SarconX.",
+    "CRM conversazionale con pipeline di vendita, classificazione automatica dei lead e follow-up intelligente.",
 };
 
 export default function RootLayout({

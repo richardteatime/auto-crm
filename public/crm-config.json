@@ -5,23 +5,23 @@
     "teamSize": "solo"
   },
   "company": {
-    "name": "SarconX",
-    "address": "Via Vigentina 15, 27100 Pavia",
-    "vatNumber": "02838240188",
-    "phone": "+39 334 134 0272",
+    "name": "Your Company",
+    "address": "",
+    "vatNumber": "",
+    "phone": "",
     "email": "",
-    "iban": "LT783250090360011881",
-    "bankHolder": "Ricardo Consuegra & Leonardo Sartori",
-    "paymentTerms": "Bonifico Bancario - Scadenza: 30 giorni data fattura (o come da accordi commerciali)"
+    "iban": "",
+    "bankHolder": "",
+    "paymentTerms": ""
   },
   "pipeline": {
     "stages": [
-      { "name": "Prospecto", "order": 1, "color": "#64748b", "isWon": false, "isLost": false },
-      { "name": "Contactado", "order": 2, "color": "#2563eb", "isWon": false, "isLost": false },
-      { "name": "Propuesta", "order": 3, "color": "#8b5cf6", "isWon": false, "isLost": false },
-      { "name": "Negociacion", "order": 4, "color": "#ea580c", "isWon": false, "isLost": false },
-      { "name": "Cerrado Ganado", "order": 5, "color": "#16a34a", "isWon": true, "isLost": false },
-      { "name": "Cerrado Perdido", "order": 6, "color": "#dc2626", "isWon": false, "isLost": true }
+      { "name": "Prospect", "order": 1, "color": "#64748b", "isWon": false, "isLost": false },
+      { "name": "Contattato", "order": 2, "color": "#2563eb", "isWon": false, "isLost": false },
+      { "name": "Proposta", "order": 3, "color": "#8b5cf6", "isWon": false, "isLost": false },
+      { "name": "Negoziazione", "order": 4, "color": "#ea580c", "isWon": false, "isLost": false },
+      { "name": "Chiuso Vinto", "order": 5, "color": "#16a34a", "isWon": true, "isLost": false },
+      { "name": "Chiuso Perso", "order": 6, "color": "#dc2626", "isWon": false, "isLost": true }
     ]
   },
   "leadSources": [
@@ -36,7 +36,7 @@
     "otro"
   ],
   "preferences": {
-    "language": "es",
+    "language": "it",
     "theme": "light"
   }
 }

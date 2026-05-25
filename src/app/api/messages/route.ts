@@ -3,10 +3,14 @@ import { listMessages, createMessage } from "@/lib/db/messages";
 import { createNotification } from "@/lib/db/notifications";
 import { users } from "@/lib/appwrite";
 import { requireAuth } from "@/lib/auth";
+import { requireModule } from "@/lib/modules-server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const modCheck = await requireModule("messages", req);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
 
@@ -22,6 +26,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const modCheck = await requireModule("messages", req);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
 

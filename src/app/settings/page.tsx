@@ -16,12 +16,16 @@ import {
 import { toast } from "sonner";
 import { NotificationToggle } from "@/components/shared/NotificationToggle";
 import type { CrmConfig } from "@/types";
+import { useModules } from "@/lib/hooks/useModules";
+import { OPTIONAL_MODULES, isModuleEnabled, type ModuleId } from "@/lib/modules";
 
 export default function SettingsPage() {
   const [config, setConfig] = useState<CrmConfig | null>(null);
   const [stages, setStages] = useState<
     Array<{ id: string; name: string; color: string; order: number }>
   >([]);
+  const { enabled, refresh } = useModules();
+  const [localEnabled, setLocalEnabled] = useState<ModuleId[]>([]);
 
   useEffect(() => {
     fetch("/crm-config.json")
@@ -33,6 +37,29 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then(setStages);
   }, []);
+
+  useEffect(() => {
+    if (enabled) setLocalEnabled(enabled);
+  }, [enabled]);
+
+  async function toggleModule(id: ModuleId) {
+    const next = localEnabled.includes(id)
+      ? localEnabled.filter((m) => m !== id)
+      : [...localEnabled, id];
+    setLocalEnabled(next);
+    try {
+      const res = await fetch("/api/modules", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!res.ok) throw new Error("Errore");
+      toast.success("Modulo aggiornato");
+      refresh();
+    } catch {
+      toast.error("Errore nell'aggiornamento del modulo");
+    }
+  }
 
   const commands = [
     {
@@ -202,6 +229,48 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               Le notifiche ti avvisano quando hai follow-up scaduti. Vengono verificate ogni 5 minuti mentre il CRM è aperto.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Modules */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Moduli
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Attiva o disattiva i moduli opzionali del CRM. I moduli core (Dashboard, Pipeline, Contatti, Trattative, Opportunità, Attività, Calendario) sono sempre attivi.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {OPTIONAL_MODULES.map((mod) => (
+                <div
+                  key={mod.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border"
+                >
+                  <input
+                    id={`module-${mod.id}`}
+                    type="checkbox"
+                    checked={isModuleEnabled(localEnabled, mod.id)}
+                    onChange={() => toggleModule(mod.id)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <div>
+                    <label
+                      htmlFor={`module-${mod.id}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {mod.label}
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {mod.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 

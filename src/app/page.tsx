@@ -4,6 +4,7 @@ import { PipelineChart } from "@/components/dashboard/PipelineChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { NotificationBanner } from "@/components/dashboard/NotificationBanner";
 import type { DashboardStats } from "@/types";
+import { WHITE_LABEL } from "@/lib/white-label";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ export default async function DashboardPage() {
       {isFirstRun && (
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
           <h2 className="text-lg font-semibold mb-2">
-            Benvenuto in SarconX CRM
+            Benvenuto in {WHITE_LABEL.productName}
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
             Il tuo CRM è pronto. Ecco come iniziare:

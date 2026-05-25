@@ -5,6 +5,7 @@ import { listDeals } from "@/lib/db/deals";
 import { listActivities } from "@/lib/db/activities";
 import { listQuotes } from "@/lib/db/quotes";
 import { listExpenses } from "@/lib/db/expenses";
+import { requireModule } from "@/lib/modules-server";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ function inRange(ts: number, fromMs: number, maxMs: number) {
 }
 
 export async function GET(request: NextRequest) {
+  const modCheck = await requireModule("finance", request);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 

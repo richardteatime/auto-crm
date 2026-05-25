@@ -5,8 +5,13 @@ import { listDeals } from "@/lib/db/deals";
 import { getPendingFollowups } from "@/lib/db/activities";
 import { getStages } from "@/lib/db/pipeline";
 import { formatCurrency } from "@/lib/constants";
+import { WHITE_LABEL } from "@/lib/white-label";
+import { requireModule } from "@/lib/modules-server";
 
 export async function POST(request: NextRequest) {
+  const modCheck = await requireModule("digest", request);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
@@ -16,14 +21,14 @@ export async function POST(request: NextRequest) {
   if (!apiKey || !email) {
     return NextResponse.json(
       {
-        error: "Email digest no configurado",
+        error: "Email digest non configurato",
         instructions: [
-          "1. Registrate en https://resend.com (gratis)",
-          "2. Crea un API key en el dashboard",
-          "3. Agrega a .env.local:",
+          "1. Registrati su https://resend.com (gratis)",
+          "2. Crea un API key nel dashboard",
+          "3. Aggiungi a .env.local:",
           "   RESEND_API_KEY=re_...",
-          "   DIGEST_EMAIL=tu@email.com",
-          "4. Reinicia el servidor dev",
+          "   DIGEST_EMAIL=tuo@email.com",
+          "4. Riavvia il server dev",
         ],
       },
       { status: 400 }
@@ -53,8 +58,8 @@ export async function POST(request: NextRequest) {
   // Build HTML email
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #1e293b; font-size: 24px; margin-bottom: 4px;">SarconX CRM</h1>
-      <p style="color: #64748b; margin-top: 0;">Resumen diario — ${new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}</p>
+      <h1 style="color: #1e293b; font-size: 24px; margin-bottom: 4px;">${WHITE_LABEL.productName}</h1>
+      <p style="color: #64748b; margin-top: 0;">Resoconto giornaliero — ${new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}</p>
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
 
@@ -91,7 +96,7 @@ export async function POST(request: NextRequest) {
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
       <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-        SarconX CRM — Il tuo CRM con IA
+        ${WHITE_LABEL.productName} — Il tuo CRM con IA
       </p>
     </div>
   `;
@@ -105,9 +110,9 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: process.env.DIGEST_FROM || "SarconX CRM <onboarding@resend.dev>",
+        from: process.env.DIGEST_FROM || `${WHITE_LABEL.digestSender} <${WHITE_LABEL.digestFromEmail}>`,
         to: [email],
-        subject: `CRM Digest: ${overdue.length > 0 ? `${overdue.length} vencidos` : `${activeDeals.length} deals activos`}`,
+        subject: `CRM Digest: ${overdue.length > 0 ? `${overdue.length} scaduti` : `${activeDeals.length} deals attivi`}`,
         html,
       }),
     });
@@ -115,7 +120,7 @@ export async function POST(request: NextRequest) {
     if (!res.ok) {
       const err = await res.text();
       return NextResponse.json(
-        { error: `Error de Resend: ${err}` },
+        { error: `Errore Resend: ${err}` },
         { status: 500 }
       );
     }
@@ -134,7 +139,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: `Error enviando email: ${error instanceof Error ? error.message : "Unknown"}` },
+      { error: `Errore nell'invio email: ${error instanceof Error ? error.message : "Unknown"}` },
       { status: 500 }
     );
   }

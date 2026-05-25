@@ -3,10 +3,14 @@ import { listQuotes } from "@/lib/db/quotes";
 import { requireAuth } from "@/lib/auth";
 import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
+import { requireModule } from "@/lib/modules-server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const modCheck = await requireModule("quotes", request);
+  if (modCheck) return modCheck;
+
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 

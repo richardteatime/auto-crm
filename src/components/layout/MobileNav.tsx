@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
+import { WHITE_LABEL } from "@/lib/white-label";
+import { useModules } from "@/lib/hooks/useModules";
+import { getModuleForPage } from "@/lib/modules";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, badge: null as null | "activities" | "timeline" | "calendar" | "total" },
@@ -39,16 +42,23 @@ const navItems = [
 export function MobileNav() {
   const pathname = usePathname();
   const { counts } = useNotifications();
+  const { enabled } = useModules();
+
+  const visibleItems = navItems.filter((item) => {
+    const mod = getModuleForPage(item.href);
+    if (!mod) return true;
+    return enabled?.includes(mod) ?? true;
+  });
 
   return (
     <div className="flex flex-col h-full bg-[var(--sidebar)] text-[var(--sidebar-foreground)]">
       <div className="flex h-16 items-center gap-2 px-6 border-b border-[var(--sidebar-border)]">
         <Briefcase className="h-6 w-6 text-[var(--sidebar-primary)]" />
-        <span className="text-lg font-bold tracking-tight whitespace-nowrap">SarconX CRM</span>
+        <span className="text-lg font-bold tracking-tight whitespace-nowrap">{WHITE_LABEL.productName}</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));

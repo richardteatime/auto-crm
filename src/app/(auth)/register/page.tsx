@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserPlus, Loader2 } from "lucide-react";
+import { WHITE_LABEL } from "@/lib/white-label";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function RegisterPage() {
       <div className="rounded-xl border bg-card p-8 shadow-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            SarconX CRM
+            {WHITE_LABEL.productName}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Crea il tuo account
