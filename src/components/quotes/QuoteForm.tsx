@@ -129,6 +129,11 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       toast.error("Inserisci un titolo per il preventivo");
       return;
     }
+    const emptyItems = items.filter((i) => !i.unitPrice || i.unitPrice <= 0);
+    if (emptyItems.length > 0) {
+      toast.error("Tutte le righe devono avere un prezzo maggiore di 0");
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {

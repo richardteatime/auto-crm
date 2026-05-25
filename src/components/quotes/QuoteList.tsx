@@ -206,7 +206,7 @@ export function QuoteList({ dealId }: QuoteListProps) {
                             size="icon"
                             className="cursor-pointer h-8 w-8"
                             onClick={() =>
-                              window.open(`/api/quotes/${q.id}/pdf`, "_blank")
+                              window.open(`/api/quotes/${q.id}/pdf?t=${Date.now()}`, "_blank")
                             }
                             aria-label="Scarica PDF"
                             title="Scarica PDF"

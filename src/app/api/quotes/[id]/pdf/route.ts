@@ -70,7 +70,10 @@ function formatDateIt(date: Date | number | string | null | undefined): string {
 }
 
 function lineTotal(item: DbQuoteItem): number {
-  return Math.round(item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100));
+  const qty = typeof item.quantity === "number" ? item.quantity : parseFloat(item.quantity as unknown as string) || 0;
+  const price = typeof item.unitPrice === "number" ? item.unitPrice : parseFloat(item.unitPrice as unknown as string) || 0;
+  const disc = typeof item.discount === "number" ? item.discount : parseFloat(item.discount as unknown as string) || 0;
+  return Math.round(qty * price * (1 - disc / 100));
 }
 
 export async function GET(
@@ -128,8 +131,8 @@ export async function GET(
       const lt = lineTotal(item);
       const unitLabel =
         item.billingType === "annuale" ? "/anno" : item.billingType === "mensile" ? "/mese" : "";
-
-      const gross = item.quantity * item.unitPrice;
+      const price = typeof item.unitPrice === "number" ? item.unitPrice : parseFloat(item.unitPrice as unknown as string) || 0;
+      const gross = Math.round((typeof item.quantity === "number" ? item.quantity : parseFloat(item.quantity as unknown as string) || 0) * price);
       const netLabel = `<div class="item-net">${formatEur(gross)}${unitLabel}</div>`;
 
       return `
@@ -491,6 +494,11 @@ export async function GET(
 </html>`;
 
   return new Response(html, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
+    },
   });
 }
