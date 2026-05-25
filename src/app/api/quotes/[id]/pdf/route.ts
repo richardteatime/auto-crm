@@ -182,7 +182,7 @@ export async function GET(
     <div class="total-row" style="border-top:1px solid var(--bordo); margin-top:6px; padding-top:8px;"><span>Subtotale primo anno</span><span>${formatEur(firstYearSub)}</span></div>
     <div class="total-row"><span>IVA (${quote.vatRate}%)</span><span>${formatEur(firstYearVat)}</span></div>
     <div class="total-row total-final">
-      <span>TOTALE DA CORRISPONDERE</span>
+      <span>Totale da corrispondere</span>
       <span>${formatEur(firstYearTotal)}</span>
     </div>
     ${secondYearSub > 0 ? `<div class="total-row" style="margin-top:8px; color:#777;"><span>Canone secondo anno in poi</span><span>${formatEur(secondYearSub)}/anno</span></div>` : ""}`;
@@ -367,13 +367,17 @@ export async function GET(
         .total-row {
             display: flex;
             justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            flex-wrap: wrap;
             padding: 6px 0;
             font-size: 13px;
             color: #555;
         }
+        .total-row span:last-child { white-space: nowrap; }
         .total-row.total-final {
-            font-size: 1.15em;
-            font-weight: bold;
+            font-size: 1.05em;
+            font-weight: 600;
             color: var(--colore-primario);
             border-top: 2px solid var(--colore-primario);
             margin-top: 6px;
