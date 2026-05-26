@@ -8,7 +8,7 @@ import { MobileNav } from "./MobileNav";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 bg-card px-4 md:px-6 shadow-[0_1px_0_0_var(--border)]">
       <Sheet>
         <SheetTrigger
           render={<Button variant="ghost" size="icon" className="md:hidden cursor-pointer" />}

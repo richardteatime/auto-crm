@@ -110,11 +110,14 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
       const res = isEdit
         ? await fetch(`/api/projects/${initialData!.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
         : await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Errore ${res.status}`);
+      }
       toast.success(isEdit ? "Progetto aggiornato" : "Progetto creato");
       onClose();
-    } catch {
-      toast.error("Errore durante il salvataggio");
+    } catch (e: any) {
+      toast.error(e?.message || "Errore durante il salvataggio");
     }
   };
 

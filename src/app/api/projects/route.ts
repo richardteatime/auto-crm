@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const projects = await listProjects();
     return NextResponse.json(projects);
   } catch (e) {
+    console.error("[projects] GET error:", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
@@ -47,7 +48,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(project, { status: 201 });
-  } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+  } catch (e: any) {
+    console.error("[projects] POST error:", e);
+    const message = e?.message || e?.response?.message || String(e);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -51,8 +51,10 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
     }
 
     return NextResponse.json(project);
-  } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+  } catch (e: any) {
+    console.error("[projects] PUT error:", e);
+    const message = e?.message || e?.response?.message || String(e);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -64,7 +66,9 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
   try {
     await deleteProject(id);
     return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+  } catch (e: any) {
+    console.error("[projects] DELETE error:", e);
+    const message = e?.message || e?.response?.message || String(e);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -262,6 +262,65 @@ async function main() {
   await addIndex("calendar_events", "idx_endAt", "key", ["endAt"]);
   await addIndex("calendar_events", "idx_createdBy", "key", ["createdBy"]);
 
+  // === OPPORTUNITIES ===
+  await ensureCollection("opportunities", "Opportunities");
+  await addAttr("opportunities", str("opportunities", "contactId", 128, true));
+  await addAttr("opportunities", str("opportunities", "title", 255, true));
+  await addAttr("opportunities", text("opportunities", "description", false));
+  await addAttr("opportunities", text("opportunities", "notes", false));
+  await addAttr("opportunities", text("opportunities", "attachments", false));
+  await addAttr("opportunities", int("opportunities", "value", false));
+  await addAttr("opportunities", str("opportunities", "status", 128, true, "aperta"));
+  await addAttr("opportunities", str("opportunities", "dealId", 128, false));
+  await addAttr("opportunities", dt("opportunities", "createdAt", true));
+  await addAttr("opportunities", dt("opportunities", "updatedAt", true));
+  await addIndex("opportunities", "idx_contactId", "key", ["contactId"]);
+
+  // === PROJECTS ===
+  await ensureCollection("projects", "Projects");
+  await addAttr("projects", str("projects", "title", 255, true));
+  await addAttr("projects", text("projects", "description", false));
+  await addAttr("projects", enm("projects", "status", ["aperto", "in_lavorazione", "bloccato", "in_pausa", "revisione_cto", "consegnato"], true, "aperto"));
+  await addAttr("projects", enm("projects", "priority", ["bassa", "media", "alta"], true, "media"));
+  await addAttr("projects", text("projects", "assignedTo", false));
+  await addAttr("projects", dt("projects", "startDate", false));
+  await addAttr("projects", dt("projects", "dueDate", false));
+  await addAttr("projects", dt("projects", "deliveredAt", false));
+  await addAttr("projects", text("projects", "notes", false));
+  await addAttr("projects", str("projects", "contactId", 128, false));
+  await addAttr("projects", str("projects", "dealId", 128, false));
+  await addAttr("projects", dt("projects", "createdAt", true));
+  await addAttr("projects", dt("projects", "updatedAt", true));
+  await addIndex("projects", "idx_status", "key", ["status"]);
+
+  // === PROJECT LOGS ===
+  await ensureCollection("project_logs", "Project Logs");
+  await addAttr("project_logs", str("project_logs", "projectId", 128, true));
+  await addAttr("project_logs", str("project_logs", "fromStatus", 128, false));
+  await addAttr("project_logs", str("project_logs", "toStatus", 128, true));
+  await addAttr("project_logs", text("project_logs", "notes", true));
+  await addAttr("project_logs", dt("project_logs", "createdAt", true));
+  await addIndex("project_logs", "idx_projectId", "key", ["projectId"]);
+
+  // === REVENUES ===
+  await ensureCollection("revenues", "Revenues");
+  await addAttr("revenues", str("revenues", "description", 255, true));
+  await addAttr("revenues", int("revenues", "amount", true));
+  await addAttr("revenues", dt("revenues", "date", true));
+  await addAttr("revenues", enm("revenues", "billingType", ["una_tantum", "mensile", "annuale"], true, "una_tantum"));
+  await addAttr("revenues", int("revenues", "recurringMonths", false));
+  await addAttr("revenues", dt("revenues", "startDate", false));
+  await addAttr("revenues", text("revenues", "collectedBy", false));
+  await addAttr("revenues", bool("revenues", "isExternal", true, false));
+  await addAttr("revenues", text("revenues", "notes", false));
+  await addAttr("revenues", str("revenues", "dealId", 128, false));
+  await addAttr("revenues", str("revenues", "opportunityId", 128, false));
+  await addAttr("revenues", str("revenues", "deleteReason", 500, false));
+  await addAttr("revenues", dt("revenues", "deletedAt", false));
+  await addAttr("revenues", dt("revenues", "createdAt", true));
+  await addAttr("revenues", dt("revenues", "updatedAt", true));
+  await addIndex("revenues", "idx_date", "key", ["date"]);
+
   // === NOTIFICATIONS ===
   await ensureCollection("notifications", "Notifications");
   await addAttr("notifications", str("notifications", "userId", 255, true));
