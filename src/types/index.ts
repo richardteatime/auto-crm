@@ -249,3 +249,15 @@ export interface CalendarEvent {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  assignedTo: string;
+  createdBy: string;
+  done: boolean;
+  dueAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}

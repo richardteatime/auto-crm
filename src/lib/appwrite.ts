@@ -21,6 +21,14 @@ export const COLLECTIONS = {
   notifications: "notifications",
   revenues: "revenues",
   calendarEvents: "calendar_events",
+  chatwootMessages: "chatwoot_messages",
+  orchestratorRuns: "orchestrator_runs",
+  workflowEvents: "workflow_events",
+  agentTasks: "agent_tasks",
+  projectArtifacts: "project_artifacts",
+  deploymentResults: "deployment_results",
+  automationPolicies: "automation_policies",
+  tasks: "tasks",
 } as const;
 
 // ---------------------------------------------------------------------------

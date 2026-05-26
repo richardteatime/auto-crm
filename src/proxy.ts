@@ -5,6 +5,9 @@ const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KE
 
 const PUBLIC_PATHS = [
   "/api/webhook",
+  "/api/chatwoot/webhook",
+  "/api/orchestrator/callback/gitagent",
+  "/api/orchestrator/callback/deploy",
   "/api/auth",
   "/api/health",
   "/login",

@@ -17,6 +17,7 @@ import {
   CalendarDays,
   LogOut,
   Bell,
+  Bot,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ const navItems = [
   { href: "/finance", label: "Finance", icon: TrendingUp, badge: null },
   { href: "/notifications", label: "Notifiche", icon: Bell, badge: "total" as const },
   { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: "chat" as const },
+  { href: "/orchestrator", label: "Orchestrator", icon: Bot, badge: null },
   { href: "/settings", label: "Impostazioni", icon: Settings, badge: null },
 ];
 

@@ -2,7 +2,7 @@
 
 # Auto-CRM
 
-### Tu CRM Local con Inteligencia Artificial | Your Local AI-Powered CRM
+### Il tuo CRM Locale con Intelligenza Artificiale | Your Local AI-Powered CRM
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript)](https://www.typescriptlang.org/)
@@ -11,31 +11,31 @@
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Ready-DA7756)](https://claude.ai/code)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Un CRM completo que corre 100% en tu maquina. Sin Salesforce. Sin HubSpot. Sin suscripciones.**
+**Un CRM completo che gira al 100% sulla tua macchina. Senza Salesforce. Senza HubSpot. Senza abbonamenti.**
 
 **A complete CRM that runs 100% on your machine. No Salesforce. No HubSpot. No subscriptions.**
 
-[Espanol](#espanol) | [English](#english)
+[Italiano](#italiano) | [English](#english)
 
 </div>
 
 ---
 
-# Espanol
+# Italiano
 
-## Que es Auto-CRM?
+## Cos'e Auto-CRM?
 
-Auto-CRM es un CRM open-source que se personaliza automaticamente a tu negocio. Abrelo con Claude Code, ejecuta `/setup`, y el CRM se adapta a tu industria, tu pipeline, y tu forma de trabajar. Todo corre en tu computadora — tus datos nunca salen de tu maquina.
+Auto-CRM e un CRM open-source che si personalizza automaticamente al tuo business. Aprilo con Claude Code, esegui `/setup`, e il CRM si adatta alla tua industria, al tuo pipeline e al tuo modo di lavorare. Tutto gira sul tuo computer — i tuoi dati non lasciano mai la tua macchina.
 
-## Por que Auto-CRM?
+## Perche Auto-CRM?
 
-- **Autoadministrado** — Base de datos Appwrite en tu servidor. Sin SaaS. Tus datos son tuyos.
-- **Se personaliza solo** — Ejecuta `/setup` y Claude adapta el pipeline, fuentes de leads, idioma y tema a tu negocio.
-- **IA incluida** — Clasifica leads, analiza tu pipeline, sugiere proximos pasos. Sin necesidad de API key.
-- **Gratis para siempre** — Open source. Sin suscripciones. Sin limites de contactos o deals.
-- **Listo en 3 comandos** — Clona, instala, ejecuta. Tu CRM funcionando en menos de 2 minutos.
+- **Self-hosted** — Database Appwrite sul tuo server. Nessun SaaS. I tuoi dati restano tuoi.
+- **Si personalizza da solo** — Esegui `/setup` e Claude adatta il pipeline, le fonti dei lead, la lingua e il tema al tuo business.
+- **IA inclusa** — Classifica lead, analizza il tuo pipeline, suggerisce i prossimi passi. Nessuna API key richiesta.
+- **Gratis per sempre** — Open source. Nessun abbonamento. Nessun limite di contatti o deal.
+- **Pronto in 3 comandi** — Clona, installa, esegui. Il tuo CRM funzionante in meno di 2 minuti.
 
-## Inicio Rapido
+## Avvio Rapido
 
 ```bash
 git clone https://github.com/Hainrixz/auto-crm.git
@@ -43,78 +43,78 @@ cd auto-crm && npm install
 npm run dev
 ```
 
-Abre **http://localhost:3000** — tu CRM esta listo.
+Apri **http://localhost:3000** — il tuo CRM e pronto.
 
 ```bash
-# Opcional: configurar Appwrite y cargar datos demo
+# Opzionale: configura Appwrite e carica dati demo
 npm run setup
 npm run seed
 ```
 
-## Personalizar con Claude Code
+## Personalizza con Claude Code
 
-Abre el proyecto con Claude Code y escribe:
+Apri il progetto con Claude Code e scrivi:
 
 ```
 /setup
 ```
 
-El asistente te pregunta:
-1. Tipo de negocio e industria
-2. Etapas de tu pipeline de ventas
-3. De donde vienen tus leads
-4. Idioma y tema visual
+L'assistente ti chiede:
+1. Tipo di business e industria
+2. Fasi del tuo pipeline di vendita
+3. Da dove arrivano i tuoi lead
+4. Lingua e tema visivo
 
-Y personaliza todo automaticamente.
+E personalizza tutto automaticamente.
 
-## Funcionalidades
+## Funzionalita
 
 ### Dashboard
-Panel principal con KPIs en tiempo real: contactos totales, deals activos, valor en pipeline, leads calientes. Graficos de pipeline y actividad reciente.
+Pannello principale con KPI in tempo reale: contatti totali, deal attivi, valore in pipeline, lead caldi. Grafici del pipeline e attivita recente.
 
 ### Pipeline Kanban
-Tablero visual drag & drop. Arrastra deals entre etapas. Cada tarjeta muestra valor, contacto y temperatura del lead.
+Tabellone visivo drag & drop. Trascina deal tra le fasi. Ogni carta mostra valore, contatto e temperatura del lead.
 
-### Gestion de Contactos
-Tabla con busqueda, filtros por temperatura (frio/tibio/caliente) y fuente. Score de cada lead. Click para ver detalle completo con historial.
+### Gestione Contatti
+Tabella con ricerca, filtri per temperatura (freddo/tiepido/caldo) e fonte. Score di ogni lead. Clicca per vedere il dettaglio completo con lo storico.
 
-### Acciones Rapidas
-Botones de WhatsApp, llamada, y copiar directamente en cada contacto. Un click para abrir chat de WhatsApp o iniciar llamada.
+### Azioni Rapide
+Pulsanti WhatsApp, chiamata e copia direttamente su ogni contatto. Un clic per aprire la chat di WhatsApp o avviare una chiamata.
 
-### Seguimiento de Actividades
-Timeline de todas las interacciones: llamadas, emails, reuniones, notas. Sistema de follow-ups con alertas para seguimientos vencidos.
+### Tracciamento Attivita
+Timeline di tutte le interazioni: chiamate, email, riunioni, note. Sistema di follow-up con alert per i follow-up scaduti.
 
-### Clasificacion de Leads
-Dos modos: reglas automaticas (sin API key) o IA con Claude (opcional). Score de 0-100 y temperatura automatica.
+### Classificazione Lead
+Due modalita: regole automatiche (senza API key) o IA con Claude (opzionale). Score da 0-100 e temperatura automatica.
 
 ### Webhook
-Recibe leads automaticamente desde formularios web (Typeform, Tally, Google Forms, Zapier). Soporta campos en espanol e ingles.
+Ricevi lead automaticamente da form web (Typeform, Tally, Google Forms, Zapier). Supporta campi in spagnolo e inglese.
 
-### Exportacion CSV
-Descarga tus contactos y deals como CSV con un click. Compatible con Excel.
+### Esportazione CSV
+Scarica i tuoi contatti e deal come CSV con un clic. Compatibile con Excel.
 
-### Notificaciones
-Banner en el dashboard para seguimientos vencidos. Notificaciones del navegador opcionales cada 5 minutos.
+### Notifiche
+Banner nel dashboard per i follow-up scaduti. Notifiche del browser opzionali ogni 5 minuti.
 
 ### Email Digest
-Resumen diario por correo con seguimientos pendientes, leads calientes y metricas. Requiere Resend (gratis).
+Riepilogo giornaliero via email con follow-up in sospeso, lead caldi e metriche. Richiede Resend (gratis).
 
-## Comandos de Claude Code
+## Comandi di Claude Code
 
-| Comando | Que hace |
-|---------|----------|
-| `/setup` | Personalizar CRM para tu negocio |
-| `/add-lead` | Agregar un lead de forma conversacional |
-| `/analyze-pipeline` | Analisis del pipeline con recomendaciones |
-| `/daily-briefing` | Resumen ejecutivo del dia |
-| `/import-contacts` | Importar contactos desde CSV |
-| `/customize` | Cambiar configuracion |
-| `/connect` | Conectar con Gmail, Calendar, Sheets, WhatsApp |
-| `/digest` | Enviar resumen por email |
+| Comando | Cosa fa |
+|---------|---------|
+| `/setup` | Personalizza CRM per il tuo business |
+| `/add-lead` | Aggiungi un lead in modo conversazionale |
+| `/analyze-pipeline` | Analisi del pipeline con raccomandazioni |
+| `/daily-briefing` | Riepilogo esecutivo della giornata |
+| `/import-contacts` | Importa contatti da CSV |
+| `/customize` | Cambia configurazione |
+| `/connect` | Connetti con Gmail, Calendar, Sheets, WhatsApp |
+| `/digest` | Invia riepilogo via email |
 
-## Integraciones
+## Integrazioni
 
-### Webhook — Recibir leads automaticamente
+### Webhook — Ricevi lead automaticamente
 
 ```bash
 curl -X POST http://localhost:3000/api/webhook \
@@ -122,126 +122,228 @@ curl -X POST http://localhost:3000/api/webhook \
   -d '{"name":"Juan","email":"juan@ejemplo.com","phone":"555-1234","company":"Mi Empresa"}'
 ```
 
-Soporta campos en espanol (`nombre`, `correo`, `telefono`, `empresa`) y formato Typeform anidado.
+Supporta nomi di campi in spagnolo (`nombre`, `correo`, `telefono`, `empresa`) e formato Typeform annidato.
 
-### Exportar datos
+### Esporta dati
 
 ```bash
-# Descargar contactos como CSV
+# Scarica contatti come CSV
 curl http://localhost:3000/api/export?type=contacts -o contactos.csv
 
-# Descargar deals como CSV
+# Scarica deal come CSV
 curl http://localhost:3000/api/export?type=deals -o deals.csv
 ```
 
 ### MCP — Claude Desktop / Claude.ai
 
-Conecta tu CRM directamente a Claude Desktop:
+Connetti il tuo CRM direttamente a Claude Desktop:
 
 ```json
 {
   "mcpServers": {
     "auto-crm": {
       "command": "npx",
-      "args": ["tsx", "/ruta/a/auto-crm/mcp/crm-server.ts"]
+      "args": ["tsx", "/percorso/a/auto-crm/mcp/crm-server.ts"]
     }
   }
 }
 ```
 
-Ahora puedes decirle a Claude: *"Muestrame mis leads calientes"* o *"Agrega un contacto nuevo"* desde cualquier chat.
+Ora puoi dire a Claude: *"Mostrami i miei lead caldi"* o *"Aggiungi un nuovo contatto"* da qualsiasi chat.
 
 ## Stack Tecnico
 
 | Componente | Tecnologia |
 |-----------|-----------|
 | Frontend | Next.js 16 + React 19 + TypeScript |
-| Estilos | Tailwind CSS v4 + shadcn/ui |
-| Base de datos | Appwrite (self-hosted) |
+| Stili | Tailwind CSS v4 + shadcn/ui |
+| Database | Appwrite (self-hosted) |
 | Drag & Drop | @dnd-kit |
-| Graficos | Recharts |
-| IA | OpenRouter (elegi modelo) / Claude API (fallback) |
-| MCP | Servidor integrado |
-| Contenedor | Docker |
+| Grafici | Recharts |
+| IA | OpenRouter (scegli modello) / Claude API (fallback) |
+| MCP | Server integrato |
+| Container | Docker |
 
-## Despliegue
+## Deploy
 
-### Opcion 1 — Desarrollo local
+### Opzione 1 — Sviluppo locale
 ```bash
 npm run dev
 ```
 
-### Opcion 2 — Produccion
+### Opzione 2 — Produzione
 ```bash
 npm run build && npm start
 ```
 
-### Opcion 3 — Docker
+### Opzione 3 — Docker
 ```bash
 docker compose up -d
 ```
 
-### Opcion 4 — MCP (Claude Desktop)
-Agrega la configuracion MCP mostrada arriba a tu `claude_desktop_config.json`.
+### Opzione 4 — MCP (Claude Desktop)
+Aggiungi la configurazione MCP mostrata sopra al tuo `claude_desktop_config.json`.
 
-## Estructura del Proyecto
+## Struttura del Progetto
 
 ```
 auto-crm/
-├── CLAUDE.md                # Instrucciones para Claude Code
-├── .claude/commands/        # 8 comandos interactivos
-├── mcp/crm-server.ts        # Servidor MCP (10 herramientas)
-├── scripts/                 # Setup de Appwrite + seed de datos
+├── CLAUDE.md                # Istruzioni per Claude Code
+├── .claude/commands/        # 8 comandi interattivi
+├── mcp/crm-server.ts        # Server MCP (10 strumenti)
+├── scripts/                 # Setup Appwrite + seed dati
 ├── src/
-│   ├── app/                 # Paginas y 18 API routes
-│   ├── components/          # Componentes React + shadcn/ui
-│   ├── lib/db/              # Capa de datos Appwrite
-│   ├── lib/                 # Utilidades (scoring, AI, constants)
+│   ├── app/                 # Pagine e 18 API routes
+│   ├── components/          # Componenti React + shadcn/ui
+│   ├── lib/db/              # Layer dati Appwrite
+│   ├── lib/                 # Utilita (scoring, AI, constants)
 │   └── types/               # TypeScript types
-├── Dockerfile               # Contenedor Docker
+├── Dockerfile               # Contenitore Docker
 └── docker-compose.yml       # Docker Compose + Appwrite
 ```
 
-## Variables de Entorno
+## AI Orchestrator (SarconX Auto-CRM)
 
-| Variable | Descripcion |
-|----------|-------------|
-| `NEXT_PUBLIC_APPWRITE_ENDPOINT` | URL de tu instancia Appwrite |
-| `APPWRITE_PROJECT_ID` | ID del proyecto en Appwrite |
-| `APPWRITE_API_KEY` | API key con permisos de base de datos |
-| `APPWRITE_DATABASE_ID` | ID de la base de datos (default: crm) |
-| `OPENROUTER_API_KEY` | Clasificacion de leads con IA (elegi modelo). Fallback: `ANTHROPIC_API_KEY` |
-| `RESEND_API_KEY` | Email digest diario (resend.com, gratis) |
-| `DIGEST_EMAIL` | Email donde recibir el digest |
-| `DIGEST_FROM` | Email remitente del digest |
+Il CRM include un **Orchestrator AI** che permette al founder/admin di comandare il CRM in linguaggio naturale via WhatsApp/Chatwoot e ottenere operazioni reali:
 
-## Modos de IA
+- Chiedere stato progetti, ricavi, lead, blocchi operativi
+- Creare progetti, deal, task
+- Avviare workflow tecnici (sito statico, generazione app)
+- Ricevere su WhatsApp il link dell'app/sito deployato
 
-| Modo | Requiere API Key | Como funciona |
-|------|-----------------|---------------|
-| **Terminal** | No | Comandos en Claude Code (`/add-lead`, `/analyze-pipeline`) |
-| **MCP** | No | Claude Desktop/Web habla directo con tu CRM |
-| **Web** | Si (opcional) | La interfaz web clasifica leads automaticamente |
+### Setup Chatwoot
 
-## Scripts
+1. Configura un account Chatwoot e collegalo a WhatsApp
+2. Vai in **Settings > Integrations > Webhooks** e aggiungi:
+   ```
+   https://TUO-CRM/api/chatwoot/webhook
+   ```
+3. Imposta `CHATWOOT_WEBHOOK_SECRET` nel `.env.local`
+4. Aggiungi i numeri admin in `ADMIN_WHATSAPP_NUMBERS`
 
-```bash
-npm run dev        # Servidor de desarrollo
-npm run build      # Build de produccion
-npm start          # Servidor de produccion
-npm run setup      # Inicializar base de datos Appwrite
-npm run seed       # Cargar datos demo
-npm run mcp        # Servidor MCP para Claude Desktop
-npm run lint       # Verificar codigo
+### Comandi supportati (WhatsApp/Chatwoot)
+
+| Comando | Esempio | Risultato |
+|---------|---------|-----------|
+| Query progetti | *"A che progetti stiamo lavorando?"* | Lista progetti attivi |
+| Query ricavi | *"Quanti ricavi abbiamo fatto oggi?"* | Incassi + deal vinti + pipeline |
+| Query lead | *"Dammi un riepilogo dei lead"* | Totale, freddi/tiepidi/caldi, fonti |
+| Query blocchi | *"Quali progetti sono bloccati?"* | Lista progetti bloccati |
+| Query agenti | *"Stato agenti"* | Ultime 10 run orchestrator |
+| Crea progetto | *"Crea progetto per Mario Rossi"* | Progetto + contact creati |
+| Crea deal | *"Crea deal per Mario da 5000 euro"* | Deal + contact creati |
+| Crea task | *"Crea task chiamare Mario domani"* | Task creato con scadenza |
+| Workflow sito | *"Avvia workflow sito per Mario"* | Progetto + dispacciamento GitAgent |
+| Genera app | *"Genera app per Mario"* | Progetto + deal + dispacciamento GitAgent |
+
+### Flusso end-to-end (generazione app)
+
+```text
+Founder scrive su WhatsApp -> Chatwoot -> Webhook CRM
+-> Verifica permission (solo ADMIN_WHATSAPP_NUMBERS)
+-> Classifica intento (AI o keyword fallback)
+-> Crea progetto/deal/run
+-> Dispaccia a GitAgent (se ENABLE_GITAGENT_DISPATCH=true)
+-> GitAgent genera codice -> Callback con repoUrl
+-> Deploy preview -> Callback con finalUrl
+-> CRM risponde su WhatsApp: "App deployata. Link: ..."
 ```
 
-## Contribuir
+### Test locali
 
-1. Fork el repositorio
-2. Crea tu branch (`git checkout -b feature/mi-feature`)
-3. Haz commit de tus cambios (`git commit -m 'Agregar feature'`)
-4. Push a tu branch (`git push origin feature/mi-feature`)
-5. Abre un Pull Request
+```bash
+# Test comando diretto via API
+curl -X POST http://localhost:3000/api/orchestrator/command \
+  -H "Content-Type: application/json" \
+  -d '{"messageText":"Crea progetto per Test","senderPhone":"+393331234567","conversationId":1}'
+
+# Lista runs
+curl http://localhost:3000/api/orchestrator/runs
+
+# Dettaglio run
+curl http://localhost:3000/api/orchestrator/runs/RUN_ID
+
+# Simula callback GitAgent
+curl -X POST http://localhost:3000/api/orchestrator/callback/gitagent \
+  -H "Content-Type: application/json" \
+  -d '{"runId":"RUN_ID","status":"completed","repoUrl":"https://github.com/...","deployRequested":true}'
+
+# Simula callback deploy
+curl -X POST http://localhost:3000/api/orchestrator/callback/deploy \
+  -H "Content-Type: application/json" \
+  -d '{"runId":"RUN_ID","status":"success","url":"https://preview.example.com"}'
+```
+
+### Step 2 (Customer Automation) — BLOCCATO
+
+La modalita customer e **disabilitata di default**:
+```env
+ENABLE_CUSTOMER_AUTOMATION=false
+CUSTOMER_AUTOMATION_UNLOCKED=false
+```
+
+Lo Step 2 si attiva solo quando il flusso end-to-end e validato (founder puo generare app da WhatsApp e ricevere il link deployato). **Non cambiare questi flag finche il Gate non e superato.**
+
+## Variabili d'Ambiente
+
+> **Template**: copia `.env.example` a `.env.local` e riempi i valori.
+
+| Variabile | Descrizione |
+|-----------|-------------|
+| `NEXT_PUBLIC_APPWRITE_ENDPOINT` | URL della tua istanza Appwrite |
+| `APPWRITE_PROJECT_ID` | ID del progetto in Appwrite |
+| `APPWRITE_API_KEY` | API key con permessi di database |
+| `APPWRITE_DATABASE_ID` | ID del database (default: crm) |
+| `SESSION_SECRET` | Secret per la sessione HMAC (cambia con una stringa casuale) |
+| `OPENROUTER_API_KEY` | Classificazione lead con IA (scegli modello). Fallback: `ANTHROPIC_API_KEY` |
+| `OPENROUTER_MODEL` | Modello OpenRouter (default: `anthropic/claude-sonnet-4`) |
+| `ANTHROPIC_API_KEY` | Fallback diretto Anthropic (opzionale) |
+| `RESEND_API_KEY` | Email digest giornaliero (resend.com, gratis) |
+| `DIGEST_EMAIL` | Email dove ricevere il digest |
+| `DIGEST_FROM` | Email mittente del digest (default: onboarding@resend.dev) |
+| `ADMIN_WHATSAPP_NUMBERS` | Numeri founder admin (es: `+393331234567,+393331111111`) |
+| `CHATWOOT_URL` | URL istanza Chatwoot |
+| `CHATWOOT_ACCOUNT_ID` | ID account Chatwoot |
+| `CHATWOOT_API_ACCESS_TOKEN` | Token API Chatwoot |
+| `CHATWOOT_WEBHOOK_SECRET` | Secret per validare webhook Chatwoot |
+| `ENABLE_INTERNAL_COMMANDS` | Abilita comandi interni (`true`) |
+| `ENABLE_GITAGENT_DISPATCH` | Dispaccia a GitAgent (`false` di default) |
+| `ENABLE_AUTODEPLOY_PREVIEW` | Auto-deploy preview (`false` di default) |
+| `ENABLE_CUSTOMER_AUTOMATION` | Modalita customer (`false` di default, BLOCCATO) |
+| `CUSTOMER_AUTOMATION_UNLOCKED` | Sblocco customer (`false` di default) |
+| `GITAGENT_ENDPOINT` | Endpoint GitAgent per dispatch |
+| `GITAGENT_API_KEY` | API key GitAgent |
+| `GITAGENT_CALLBACK_SECRET` | Secret per validare callback GitAgent |
+| `DEPLOY_CALLBACK_SECRET` | Secret per validare callback deploy |
+| `NEXT_PUBLIC_APP_URL` | URL pubblico del CRM (per callback) |
+
+## Modalita IA
+
+| Modalita | Richiede API Key | Come funziona |
+|----------|-----------------|---------------|
+| **Terminale** | No | Comandi in Claude Code (`/add-lead`, `/analyze-pipeline`) |
+| **MCP** | No | Claude Desktop/Web parla diretto con il tuo CRM |
+| **Web** | Si (opzionale) | L'interfaccia web classifica lead automaticamente |
+
+## Script
+
+```bash
+npm run dev        # Server di sviluppo
+npm run build      # Build di produzione
+npm run start      # Server di produzione
+npm run setup      # Inizializza database Appwrite
+npm run seed       # Carica dati demo
+npm run mcp        # Server MCP per Claude Desktop
+npm run lint       # Verifica codice
+```
+
+## Contribuisci
+
+1. Fork il repository
+2. Crea il tuo branch (`git checkout -b feature/mia-feature`)
+3. Fai commit delle tue modifiche (`git commit -m 'Aggiungi feature'`)
+4. Push sul tuo branch (`git push origin feature/mia-feature`)
+5. Apri una Pull Request
 
 ---
 
@@ -428,16 +530,36 @@ auto-crm/
 
 ## Environment Variables
 
+> **Template**: copy `.env.example` to `.env.local` and fill in the values.
+
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_APPWRITE_ENDPOINT` | URL of your Appwrite instance |
 | `APPWRITE_PROJECT_ID` | Project ID in Appwrite |
 | `APPWRITE_API_KEY` | API key with database permissions |
 | `APPWRITE_DATABASE_ID` | Database ID (default: crm) |
+| `SESSION_SECRET` | HMAC session secret (change to a random string) |
 | `OPENROUTER_API_KEY` | AI lead classification (choose your model). Fallback: `ANTHROPIC_API_KEY` |
+| `OPENROUTER_MODEL` | OpenRouter model (default: `anthropic/claude-sonnet-4`) |
+| `ANTHROPIC_API_KEY` | Direct Anthropic fallback (optional) |
 | `RESEND_API_KEY` | Daily email digest (resend.com, free) |
 | `DIGEST_EMAIL` | Email address to receive digest |
-| `DIGEST_FROM` | Sender email for digest |
+| `DIGEST_FROM` | Sender email for digest (default: onboarding@resend.dev) |
+| `ADMIN_WHATSAPP_NUMBERS` | Founder admin numbers (e.g. `+393331234567,+393331111111`) |
+| `CHATWOOT_URL` | Chatwoot instance URL |
+| `CHATWOOT_ACCOUNT_ID` | Chatwoot account ID |
+| `CHATWOOT_API_ACCESS_TOKEN` | Chatwoot API token |
+| `CHATWOOT_WEBHOOK_SECRET` | Secret to validate Chatwoot webhooks |
+| `ENABLE_INTERNAL_COMMANDS` | Enable internal commands (`true`) |
+| `ENABLE_GITAGENT_DISPATCH` | Dispatch to GitAgent (`false` by default) |
+| `ENABLE_AUTODEPLOY_PREVIEW` | Auto-deploy preview (`false` by default) |
+| `ENABLE_CUSTOMER_AUTOMATION` | Customer mode (`false` by default, LOCKED) |
+| `CUSTOMER_AUTOMATION_UNLOCKED` | Customer unlock (`false` by default) |
+| `GITAGENT_ENDPOINT` | GitAgent dispatch endpoint |
+| `GITAGENT_API_KEY` | GitAgent API key |
+| `GITAGENT_CALLBACK_SECRET` | Secret to validate GitAgent callbacks |
+| `DEPLOY_CALLBACK_SECRET` | Secret to validate deploy callbacks |
+| `NEXT_PUBLIC_APP_URL` | Public CRM URL (for callbacks) |
 
 ## AI Modes
 
@@ -452,7 +574,7 @@ auto-crm/
 ```bash
 npm run dev        # Development server
 npm run build      # Production build
-npm start          # Production server
+npm run start      # Production server
 npm run setup      # Initialize Appwrite database
 npm run seed       # Load demo data
 npm run mcp        # MCP server for Claude Desktop
@@ -475,6 +597,6 @@ npm run lint       # Check code
 
 Your data. Your machine. Your CRM.
 
-Tus datos. Tu maquina. Tu CRM.
+I tuoi dati. La tua macchina. Il tuo CRM.
 
 </div>

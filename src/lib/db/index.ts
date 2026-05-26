@@ -61,6 +61,14 @@ export {
 } from "./quotes";
 export type { Quote } from "./quotes";
 
+// Revenues
+export {
+  listRevenues,
+  getRevenue,
+  createRevenue,
+  updateRevenue,
+} from "./revenues";
+
 // Settings
 export { getSetting, setSetting } from "./settings";
 
@@ -103,3 +111,60 @@ export {
   updateCalendarEvent,
   deleteCalendarEvent,
 } from "./calendar";
+
+// Chatwoot Messages
+export {
+  listChatwootMessages,
+  createChatwootMessage,
+  markChatwootMessageProcessed,
+} from "./chatwoot-messages";
+
+// Tasks
+export {
+  listTasks,
+  getTask,
+  createTask,
+  updateTask,
+  deleteTask,
+} from "./tasks";
+
+// Orchestrator Runs
+export {
+  listOrchestratorRuns,
+  getOrchestratorRun,
+  createOrchestratorRun,
+  updateOrchestratorRun,
+} from "./orchestrator-runs";
+
+// Agent Tasks
+export {
+  listAgentTasks,
+  getAgentTask,
+  createAgentTask,
+  updateAgentTask,
+  deleteAgentTask,
+} from "./agent-tasks";
+
+// Project Artifacts
+export {
+  listProjectArtifacts,
+  getProjectArtifact,
+  createProjectArtifact,
+  updateProjectArtifact,
+  deleteProjectArtifact,
+} from "./project-artifacts";
+
+// Deployment Results
+export {
+  listDeploymentResults,
+  getDeploymentResult,
+  createDeploymentResult,
+  updateDeploymentResult,
+  deleteDeploymentResult,
+} from "./deployment-results";
+
+// Workflow Events
+export {
+  listWorkflowEvents,
+  createWorkflowEvent,
+} from "./workflow-events";
