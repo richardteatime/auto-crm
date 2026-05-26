@@ -62,7 +62,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden md:flex md:w-64 md:flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] min-h-screen">
+    <aside className="hidden md:flex md:w-64 md:flex-col bg-[var(--sidebar)] text-[var(--sidebar-foreground)] h-full overflow-y-auto">
       <div className="flex h-16 items-center gap-2 px-6 border-b border-[var(--sidebar-border)]">
         <Briefcase className="h-6 w-6 text-[var(--sidebar-primary)]" />
         <span className="text-lg font-bold tracking-tight whitespace-nowrap">{WHITE_LABEL.productName}</span>
