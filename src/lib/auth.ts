@@ -102,28 +102,39 @@ export async function getCurrentUser(
   request: NextRequest
 ): Promise<AuthUser | null> {
   const raw = getSessionToken(request);
+  console.log("[auth] cookie raw:", raw ? "present" : "missing");
   if (!raw) return null;
 
   const parsed = verifyToken(raw);
+  console.log("[auth] token parsed:", parsed ? "valid" : "invalid");
   if (!parsed) return null;
 
   try {
     const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");
-    const res = await fetch(`${baseUrl}/v1/users/${parsed.userId}`, {
+    const url = `${baseUrl}/v1/users/${parsed.userId}`;
+    console.log("[auth] fetching Appwrite user at:", url);
+    const res = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
         "X-Appwrite-Project": APPWRITE_PROJECT_ID,
         "X-Appwrite-Key": APPWRITE_API_KEY,
       },
     });
-    if (!res.ok) return null;
+    console.log("[auth] Appwrite response status:", res.status);
+    if (!res.ok) {
+      const text = await res.text();
+      console.log("[auth] Appwrite error body:", text.slice(0, 200));
+      return null;
+    }
     const data = await res.json();
+    console.log("[auth] Appwrite user found:", data.$id);
     return {
       id: data.$id,
       email: data.email,
       name: data.name,
     };
-  } catch {
+  } catch (e: any) {
+    console.log("[auth] Appwrite fetch error:", e.message);
     return null;
   }
 }
@@ -138,8 +149,12 @@ export async function requireAuth(
   | { user?: never; error: NextResponse }
 > {
   const user = await getCurrentUser(request);
-  if (user) return { user };
+  if (user) {
+    console.log("[auth] requireAuth: user authenticated", user.email);
+    return { user };
+  }
 
+  console.log("[auth] requireAuth: unauthenticated, returning 401");
   return {
     error: NextResponse.json(
       { success: false, error: "Non autenticato" },
