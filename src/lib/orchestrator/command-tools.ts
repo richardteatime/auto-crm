@@ -16,7 +16,7 @@ import {
 // Extraction helpers
 // ---------------------------------------------------------------------------
 
-function extractAfterKeyword(text: string, keywords: string[]): string | null {
+export function extractAfterKeyword(text: string, keywords: string[]): string | null {
   const lower = text.toLowerCase();
   for (const kw of keywords) {
     const idx = lower.indexOf(kw);
@@ -29,7 +29,7 @@ function extractAfterKeyword(text: string, keywords: string[]): string | null {
   return null;
 }
 
-function extractAmount(text: string): number | null {
+export function extractAmount(text: string): number | null {
   // Match patterns like "5000", "5.000", "5,000", "5k", "5000 euro"
   const match = text.match(/(\d[\d.\s,]*)(?:\s*(?:k|eur[o?]|€|\$))?/i);
   if (!match) return null;
@@ -47,9 +47,10 @@ function extractAmount(text: string): number | null {
   return hasK ? val * 1000 : val;
 }
 
-function extractClientName(text: string): string | null {
-  // Try to capture name after "per" stopping at comma, dash, colon, or keywords
-  const match = text.match(/per\s+([^\-—:,\.\d]+?)(?:\s*(?:,|\.|\-|—|:\s|da\s|con\s|entro\s|priorit|$))/i);
+export function extractClientName(text: string): string | null {
+  // Word-boundary aware terminators to avoid matching inside names (e.g. "da" in "Azienda")
+  const terminators = String.raw`[\,\.\-—]|:\s|\bda\b(?:\s|$)|\bcon\b(?:\s|$)|\bentro\b(?:\s|$)|\bpriorit[aà](?:\s|$)|\bper\b(?:\s|$)|$`;
+  const match = text.match(new RegExp(String.raw`per\s+([^\-—:,\.\d]+?)(?:\s*(?:${terminators}))`, "i"));
   if (match) {
     const name = match[1].trim().replace(/^["']+|["']+$/g, "");
     if (name) return name;
@@ -59,8 +60,7 @@ function extractClientName(text: string): string | null {
   const fallback = text.match(/per\s+(.+)/i);
   if (fallback) {
     let name = fallback[1].trim().replace(/^["']+|["']+$/g, "");
-    // Truncate at first comma, period, dash, or keywords
-    const truncateMatch = name.match(/^([^,\.—\-]+?)(?:\s*(?:,|\.|—|\-|:\s|entro\s|priorit[aà]\s|da\s|con\s|$))/i);
+    const truncateMatch = name.match(new RegExp(String.raw`^([^,\.—\-]+?)(?:\s*(?:${terminators}))`, "i"));
     if (truncateMatch) name = truncateMatch[1].trim();
     // Hard cap at 40 chars
     if (name.length > 40) name = name.slice(0, 40).trim();
@@ -70,7 +70,7 @@ function extractClientName(text: string): string | null {
   return null;
 }
 
-function parseItalianDate(value: string | undefined): Date | null {
+export function parseItalianDate(value: string | undefined): Date | null {
   if (!value) return null;
   const lower = value.toLowerCase();
 
@@ -117,7 +117,7 @@ function parseItalianDate(value: string | undefined): Date | null {
   return null;
 }
 
-function extractDueDate(text: string): Date | null {
+export function extractDueDate(text: string): Date | null {
   const lower = text.toLowerCase();
 
   if (lower.includes("domani")) {
@@ -245,8 +245,8 @@ export async function createProjectFromMessage(
 // Extraction helpers for deals
 // ---------------------------------------------------------------------------
 
-function extractProbability(text: string): number | null {
-  const match = text.match(/(\d{1,3})\s*%/);
+export function extractProbability(text: string): number | null {
+  const match = text.match(/(?<![\d.])(\d{1,3})\s*%/);
   if (match) {
     const val = parseInt(match[1], 10);
     if (val >= 0 && val <= 100) return val;
@@ -254,7 +254,7 @@ function extractProbability(text: string): number | null {
   return null;
 }
 
-function extractExpectedClose(text: string): Date | null {
+export function extractExpectedClose(text: string): Date | null {
   // Match formats: "20/06", "20/06/2026", "entro il 20/06"
   const ddMmMatch = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
   if (ddMmMatch) {
@@ -267,7 +267,7 @@ function extractExpectedClose(text: string): Date | null {
   return null;
 }
 
-function parseExpectedClose(value: string | undefined): Date | null {
+export function parseExpectedClose(value: string | undefined): Date | null {
   if (!value) return null;
   const ddMmMatch = value.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
   if (ddMmMatch) {
