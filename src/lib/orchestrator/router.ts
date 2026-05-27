@@ -61,7 +61,7 @@ export async function handleCommand(input: CommandInput): Promise<CommandResult>
   // 2. AI chooses tool
   let toolCall;
   try {
-    toolCall = await chooseTool(input.messageText);
+    toolCall = await chooseTool(input.messageText, input.conversationId);
   } catch {
     toolCall = { tool: "reply", args: { message: "Non ho capito il comando." } };
   }

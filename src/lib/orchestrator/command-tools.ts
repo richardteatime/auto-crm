@@ -84,6 +84,12 @@ async function findOrCreateContact(name: string): Promise<{ id: string; name: st
 export async function createProjectFromMessage(
   text: string,
   runId: string | null,
+  overrides?: {
+    title?: string;
+    description?: string;
+    status?: string;
+    priority?: string;
+  },
 ): Promise<{ reply: string; projectId: string | null }> {
   const clientName = extractClientName(text);
   if (!clientName) {
@@ -93,19 +99,28 @@ export async function createProjectFromMessage(
     };
   }
 
-  // Extract project title from text (everything after the client name or after "-" / ":")
-  let title = extractAfterKeyword(text, ["progetto per " + clientName, "progetto per " + clientName.toLowerCase(), "-", "-"]) ?? ("Progetto per " + clientName);
-  title = title.replace(/^per\s+/i, "").trim();
-  if (!title || title.toLowerCase() === clientName.toLowerCase()) {
-    title = "Progetto per " + clientName;
+  // Use AI-extracted title if available, otherwise extract from text
+  let title = overrides?.title;
+  if (!title) {
+    title = extractAfterKeyword(text, ["progetto per " + clientName, "progetto per " + clientName.toLowerCase(), "-", "-"]) ?? ("Progetto per " + clientName);
+    title = title.replace(/^per\s+/i, "").trim();
+    if (!title || title.toLowerCase() === clientName.toLowerCase()) {
+      title = "Progetto per " + clientName;
+    }
   }
+
+  const description = overrides?.description ?? null;
+  const status = overrides?.status ?? "aperto";
+  const priority = overrides?.priority ?? "media";
 
   try {
     const contact = await findOrCreateContact(clientName);
     const project = await createProject({
       title,
+      description,
       contactId: contact.id,
-      status: "aperto",
+      status: status as import("@/types").ProjectStatus,
+      priority,
     });
 
     await logWorkflowEvent({
@@ -123,8 +138,10 @@ export async function createProjectFromMessage(
       ? " (contatto " + contact.name + " creato automaticamente)"
       : " (contatto: " + contact.name + ")";
 
+    const descNote = description ? "\nDescrizione: " + description : "";
+
     return {
-      reply: "Progetto creato: *" + project.title + "*\nID: " + project.id + contactNote,
+      reply: "Progetto creato: *" + project.title + "*" + descNote + "\nID: " + project.id + contactNote,
       projectId: project.id,
     };
   } catch (err) {
@@ -140,6 +157,10 @@ export async function createProjectFromMessage(
 export async function createDealFromMessage(
   text: string,
   runId: string | null,
+  overrides?: {
+    title?: string;
+    description?: string;
+  },
 ): Promise<{ reply: string; dealId: string | null }> {
   const clientName = extractClientName(text);
   if (!clientName) {
@@ -168,11 +189,13 @@ export async function createDealFromMessage(
     }
 
     const contact = await findOrCreateContact(clientName);
+    const title = overrides?.title ?? ("Deal per " + contact.name);
     const deal = await createDeal({
-      title: "Deal per " + contact.name,
+      title,
       value: amount * 100, // convert to cents
       contactId: contact.id,
       stageId: firstStage.id,
+      notes: overrides?.description ?? null,
     });
 
     await logWorkflowEvent({
@@ -207,10 +230,15 @@ export async function createDealFromMessage(
 export async function createTaskFromMessage(
   text: string,
   runId: string | null,
+  overrides?: {
+    title?: string;
+    description?: string;
+    dueDate?: string;
+  },
 ): Promise<{ reply: string; taskId: string | null }> {
   // Extract description: everything after "task" or "task:"
   const desc = extractAfterKeyword(text, ["crea task", "task", "nuovo task"]);
-  const title = desc ?? text;
+  const title = overrides?.title ?? desc ?? text;
 
   // Try to extract a date keyword like "domani", "oggi", "tra 3 giorni"
   let dueAt: Date | null = null;
@@ -231,10 +259,23 @@ export async function createTaskFromMessage(
     }
   }
 
+  // If AI extracted a dueDate like "domani", convert it
+  if (overrides?.dueDate) {
+    const od = overrides.dueDate.toLowerCase();
+    if (od.includes("domani")) {
+      dueAt = new Date();
+      dueAt.setDate(dueAt.getDate() + 1);
+      dueAt.setHours(9, 0, 0, 0);
+    } else if (od.includes("oggi")) {
+      dueAt = new Date();
+      dueAt.setHours(18, 0, 0, 0);
+    }
+  }
+
   try {
     const task = await createTask({
       title,
-      description: desc ?? null,
+      description: overrides?.description ?? desc ?? null,
       dueAt,
     });
 

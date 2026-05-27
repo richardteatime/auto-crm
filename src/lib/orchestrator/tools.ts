@@ -95,17 +95,31 @@ FUNZIONI DISPONIBILI:
    Descrizione: Restituisce le task di oggi, scadute e in scadenza.
    Esempio utente: "Cosa devo fare oggi?"
 
-8. createProject(clientName: string, title?: string)
+8. createProject(clientName: string, title: string, description?: string, status?: string, priority?: string)
    Descrizione: Crea un nuovo progetto per un cliente.
-   Esempio utente: "Crea progetto per Rossi"
+   REGOLE per il titolo: massimo 4-5 parole, sintetico. Tutti i dettagli vanno nella descrizione.
+   Esempio utente: "Aggiungi progetto per Rossi: sito web e-commerce, aperto, priorità alta"
+   Estrazione corretta:
+     title: "Sito web e-commerce"
+     description: "Progetto per Rossi. Sito web e-commerce. Stato: aperto. Priorità: alta."
+     status: "aperto"
+     priority: "alta"
 
-9. createDeal(clientName: string, amount: number)
+9. createDeal(clientName: string, amount: number, title?: string, description?: string)
    Descrizione: Crea un nuovo deal/opportunita per un cliente.
-   Esempio utente: "Crea deal per Rossi da 5000 euro"
+   Esempio utente: "Crea deal per Rossi da 5000 euro - preventivo sito web"
+   Estrazione corretta:
+     title: "Preventivo sito web"
+     description: "Deal per Rossi da 5000 euro."
 
 10. createTask(title: string, dueDate?: string, description?: string)
     Descrizione: Crea una nuova task.
-    Esempio utente: "Crea task chiamare cliente domani"
+    REGOLE per il titolo: massimo 4-5 parole, sintetico.
+    Esempio utente: "Crea task chiamare cliente domani alle 10 per discutere il preventivo"
+    Estrazione corretta:
+      title: "Chiamare cliente"
+      description: "Chiamare cliente domani alle 10 per discutere il preventivo"
+      dueDate: "domani"
 
 11. createContact(name: string, temperature?: string, source?: string)
     Descrizione: Crea un nuovo contatto/lead nel CRM.
@@ -120,14 +134,21 @@ REGOLE:
 - Se l'utente vuole creare un CONTATTO/LEAD, usa createContact, NON createTask.
 - Se l'utente vuole sapere qualcosa, usa la funzione di query appropriata.
 - Se non capisci cosa vuole, usa reply con una domanda di chiarimento.
+- Per createProject, createTask e createDeal: il TITOLO deve essere BREVE (max 5 parole). I dettagli vanno nella DESCRIZIONE.
 - Estrai i parametri dal messaggio dell'utente in modo intelligente.
 
 FORMATO RISPOSTA:
 {"tool": "nomeFunzione", "args": {"parametro": "valore"}}
 
-Esempio:
+Esempi corretti:
 Utente: "Aggiungi contatto Marco Bianchi temperatura caldo"
 Risposta: {"tool": "createContact", "args": {"name": "Marco Bianchi", "temperature": "hot"}}
+
+Utente: "Aggiungi progetto per Rossi: sito web e-commerce, aperto, priorità alta"
+Risposta: {"tool": "createProject", "args": {"clientName": "Rossi", "title": "Sito web e-commerce", "description": "Stato: aperto. Priorità: alta.", "status": "aperto", "priority": "alta"}}
+
+Utente: "Crea task chiamare cliente domani per il preventivo"
+Risposta: {"tool": "createTask", "args": {"title": "Chiamare cliente", "description": "Chiamare cliente per il preventivo", "dueDate": "domani"}}
 `;
 
 // ---------------------------------------------------------------------------
@@ -205,10 +226,71 @@ function classifyByKeywords(messageText: string): ToolCall {
 }
 
 // ---------------------------------------------------------------------------
+// Conversation memory: pending tool calls waiting for clarification
+// ---------------------------------------------------------------------------
+
+interface PendingTool {
+  toolCall: ToolCall;
+  originalMessage: string;
+  timestamp: number;
+}
+
+const pendingToolCalls = new Map<number, PendingTool>();
+const PENDING_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function getPending(conversationId: number): PendingTool | null {
+  const pending = pendingToolCalls.get(conversationId);
+  if (!pending) return null;
+  if (Date.now() - pending.timestamp > PENDING_TTL_MS) {
+    pendingToolCalls.delete(conversationId);
+    return null;
+  }
+  return pending;
+}
+
+function setPending(conversationId: number, toolCall: ToolCall, originalMessage: string) {
+  pendingToolCalls.set(conversationId, { toolCall, originalMessage, timestamp: Date.now() });
+}
+
+function clearPending(conversationId: number) {
+  pendingToolCalls.delete(conversationId);
+}
+
+// ---------------------------------------------------------------------------
 // AI tool router
 // ---------------------------------------------------------------------------
 
-export async function chooseTool(messageText: string): Promise<ToolCall> {
+export async function chooseTool(
+  messageText: string,
+  conversationId?: number,
+): Promise<ToolCall> {
+  // Check if there's a pending tool waiting for clarification
+  if (conversationId != null) {
+    const pending = getPending(conversationId);
+    if (pending) {
+      const combinedPrompt = `${TOOL_DEFINITIONS}
+
+Prima l'utente ha chiesto: "${pending.originalMessage}"
+Poi ha risposto: "${messageText}"
+
+Completa la richiesta originale usando anche la risposta. Rispondi con il JSON della funzione da chiamare:`;
+
+      let responseText: string | null = null;
+      if (openRouterKey) {
+        responseText = await callOpenRouter(combinedPrompt);
+      } else if (anthropicKey) {
+        responseText = await callAnthropic(combinedPrompt);
+      }
+
+      clearPending(conversationId);
+
+      if (responseText) {
+        const parsed = parseToolCall(responseText);
+        if (parsed) return parsed;
+      }
+    }
+  }
+
   if (!hasAI()) {
     return classifyByKeywords(messageText);
   }
@@ -333,17 +415,29 @@ export async function executeTool(
     }
 
     case "createProject": {
-      const { reply, projectId } = await createProjectFromMessage(messageText, runId);
+      const { reply, projectId } = await createProjectFromMessage(messageText, runId, {
+        title: toolCall.args.title as string | undefined,
+        description: toolCall.args.description as string | undefined,
+        status: toolCall.args.status as string | undefined,
+        priority: toolCall.args.priority as string | undefined,
+      });
       return { success: !!projectId, reply, intent: "create_project_command" };
     }
 
     case "createDeal": {
-      const { reply, dealId } = await createDealFromMessage(messageText, runId);
+      const { reply, dealId } = await createDealFromMessage(messageText, runId, {
+        title: toolCall.args.title as string | undefined,
+        description: toolCall.args.description as string | undefined,
+      });
       return { success: !!dealId, reply, intent: "create_deal_command" };
     }
 
     case "createTask": {
-      const { reply, taskId } = await createTaskFromMessage(messageText, runId);
+      const { reply, taskId } = await createTaskFromMessage(messageText, runId, {
+        title: toolCall.args.title as string | undefined,
+        description: toolCall.args.description as string | undefined,
+        dueDate: toolCall.args.dueDate as string | undefined,
+      });
       return { success: !!taskId, reply, intent: "create_task_command" };
     }
 

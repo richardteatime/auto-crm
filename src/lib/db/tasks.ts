@@ -4,7 +4,7 @@ import { Query } from "@/lib/query17";
 import type { Task } from "@/types";
 
 function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
+  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
   return {
     id: $id,
     createdAt: new Date($createdAt),

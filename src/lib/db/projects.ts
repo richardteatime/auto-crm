@@ -25,7 +25,7 @@ function serializeAssignedTo(value: string[] | undefined | null): string | null 
 }
 
 function fromDoc<T extends Project | ProjectLog>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
+  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
   const base = {
     id: $id,
     createdAt: new Date($createdAt),
