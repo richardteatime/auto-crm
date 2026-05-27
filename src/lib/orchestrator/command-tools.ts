@@ -50,11 +50,11 @@ function extractAmount(text: string): number | null {
 function extractClientName(text: string): string | null {
   // "per [Name]" or "per [Name] da" or "per [Name] -"
   const match = text.match(/per\s+([^\-—:,\d]+?)(?:\s+(?:da|con|-|—|:\s|$))/i);
-  if (match) return match[1].trim();
+  if (match) return match[1].trim().replace(/^["']+|["']+$/g, "");
 
   // Fallback: just "per [rest of line]"
   const fallback = text.match(/per\s+(.+)/i);
-  if (fallback) return fallback[1].trim();
+  if (fallback) return fallback[1].trim().replace(/^["']+|["']+$/g, "");
 
   return null;
 }
@@ -68,11 +68,7 @@ async function findOrCreateContact(name: string): Promise<{ id: string; name: st
   const exact = contacts.find((c) => c.name.toLowerCase() === name.toLowerCase());
   if (exact) return { id: exact.id, name: exact.name, isNew: false };
 
-  // Fuzzy match: if only one result and name similarity is reasonable
-  if (contacts.length === 1) {
-    return { id: contacts[0].id, name: contacts[0].name, isNew: false };
-  }
-
+  // No fuzzy match: if not exact, always create new to avoid wrong associations
   const created = await createContact({ name, source: "webhook" });
   return { id: created.id, name: created.name, isNew: true };
 }
