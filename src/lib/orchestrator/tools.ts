@@ -13,7 +13,7 @@ import {
   createDealFromMessage,
   createTaskFromMessage,
 } from "./command-tools";
-import { createContact, listContacts, getContact } from "@/lib/db/contacts";
+import { createContact, listContacts, getContact, updateContact } from "@/lib/db/contacts";
 
 // ---------------------------------------------------------------------------
 // AI provider helpers (same pattern as intents.ts / claude.ts)
@@ -143,7 +143,12 @@ q2. getContactDetails(id: string)
     Descrizione: Crea un nuovo contatto/lead nel CRM.
     Esempio utente: "Aggiungi contatto Mario Rossi temperatura caldo"
 
-12. reply(message: string)
+12. updateContact(name: string, temperature?: string, email?: string, phone?: string, company?: string)
+    Descrizione: Aggiorna un contatto esistente nel CRM. Cerca il contatto per nome e aggiorna i campi forniti.
+    Esempio utente: "Modifica la temperatura di Mario Rossi in warm"
+    Esempio utente: "Aggiorna email di Rossi a rossi@example.com"
+
+13. reply(message: string)
     Descrizione: Rispondi direttamente all'utente quando nessuna funzione e appropriata o devi chiedere chiarimenti.
     Esempio utente: "Ciao!", "Come funziona?"
 
@@ -273,7 +278,10 @@ function getPending(conversationId: number): PendingTool | null {
   return pending;
 }
 
-function setPending(conversationId: number, toolCall: ToolCall, originalMessage: string) {
+function setPending(conversationId: number, toolCall: ToolCall, messageText: string) {
+  const existing = pendingToolCalls.get(conversationId);
+  // Preserve the original message that started the conversation thread
+  const originalMessage = existing ? existing.originalMessage : messageText;
   pendingToolCalls.set(conversationId, { toolCall, originalMessage, timestamp: Date.now() });
 }
 
@@ -299,6 +307,7 @@ const FINAL_TOOLS = new Set([
   "createDeal",
   "createTask",
   "createContact",
+  "updateContact",
   "reply",
 ]);
 
@@ -645,6 +654,47 @@ export async function executeTool(
         return {
           success: false,
           reply: "Errore nella creazione contatto: " + msg,
+          intent: "unknown",
+        };
+      }
+    }
+
+    case "updateContact": {
+      try {
+        const name = (toolCall.args.name as string) || extractNameFromText(messageText);
+        if (!name) {
+          return {
+            success: false,
+            reply: "Non ho capito il nome del contatto da aggiornare. Prova con: 'Modifica contatto Mario Rossi temperatura warm'.",
+            intent: "unknown",
+          };
+        }
+        const contacts = await listContacts({ search: name });
+        const contact = contacts.find((c) => c.name.toLowerCase() === name.toLowerCase());
+        if (!contact) {
+          return {
+            success: false,
+            reply: `Contatto "${name}" non trovato nel CRM.`,
+            intent: "unknown",
+          };
+        }
+        const payload: Record<string, unknown> = {};
+        if (toolCall.args.temperature !== undefined) payload.temperature = parseTemperature(toolCall.args.temperature as string);
+        if (toolCall.args.email !== undefined) payload.email = toolCall.args.email as string;
+        if (toolCall.args.phone !== undefined) payload.phone = toolCall.args.phone as string;
+        if (toolCall.args.company !== undefined) payload.company = toolCall.args.company as string;
+
+        const updated = await updateContact(contact.id, payload);
+        return {
+          success: true,
+          reply: `Contatto aggiornato: *${updated.name}*\nTemperatura: ${updated.temperature || "non specificata"}\nID: ${updated.id}`,
+          intent: "unknown",
+        };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return {
+          success: false,
+          reply: "Errore nell'aggiornamento contatto: " + msg,
           intent: "unknown",
         };
       }
