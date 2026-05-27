@@ -151,6 +151,45 @@ export async function createProjectFromMessage(
 }
 
 // ---------------------------------------------------------------------------
+// Extraction helpers for deals
+// ---------------------------------------------------------------------------
+
+function extractProbability(text: string): number | null {
+  const match = text.match(/(\d{1,3})\s*%/);
+  if (match) {
+    const val = parseInt(match[1], 10);
+    if (val >= 0 && val <= 100) return val;
+  }
+  return null;
+}
+
+function extractExpectedClose(text: string): Date | null {
+  // Match formats: "20/06", "20/06/2026", "entro il 20/06"
+  const ddMmMatch = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
+  if (ddMmMatch) {
+    const day = parseInt(ddMmMatch[1], 10);
+    const month = parseInt(ddMmMatch[2], 10) - 1;
+    const year = ddMmMatch[3] ? parseInt(ddMmMatch[3], 10) : new Date().getFullYear();
+    const date = new Date(year, month, day, 12, 0, 0, 0);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  return null;
+}
+
+function parseExpectedClose(value: string | undefined): Date | null {
+  if (!value) return null;
+  const ddMmMatch = value.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
+  if (ddMmMatch) {
+    const day = parseInt(ddMmMatch[1], 10);
+    const month = parseInt(ddMmMatch[2], 10) - 1;
+    const year = ddMmMatch[3] ? parseInt(ddMmMatch[3], 10) : new Date().getFullYear();
+    const date = new Date(year, month, day, 12, 0, 0, 0);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Command: create deal
 // ---------------------------------------------------------------------------
 
@@ -160,6 +199,8 @@ export async function createDealFromMessage(
   overrides?: {
     title?: string;
     description?: string;
+    probability?: number;
+    expectedClose?: string;
   },
 ): Promise<{ reply: string; dealId: string | null }> {
   const clientName = extractClientName(text);
@@ -190,19 +231,26 @@ export async function createDealFromMessage(
 
     const contact = await findOrCreateContact(clientName);
     const title = overrides?.title ?? ("Deal per " + contact.name);
+    const probability = overrides?.probability ?? extractProbability(text) ?? undefined;
+    const expectedClose = overrides?.expectedClose
+      ? parseExpectedClose(overrides.expectedClose)
+      : extractExpectedClose(text) ?? undefined;
+
     const deal = await createDeal({
       title,
       value: amount * 100, // convert to cents
       contactId: contact.id,
       stageId: firstStage.id,
       notes: overrides?.description ?? null,
+      probability,
+      expectedClose,
     });
 
     await logWorkflowEvent({
       runId: runId ?? undefined,
       eventType: "deal_created",
       message: "Deal creato: " + deal.title + " - " + formatCurrency(deal.value),
-      metadata: { dealId: deal.id, contactId: contact.id, value: deal.value },
+      metadata: { dealId: deal.id, contactId: contact.id, value: deal.value, probability, expectedClose },
     });
 
     if (runId) {
@@ -213,8 +261,11 @@ export async function createDealFromMessage(
       ? " (contatto creato automaticamente)"
       : " (contatto: " + contact.name + ")";
 
+    const probNote = probability !== undefined ? "\nProbabilità: " + probability + "%" : "";
+    const closeNote = expectedClose ? "\nChiusura stimata: " + expectedClose.toLocaleDateString("it-IT") : "";
+
     return {
-      reply: "Deal creato: *" + deal.title + "*\nImporto: " + formatCurrency(deal.value) + "\nFase: " + firstStage.name + contactNote,
+      reply: "Deal creato: *" + deal.title + "*\nImporto: " + formatCurrency(deal.value) + probNote + closeNote + "\nFase: " + firstStage.name + contactNote,
       dealId: deal.id,
     };
   } catch (err) {

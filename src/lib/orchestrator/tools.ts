@@ -105,12 +105,15 @@ FUNZIONI DISPONIBILI:
      status: "aperto"
      priority: "alta"
 
-9. createDeal(clientName: string, amount: number, title?: string, description?: string)
+9. createDeal(clientName: string, amount: number, title?: string, description?: string, probability?: number, expectedClose?: string)
    Descrizione: Crea un nuovo deal/opportunita per un cliente.
-   Esempio utente: "Crea deal per Rossi da 5000 euro - preventivo sito web"
+   Esempio utente: "Crea deal per Rossi da 5000 euro - preventivo sito web, 80% entro il 30/06"
    Estrazione corretta:
      title: "Preventivo sito web"
      description: "Deal per Rossi da 5000 euro."
+     probability: 80
+     expectedClose: "30/06/2026"
+   ATTENZIONE: se l'utente indica una percentuale (es. 90%), mettila in probability. Se indica una data di chiusura (es. entro il 20/06), mettila in expectedClose nel formato gg/mm/aaaa. NON mettere questi dati nelle note/description.
 
 10. createTask(title: string, dueDate?: string, description?: string)
     Descrizione: Crea una nuova task.
@@ -428,6 +431,8 @@ export async function executeTool(
       const { reply, dealId } = await createDealFromMessage(messageText, runId, {
         title: toolCall.args.title as string | undefined,
         description: toolCall.args.description as string | undefined,
+        probability: toolCall.args.probability as number | undefined,
+        expectedClose: toolCall.args.expectedClose as string | undefined,
       });
       return { success: !!dealId, reply, intent: "create_deal_command" };
     }
