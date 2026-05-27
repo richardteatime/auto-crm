@@ -381,7 +381,19 @@ export async function createTaskFromMessage(
 ): Promise<{ reply: string; taskId: string | null }> {
   // Extract description: everything after "task" or "task:"
   const desc = extractAfterKeyword(text, ["crea task", "task", "nuovo task"]);
-  const title = overrides?.title ?? desc ?? text;
+  let title = overrides?.title ?? desc ?? text;
+  let description = overrides?.description ?? desc ?? null;
+
+  // Auto-truncate long titles: max 6 words, move rest to description
+  if (title) {
+    const words = title.split(/\s+/);
+    if (words.length > 6) {
+      const shortTitle = words.slice(0, 6).join(" ");
+      const rest = words.slice(6).join(" ");
+      description = description ? `${rest} — ${description}` : rest;
+      title = shortTitle;
+    }
+  }
 
   // Try to extract a date keyword like "domani", "oggi", "tra 3 giorni"
   let dueAt: Date | null = null;
@@ -418,7 +430,7 @@ export async function createTaskFromMessage(
   try {
     const task = await createTask({
       title,
-      description: overrides?.description ?? desc ?? null,
+      description,
       dueAt,
     });
 
