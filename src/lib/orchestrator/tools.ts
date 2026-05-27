@@ -426,14 +426,22 @@ export async function chooseTool(
   if (conversationId != null) {
     const pending = getPending(conversationId);
     if (pending) {
+      let contextBlock = `- Messaggio originale dell'utente: "${pending.originalMessage}"`;
+      if (pending.toolCall.tool === "reply" && pending.toolCall.args.message) {
+        contextBlock += `\n- La tua ultima domanda: "${pending.toolCall.args.message}"`;
+      } else {
+        contextBlock += `\n- Tool che stavi per chiamare: {"tool": "${pending.toolCall.tool}", "args": ${JSON.stringify(pending.toolCall.args)}}`;
+      }
+
       const combinedPrompt = `${TOOL_DEFINITIONS}
 
 Contesto conversazionale:
-- Messaggio originale dell'utente: "${pending.originalMessage}"
-- Tool che stavi per chiamare: {"tool": "${pending.toolCall.tool}", "args": ${JSON.stringify(pending.toolCall.args)}}
-- Risposta di chiarimento dell'utente: "${messageText}"
+${contextBlock}
+- Nuovo messaggio dell'utente: "${messageText}"
 
-Aggiorna i parametri mancanti e rispondi con il JSON della funzione da chiamare. Non chiedere di nuovo, completa direttamente.`;
+Se l'utente ha risposto con informazioni mancanti (nome cliente, importo, data, ecc.), usa quelle informazioni per chiamare direttamente il tool appropriato (createProject, createDeal, createTask, createContact).
+Se l'utente ha risposto "si", "ok", "certo" o simili, procedi con l'azione che stavi per fare.
+Rispondi con il JSON del tool da chiamare.`;
 
       let responseText: string | null = null;
       if (openRouterKey) {
@@ -644,6 +652,10 @@ export async function executeTool(
 
     case "reply": {
       const replyMsg = (toolCall.args.message as string) || "Non ho capito.";
+      // Save pending so the next user message is treated as clarification
+      if (conversationId != null) {
+        setPending(conversationId, toolCall, messageText);
+      }
       return { success: true, reply: replyMsg, intent: "unknown" };
     }
 
