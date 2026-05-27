@@ -13,7 +13,7 @@ import {
   createDealFromMessage,
   createTaskFromMessage,
 } from "./command-tools";
-import { createContact, listContacts } from "@/lib/db/contacts";
+import { createContact, listContacts, getContact } from "@/lib/db/contacts";
 
 // ---------------------------------------------------------------------------
 // AI provider helpers (same pattern as intents.ts / claude.ts)
@@ -63,9 +63,20 @@ async function callAnthropic(prompt: string): Promise<string | null> {
 
 const TOOL_DEFINITIONS = `
 Sei l'orchestrator intelligente di un CRM. L'utente ti scrive in linguaggio naturale in italiano o spagnolo.
-Hai accesso alle seguenti funzioni del CRM. Scegli UNA sola funzione e rispondi in JSON.
+Hai accesso alle seguenti funzioni del CRM.
 
-FUNZIONI DISPONIBILI:
+PUOI FARE PIU' CHIAMATE IN SEQUENZA. Se non sei sicuro se un contatto esiste, CERCALO PRIMA con un tool di QUERY, poi decidi.
+
+--- TOOL DI QUERY (per raccogliere informazioni prima di agire) ---
+
+q1. searchContacts(name: string)
+    Descrizione: Cerca contatti nel CRM per nome. Restituisce la lista dei contatti trovati.
+    Esempio: searchContacts("Rossi") → restituisce contatti con nome simile a Rossi.
+
+q2. getContactDetails(id: string)
+    Descrizione: Ottieni i dettagli completi di un contatto dato il suo ID.
+
+--- TOOL DI AZIONE E RISPOSTA (quando hai tutte le informazioni necessarie) ---
 
 1. getActiveProjects()
    Descrizione: Restituisce la lista dei progetti attivi e il loro stato.
@@ -139,11 +150,18 @@ REGOLE:
 - Se non capisci cosa vuole, usa reply con una domanda di chiarimento.
 - Per createProject, createTask e createDeal: il TITOLO deve essere BREVE (max 5 parole). I dettagli vanno nella DESCRIZIONE.
 - Estrai i parametri dal messaggio dell'utente in modo intelligente.
+- IMPORTANTE: quando l'utente chiede di creare un deal/progetto per un cliente, SE NON SEI SICURO che il contatto esista, USA searchContacts PRIMA di createDeal/createProject. Se non trovi nulla, usa reply per chiedere all'utente.
 
 FORMATO RISPOSTA:
 {"tool": "nomeFunzione", "args": {"parametro": "valore"}}
 
-Esempi corretti:
+Esempio multi-step:
+Utente: "Crea deal per Rossi da 5000 euro"
+Passo 1: {"tool": "searchContacts", "args": {"name": "Rossi"}}
+Risultato: Nessun contatto trovato con nome: Rossi
+Passo 2: {"tool": "reply", "args": {"message": "Non trovo il contatto Rossi nel CRM. Lo creo?"}}
+
+Esempi corretti singolo-step:
 Utente: "Aggiungi contatto Marco Bianchi temperatura caldo"
 Risposta: {"tool": "createContact", "args": {"name": "Marco Bianchi", "temperature": "hot"}}
 
@@ -260,6 +278,139 @@ function clearPending(conversationId: number) {
 }
 
 // ---------------------------------------------------------------------------
+// ReAct loop: multi-step reasoning + acting
+// ---------------------------------------------------------------------------
+
+const MAX_REACT_STEPS = 5;
+
+const FINAL_TOOLS = new Set([
+  "getActiveProjects",
+  "getTodayRevenue",
+  "getLeadSummary",
+  "getBlockedProjects",
+  "getAgentStatus",
+  "getDeploymentStatus",
+  "getMyTasksToday",
+  "createProject",
+  "createDeal",
+  "createTask",
+  "createContact",
+  "reply",
+]);
+
+function isFinalTool(tool: string): boolean {
+  return FINAL_TOOLS.has(tool);
+}
+
+interface ReActStep {
+  tool: string;
+  args: Record<string, unknown>;
+  result: string;
+}
+
+async function executeQueryTool(toolCall: ToolCall): Promise<string> {
+  switch (toolCall.tool) {
+    case "searchContacts": {
+      const name = (toolCall.args.name as string) || "";
+      try {
+        const contacts = await listContacts({ search: name });
+        if (contacts.length === 0) {
+          return `Nessun contatto trovato con nome: "${name}".`;
+        }
+        const lines = contacts.map(
+          (c) =>
+            `- ${c.name} (ID: ${c.id}, temperatura: ${c.temperature || "non specificata"}, telefono: ${c.phone || "non specificato"}, email: ${c.email || "non specificata"})`,
+        );
+        return `Contatti trovati (${contacts.length}):\n${lines.join("\n")}`;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return `Errore nella ricerca contatti: ${msg}`;
+      }
+    }
+
+    case "getContactDetails": {
+      const id = (toolCall.args.id as string) || "";
+      try {
+        const contact = await getContact(id);
+        if (!contact) {
+          return `Contatto non trovato con ID: ${id}.`;
+        }
+        return (
+          `Contatto: ${contact.name}\n` +
+          `ID: ${contact.id}\n` +
+          `Temperatura: ${contact.temperature || "non specificata"}\n` +
+          `Email: ${contact.email || "non specificata"}\n` +
+          `Telefono: ${contact.phone || "non specificato"}\n` +
+          `Azienda: ${contact.company || "non specificata"}`
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return `Errore nel caricamento contatto: ${msg}`;
+      }
+    }
+
+    default:
+      return `Tool di query "${toolCall.tool}" non supportato.`;
+  }
+}
+
+function buildReActPrompt(messageText: string, steps: ReActStep[]): string {
+  let prompt = `${TOOL_DEFINITIONS}\n\n`;
+  prompt += `Messaggio utente: "${messageText}"\n`;
+
+  if (steps.length > 0) {
+    prompt += `\n--- PASSAGGI PRECEDENTI ---\n`;
+    steps.forEach((step, i) => {
+      prompt += `Passo ${i + 1}:\n`;
+      prompt += `  Chiamata: {"tool": "${step.tool}", "args": ${JSON.stringify(step.args)}}\n`;
+      prompt += `  Risultato: ${step.result}\n\n`;
+    });
+  }
+
+  prompt += `--- PROSSIMO PASSO ---\n`;
+  prompt += `Rispondi con il JSON della funzione da chiamare per questo passo.`;
+  return prompt;
+}
+
+async function runReActLoop(
+  messageText: string,
+  conversationId?: number,
+): Promise<ToolCall> {
+  const steps: ReActStep[] = [];
+
+  for (let i = 0; i < MAX_REACT_STEPS; i++) {
+    const prompt = buildReActPrompt(messageText, steps);
+
+    let responseText: string | null = null;
+    if (openRouterKey) {
+      responseText = await callOpenRouter(prompt);
+    } else if (anthropicKey) {
+      responseText = await callAnthropic(prompt);
+    }
+
+    if (!responseText) {
+      break;
+    }
+
+    const parsed = parseToolCall(responseText);
+    if (!parsed) {
+      break;
+    }
+
+    // If it's a final tool (action, reply, or direct query), return it
+    if (isFinalTool(parsed.tool)) {
+      return parsed;
+    }
+
+    // It's an intermediate query tool — execute and add to steps
+    const result = await executeQueryTool(parsed);
+    steps.push({ tool: parsed.tool, args: parsed.args, result });
+  }
+
+  return { tool: "reply", args: { message: "Non ho capito. Puoi ripetere?" } };
+}
+
+// ---------------------------------------------------------------------------
 // AI tool router
 // ---------------------------------------------------------------------------
 
@@ -298,22 +449,7 @@ Completa la richiesta originale usando anche la risposta. Rispondi con il JSON d
     return classifyByKeywords(messageText);
   }
 
-  const prompt = `${TOOL_DEFINITIONS}\n\nMessaggio utente: "${messageText}"\n\nRispondi con il JSON della funzione da chiamare:`;
-
-  let responseText: string | null = null;
-
-  if (openRouterKey) {
-    responseText = await callOpenRouter(prompt);
-  } else if (anthropicKey) {
-    responseText = await callAnthropic(prompt);
-  }
-
-  if (responseText) {
-    const parsed = parseToolCall(responseText);
-    if (parsed) return parsed;
-  }
-
-  return classifyByKeywords(messageText);
+  return runReActLoop(messageText, conversationId);
 }
 
 // ---------------------------------------------------------------------------
@@ -480,6 +616,24 @@ export async function executeTool(
     case "reply": {
       const replyMsg = (toolCall.args.message as string) || "Non ho capito.";
       return { success: true, reply: replyMsg, intent: "unknown" };
+    }
+
+    case "searchContacts": {
+      try {
+        const reply = await executeQueryTool(toolCall);
+        return { success: true, reply, intent: "unknown" };
+      } catch (err) {
+        return { success: false, reply: "Errore nella ricerca contatti.", intent: "unknown" };
+      }
+    }
+
+    case "getContactDetails": {
+      try {
+        const reply = await executeQueryTool(toolCall);
+        return { success: true, reply, intent: "unknown" };
+      } catch (err) {
+        return { success: false, reply: "Errore nel caricamento contatto.", intent: "unknown" };
+      }
     }
 
     default: {
