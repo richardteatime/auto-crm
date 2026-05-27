@@ -1,5 +1,12 @@
 // Standalone test parser per createTask (no DB deps)
 
+function cleanTaskTitle(title: string | null): string | null {
+  if (!title) return null;
+  const m = title.match(/^(?:per|di|da)\s+[^-–—]+\s*[-–—]\s*(.+)/i);
+  if (m) return m[1].trim();
+  return title;
+}
+
 function extractAfterKeyword(text: string, keywords: string[]): string | null {
   const lower = text.toLowerCase();
   for (const kw of keywords) {
@@ -29,7 +36,8 @@ let passed = 0;
 let failed = 0;
 
 for (const t of tests) {
-  const result = extractAfterKeyword(t.input, ["crea task", "task", "nuovo task"]);
+  const raw = extractAfterKeyword(t.input, ["crea task", "task", "nuovo task"]);
+  const result = cleanTaskTitle(raw);
   const ok = result === t.expectedTitle || (result?.trim() === t.expectedTitle);
   if (ok) {
     passed++;
@@ -38,7 +46,7 @@ for (const t of tests) {
     failed++;
     console.log(`❌ "${t.input}"`);
     console.log(`   Atteso: "${t.expectedTitle}"`);
-    console.log(`   Ottenuto: "${result}"`);
+    console.log(`   Ottenuto: "${result}" (raw: "${raw}")`);
   }
 }
 

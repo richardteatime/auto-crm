@@ -384,6 +384,14 @@ export async function createTaskFromMessage(
   let title = overrides?.title ?? desc ?? text;
   let description = overrides?.description ?? desc ?? null;
 
+  // Pattern: "per/di/da Nome - azione" -> prendi solo l'azione
+  if (title && !overrides?.title) {
+    const m = title.match(/^(?:per|di|da)\s+[^-–—]+\s*[-–—]\s*(.+)/i);
+    if (m) {
+      title = m[1].trim();
+    }
+  }
+
   // Auto-truncate long titles: max 6 words, move rest to description
   if (title) {
     const words = title.split(/\s+/);
