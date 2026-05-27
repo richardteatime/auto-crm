@@ -6,7 +6,7 @@ import type { Temperature, ActivityType } from "@/types";
 
 const openRouterKey = process.env.OPENROUTER_API_KEY || "";
 const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
-const openRouterModel = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+const openRouterModel = process.env.OPENROUTER_MODEL || "openai/gpt-4o";
 
 function hasAI(): boolean {
   return !!(openRouterKey || anthropicKey);
