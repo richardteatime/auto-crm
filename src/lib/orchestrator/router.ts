@@ -78,7 +78,7 @@ export async function handleCommand(input: CommandInput): Promise<CommandResult>
   }
 
   // 3. Execute tool
-  const result = await executeTool(toolCall, input.messageText, runId);
+  const result = await executeTool(toolCall, input.messageText, runId, input.conversationId);
 
   // 4. Update run with result
   if (runId) {

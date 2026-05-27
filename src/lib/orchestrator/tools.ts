@@ -116,6 +116,8 @@ q2. getContactDetails(id: string)
      description: "Progetto per Rossi. Sito web e-commerce. Stato: aperto. Priorità: alta."
      status: "aperto"
      priority: "alta"
+   Esempio SBAGLIATO (NON fare mai questo):
+     title: "Aggiungi progetto per Rossi: sito web e-commerce, aperto, priorità alta"
    ATTENZIONE: se l'utente indica una data di scadenza (es. entro venerdì 29 maggio), mettila in dueDate nel formato gg/mm/aaaa. NON mettere la scadenza nella descrizione.
 
 9. createDeal(clientName: string, amount: number, title?: string, description?: string, probability?: number, expectedClose?: string)
@@ -426,10 +428,12 @@ export async function chooseTool(
     if (pending) {
       const combinedPrompt = `${TOOL_DEFINITIONS}
 
-Prima l'utente ha chiesto: "${pending.originalMessage}"
-Poi ha risposto: "${messageText}"
+Contesto conversazionale:
+- Messaggio originale dell'utente: "${pending.originalMessage}"
+- Tool che stavi per chiamare: {"tool": "${pending.toolCall.tool}", "args": ${JSON.stringify(pending.toolCall.args)}}
+- Risposta di chiarimento dell'utente: "${messageText}"
 
-Completa la richiesta originale usando anche la risposta. Rispondi con il JSON della funzione da chiamare:`;
+Aggiorna i parametri mancanti e rispondi con il JSON della funzione da chiamare. Non chiedere di nuovo, completa direttamente.`;
 
       let responseText: string | null = null;
       if (openRouterKey) {
@@ -438,11 +442,12 @@ Completa la richiesta originale usando anche la risposta. Rispondi con il JSON d
         responseText = await callAnthropic(combinedPrompt);
       }
 
-      clearPending(conversationId);
-
       if (responseText) {
         const parsed = parseToolCall(responseText);
-        if (parsed) return parsed;
+        if (parsed) {
+          clearPending(conversationId);
+          return parsed;
+        }
       }
     }
   }
@@ -455,6 +460,17 @@ Completa la richiesta originale usando anche la risposta. Rispondi con il JSON d
 }
 
 // ---------------------------------------------------------------------------
+// Title sanitization: reject AI titles that are too long or copy-pasted
+// ---------------------------------------------------------------------------
+
+function sanitizeTitle(title: unknown, messageText: string): string | undefined {
+  if (typeof title !== "string") return undefined;
+  if (title.length > 60) return undefined;
+  if (title.length > messageText.length * 0.7) return undefined;
+  return title;
+}
+
+// ---------------------------------------------------------------------------
 // Tool execution
 // ---------------------------------------------------------------------------
 
@@ -462,6 +478,7 @@ export async function executeTool(
   toolCall: ToolCall,
   messageText: string,
   runId: string | null,
+  conversationId?: number,
 ): Promise<{ success: boolean; reply: string; intent: Intent }> {
   switch (toolCall.tool) {
     case "getActiveProjects": {
@@ -558,29 +575,35 @@ export async function executeTool(
     case "createProject": {
       const { reply, projectId } = await createProjectFromMessage(messageText, runId, {
         clientName: toolCall.args.clientName as string | undefined,
-        title: toolCall.args.title as string | undefined,
+        title: sanitizeTitle(toolCall.args.title, messageText),
         description: toolCall.args.description as string | undefined,
         status: toolCall.args.status as string | undefined,
         priority: toolCall.args.priority as string | undefined,
         dueDate: toolCall.args.dueDate as string | undefined,
       });
+      if (!projectId && conversationId != null && reply.startsWith("Non ho capito")) {
+        setPending(conversationId, toolCall, messageText);
+      }
       return { success: !!projectId, reply, intent: "create_project_command" };
     }
 
     case "createDeal": {
       const { reply, dealId } = await createDealFromMessage(messageText, runId, {
         clientName: toolCall.args.clientName as string | undefined,
-        title: toolCall.args.title as string | undefined,
+        title: sanitizeTitle(toolCall.args.title, messageText),
         description: toolCall.args.description as string | undefined,
         probability: toolCall.args.probability as number | undefined,
         expectedClose: toolCall.args.expectedClose as string | undefined,
       });
+      if (!dealId && conversationId != null && (reply.startsWith("Non ho capito") || reply.startsWith("Ho trovato il cliente"))) {
+        setPending(conversationId, toolCall, messageText);
+      }
       return { success: !!dealId, reply, intent: "create_deal_command" };
     }
 
     case "createTask": {
       const { reply, taskId } = await createTaskFromMessage(messageText, runId, {
-        title: toolCall.args.title as string | undefined,
+        title: sanitizeTitle(toolCall.args.title, messageText),
         description: toolCall.args.description as string | undefined,
         dueDate: toolCall.args.dueDate as string | undefined,
       });
@@ -591,6 +614,7 @@ export async function executeTool(
       try {
         const name = (toolCall.args.name as string) || extractNameFromText(messageText);
         if (!name) {
+          if (conversationId != null) setPending(conversationId, toolCall, messageText);
           return {
             success: false,
             reply: "Non ho capito il nome del contatto. Prova con: 'Aggiungi contatto Mario Rossi'.",
