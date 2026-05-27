@@ -38,6 +38,7 @@ export interface NormalizedChatwootMessage {
   conversationId: number;
   chatwootContactId: number;
   senderPhone: string | null;
+  senderTelegramId: string | null;
   senderName: string | null;
   direction: "inbound" | "outbound";
   messageText: string;

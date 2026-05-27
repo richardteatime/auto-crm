@@ -1,5 +1,5 @@
 import type { SenderRole } from "./types";
-import { getAdminWhatsAppNumbers } from "./config";
+import { getAdminWhatsAppNumbers, getAdminTelegramIds } from "./config";
 
 /**
  * Normalize a phone number for comparison.
@@ -11,16 +11,25 @@ function normalizePhone(phone: string | null | undefined): string {
 }
 
 /**
- * Determine the sender role based on phone number.
+ * Determine the sender role based on phone number or Telegram ID.
  */
-export function resolveSenderRole(phone: string | null | undefined): SenderRole {
-  if (!phone) return "unknown";
+export function resolveSenderRole(
+  phone: string | null | undefined,
+  telegramId: string | null | undefined,
+): SenderRole {
+  if (phone) {
+    const normalized = normalizePhone(phone);
+    const admins = getAdminWhatsAppNumbers().map(normalizePhone);
+    if (admins.includes(normalized)) {
+      return "founder_admin";
+    }
+  }
 
-  const normalized = normalizePhone(phone);
-  const admins = getAdminWhatsAppNumbers().map(normalizePhone);
-
-  if (admins.includes(normalized)) {
-    return "founder_admin";
+  if (telegramId) {
+    const admins = getAdminTelegramIds();
+    if (admins.includes(telegramId)) {
+      return "founder_admin";
+    }
   }
 
   return "customer";
@@ -49,12 +58,15 @@ export function isCustomerAutomationActive(): boolean {
  * - allowed: true + role  → proceed
  * - allowed: false + role → block and reply
  */
-export function checkMessagePermission(phone: string | null | undefined): {
+export function checkMessagePermission(
+  phone: string | null | undefined,
+  telegramId?: string | null | undefined,
+): {
   allowed: boolean;
   role: SenderRole;
   reason: string | null;
 } {
-  const role = resolveSenderRole(phone);
+  const role = resolveSenderRole(phone, telegramId);
 
   // Step 1: internal commands only for founder_admin
   if (isInternalCommandAllowed(role)) {

@@ -24,3 +24,12 @@ export function getAdminWhatsAppNumbers(): string[] {
     .map((n) => n.trim())
     .filter(Boolean);
 }
+
+export function getAdminTelegramIds(): string[] {
+  const raw = process.env.ADMIN_TELEGRAM_IDS || "";
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((n) => n.trim())
+    .filter(Boolean);
+}

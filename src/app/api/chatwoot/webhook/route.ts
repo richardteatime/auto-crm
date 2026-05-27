@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Phase 2 — Permission check
-    const permission = checkMessagePermission(normalized.senderPhone);
+    const permission = checkMessagePermission(normalized.senderPhone, normalized.senderTelegramId);
 
     if (!permission.allowed) {
       // Reply to Chatwoot with block message
@@ -110,9 +110,10 @@ export async function POST(request: NextRequest) {
 
       await logWorkflowEvent({
         eventType: "unauthorized",
-        message: `Bloccato messaggio da ${normalized.senderPhone || "numero sconosciuto"} (${permission.role})`,
+        message: `Bloccato messaggio da ${normalized.senderPhone || normalized.senderTelegramId || "mittente sconosciuto"} (${permission.role})`,
         metadata: {
           senderPhone: normalized.senderPhone,
+          senderTelegramId: normalized.senderTelegramId,
           senderName: normalized.senderName,
           role: permission.role,
           conversationId: normalized.conversationId,
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
     // Phase 3 — Forward to orchestrator
     const result = await handleCommand({
       senderPhone: normalized.senderPhone,
+      senderTelegramId: normalized.senderTelegramId,
       senderName: normalized.senderName,
       conversationId: normalized.conversationId,
       messageText: normalized.messageText,

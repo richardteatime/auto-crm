@@ -25,6 +25,15 @@ function extractPhone(sender: ChatwootMessagePayload["sender"]): string | null {
   return null;
 }
 
+function extractTelegramId(sender: ChatwootMessagePayload["sender"]): string | null {
+  const additional = sender.additional_attributes;
+  if (additional) {
+    const tid = additional.telegram_id as string | number | undefined;
+    if (tid) return String(tid);
+  }
+  return null;
+}
+
 export function normalizeChatwootMessage(
   payload: ChatwootMessagePayload,
 ): NormalizedChatwootMessage {
@@ -35,6 +44,7 @@ export function normalizeChatwootMessage(
     conversationId: payload.conversation.id,
     chatwootContactId: payload.sender.id,
     senderPhone: extractPhone(payload.sender),
+    senderTelegramId: extractTelegramId(payload.sender),
     senderName: payload.sender.name || null,
     direction,
     messageText: payload.content || "",

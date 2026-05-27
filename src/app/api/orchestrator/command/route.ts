@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
 
     const result = await handleCommand({
       senderPhone: senderPhone ?? null,
+      senderTelegramId: null,
       senderName: senderName ?? null,
       conversationId: conversationId ?? 0,
       messageText: messageText.trim(),

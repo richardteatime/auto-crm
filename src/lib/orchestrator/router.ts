@@ -22,6 +22,7 @@ import {
 
 interface CommandInput {
   senderPhone: string | null;
+  senderTelegramId: string | null;
   senderName: string | null;
   conversationId: number;
   messageText: string;
