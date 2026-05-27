@@ -48,13 +48,101 @@ function extractAmount(text: string): number | null {
 }
 
 function extractClientName(text: string): string | null {
-  // "per [Name]" or "per [Name] da" or "per [Name] -"
-  const match = text.match(/per\s+([^\-—:,\d]+?)(?:\s+(?:da|con|-|—|:\s|$))/i);
-  if (match) return match[1].trim().replace(/^["']+|["']+$/g, "");
+  // Try to capture name after "per" stopping at comma, dash, colon, or keywords
+  const match = text.match(/per\s+([^\-—:,\.\d]+?)(?:\s*(?:,|\.|\-|—|:\s|da\s|con\s|entro\s|priorit|$))/i);
+  if (match) {
+    const name = match[1].trim().replace(/^["']+|["']+$/g, "");
+    if (name) return name;
+  }
 
-  // Fallback: just "per [rest of line]"
+  // Fallback: everything after "per" but truncate aggressively
   const fallback = text.match(/per\s+(.+)/i);
-  if (fallback) return fallback[1].trim().replace(/^["']+|["']+$/g, "");
+  if (fallback) {
+    let name = fallback[1].trim().replace(/^["']+|["']+$/g, "");
+    // Truncate at first comma, period, dash, or keywords
+    const truncateMatch = name.match(/^([^,\.—\-]+?)(?:\s*(?:,|\.|—|\-|:\s|entro\s|priorit[aà]\s|da\s|con\s|$))/i);
+    if (truncateMatch) name = truncateMatch[1].trim();
+    // Hard cap at 40 chars
+    if (name.length > 40) name = name.slice(0, 40).trim();
+    return name;
+  }
+
+  return null;
+}
+
+function parseItalianDate(value: string | undefined): Date | null {
+  if (!value) return null;
+  const lower = value.toLowerCase();
+
+  if (lower.includes("domani")) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+  if (lower.includes("oggi")) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+
+  // Match dd/mm or dd/mm/yyyy
+  const ddMmMatch = value.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
+  if (ddMmMatch) {
+    const day = parseInt(ddMmMatch[1], 10);
+    const month = parseInt(ddMmMatch[2], 10) - 1;
+    const year = ddMmMatch[3] ? parseInt(ddMmMatch[3], 10) : new Date().getFullYear();
+    const d = new Date(year, month, day, 12, 0, 0, 0);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+
+  // Match "29 maggio" or "29 maggio 2026"
+  const monthNames: Record<string, number> = {
+    gennaio: 0, febbraio: 1, marzo: 2, aprile: 3, maggio: 4, giugno: 5,
+    luglio: 6, agosto: 7, settembre: 8, ottobre: 9, novembre: 10, dicembre: 11,
+    gen: 0, feb: 1, mar: 2, apr: 3, mag: 4, giu: 5, lug: 6, ago: 7, set: 8, ott: 9, nov: 10, dic: 11,
+  };
+  const textMatch = value.match(/(\d{1,2})\s+([a-zèé]+)(?:\s+(\d{4}))?/i);
+  if (textMatch) {
+    const day = parseInt(textMatch[1], 10);
+    const monthName = textMatch[2].toLowerCase();
+    const year = textMatch[3] ? parseInt(textMatch[3], 10) : new Date().getFullYear();
+    const month = monthNames[monthName];
+    if (month !== undefined) {
+      const d = new Date(year, month, day, 12, 0, 0, 0);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+  }
+
+  return null;
+}
+
+function extractDueDate(text: string): Date | null {
+  const lower = text.toLowerCase();
+
+  if (lower.includes("domani")) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+  if (lower.includes("oggi")) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  }
+
+  // Match "entro il 29/05" or "entro 29/05"
+  const ddMmMatch = text.match(/entro\s+(?:il\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{4})?)/i);
+  if (ddMmMatch) {
+    return parseItalianDate(ddMmMatch[1]);
+  }
+
+  // Match "entro venerdì 29 maggio" or "entro il 29 maggio"
+  const textMatch = text.match(/entro\s+(?:il\s+|venerd[iì]\s+|luned[iì]\s+|marted[iì]\s+|mercoled[iì]\s+|gioved[iì]\s+|sabato\s+|domenica\s+)?(\d{1,2}\s+[a-zèé]+(?:\s+\d{4})?)/i);
+  if (textMatch) {
+    return parseItalianDate(textMatch[1]);
+  }
 
   return null;
 }
@@ -81,13 +169,15 @@ export async function createProjectFromMessage(
   text: string,
   runId: string | null,
   overrides?: {
+    clientName?: string;
     title?: string;
     description?: string;
     status?: string;
     priority?: string;
+    dueDate?: string;
   },
 ): Promise<{ reply: string; projectId: string | null }> {
-  const clientName = extractClientName(text);
+  const clientName = overrides?.clientName ?? extractClientName(text);
   if (!clientName) {
     return {
       reply: "Non ho capito per quale cliente creare il progetto. Riprova con: 'Crea progetto per [cliente]'.",
@@ -108,6 +198,9 @@ export async function createProjectFromMessage(
   const description = overrides?.description ?? null;
   const status = overrides?.status ?? "aperto";
   const priority = overrides?.priority ?? "media";
+  const dueDate = overrides?.dueDate
+    ? parseItalianDate(overrides.dueDate)
+    : extractDueDate(text) ?? undefined;
 
   try {
     const contact = await findOrCreateContact(clientName);
@@ -117,6 +210,7 @@ export async function createProjectFromMessage(
       contactId: contact.id,
       status: status as import("@/types").ProjectStatus,
       priority,
+      dueDate,
     });
 
     await logWorkflowEvent({
@@ -135,9 +229,10 @@ export async function createProjectFromMessage(
       : " (contatto: " + contact.name + ")";
 
     const descNote = description ? "\nDescrizione: " + description : "";
+    const dueNote = project.dueDate ? "\nScadenza: " + new Date(project.dueDate).toLocaleDateString("it-IT") : "";
 
     return {
-      reply: "Progetto creato: *" + project.title + "*" + descNote + "\nID: " + project.id + contactNote,
+      reply: "Progetto creato: *" + project.title + "*" + descNote + dueNote + "\nID: " + project.id + contactNote,
       projectId: project.id,
     };
   } catch (err) {
@@ -193,13 +288,14 @@ export async function createDealFromMessage(
   text: string,
   runId: string | null,
   overrides?: {
+    clientName?: string;
     title?: string;
     description?: string;
     probability?: number;
     expectedClose?: string;
   },
 ): Promise<{ reply: string; dealId: string | null }> {
-  const clientName = extractClientName(text);
+  const clientName = overrides?.clientName ?? extractClientName(text);
   if (!clientName) {
     return {
       reply: "Non ho capito per quale cliente creare il deal. Riprova con: 'Crea deal per [cliente] da [importo]'.",

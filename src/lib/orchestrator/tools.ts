@@ -106,15 +106,17 @@ q2. getContactDetails(id: string)
    Descrizione: Restituisce le task di oggi, scadute e in scadenza.
    Esempio utente: "Cosa devo fare oggi?"
 
-8. createProject(clientName: string, title: string, description?: string, status?: string, priority?: string)
+8. createProject(clientName: string, title: string, description?: string, status?: string, priority?: string, dueDate?: string)
    Descrizione: Crea un nuovo progetto per un cliente.
    REGOLE per il titolo: massimo 4-5 parole, sintetico. Tutti i dettagli vanno nella descrizione.
    Esempio utente: "Aggiungi progetto per Rossi: sito web e-commerce, aperto, priorità alta"
    Estrazione corretta:
+     clientName: "Rossi"
      title: "Sito web e-commerce"
      description: "Progetto per Rossi. Sito web e-commerce. Stato: aperto. Priorità: alta."
      status: "aperto"
      priority: "alta"
+   ATTENZIONE: se l'utente indica una data di scadenza (es. entro venerdì 29 maggio), mettila in dueDate nel formato gg/mm/aaaa. NON mettere la scadenza nella descrizione.
 
 9. createDeal(clientName: string, amount: number, title?: string, description?: string, probability?: number, expectedClose?: string)
    Descrizione: Crea un nuovo deal/opportunita per un cliente.
@@ -555,16 +557,19 @@ export async function executeTool(
 
     case "createProject": {
       const { reply, projectId } = await createProjectFromMessage(messageText, runId, {
+        clientName: toolCall.args.clientName as string | undefined,
         title: toolCall.args.title as string | undefined,
         description: toolCall.args.description as string | undefined,
         status: toolCall.args.status as string | undefined,
         priority: toolCall.args.priority as string | undefined,
+        dueDate: toolCall.args.dueDate as string | undefined,
       });
       return { success: !!projectId, reply, intent: "create_project_command" };
     }
 
     case "createDeal": {
       const { reply, dealId } = await createDealFromMessage(messageText, runId, {
+        clientName: toolCall.args.clientName as string | undefined,
         title: toolCall.args.title as string | undefined,
         description: toolCall.args.description as string | undefined,
         probability: toolCall.args.probability as number | undefined,
