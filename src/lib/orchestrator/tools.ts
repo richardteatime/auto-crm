@@ -359,7 +359,7 @@ export async function executeTool(
         }
 
         const temperature = parseTemperature((toolCall.args.temperature as string) || extractTemperatureFromText(messageText));
-        const source = (toolCall.args.source as string) || "telegram";
+        const source = (toolCall.args.source as string) || "webhook";
 
         const contact = await createContact({ name, temperature, source });
 
