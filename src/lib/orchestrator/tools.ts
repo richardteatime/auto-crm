@@ -13,7 +13,12 @@ import {
   createDealFromMessage,
   createTaskFromMessage,
 } from "./command-tools";
-import { createContact, listContacts, getContact, updateContact } from "@/lib/db/contacts";
+import { createContact, listContacts, getContact, updateContact, deleteContact } from "@/lib/db/contacts";
+import { listDeals, updateDeal, deleteDeal } from "@/lib/db/deals";
+import { listProjects, updateProject, deleteProject } from "@/lib/db/projects";
+import { listTasks, updateTask, deleteTask } from "@/lib/db/tasks";
+import { createActivity, listActivities, deleteActivity } from "@/lib/db/activities";
+import { getStages } from "@/lib/db/pipeline";
 
 // ---------------------------------------------------------------------------
 // AI provider helpers (same pattern as intents.ts / claude.ts)
@@ -148,7 +153,62 @@ q2. getContactDetails(id: string)
     Esempio utente: "Modifica la temperatura di Mario Rossi in warm"
     Esempio utente: "Aggiorna email di Rossi a rossi@example.com"
 
-13. reply(message: string)
+13. deleteContact(name: string)
+    Descrizione: Elimina un contatto dal CRM.
+    Esempio utente: "Elimina contatto Mario Rossi"
+
+14. listDeals(clientName?: string)
+    Descrizione: Elenca i deal. Se viene fornito il nome cliente, mostra solo i deal di quel cliente.
+    Esempio utente: "Mostra i deal di Rossi"
+
+15. updateDeal(clientName: string, value?: number, probability?: number, expectedClose?: string, notes?: string)
+    Descrizione: Aggiorna il deal più recente di un cliente. Se ci sono più deal, aggiorna l'ultimo creato.
+    Esempio utente: "Aggiorna importo deal Rossi a 10000"
+    Esempio utente: "Cambia probabilità deal Rossi a 90%"
+
+16. moveDeal(clientName: string, stageName: string)
+    Descrizione: Sposta il deal più recente di un cliente in un'altra fase del pipeline.
+    Esempio utente: "Sposta deal Rossi in vinto"
+
+17. deleteDeal(clientName: string)
+    Descrizione: Elimina il deal più recente di un cliente.
+    Esempio utente: "Elimina deal per Rossi"
+
+18. listProjects(clientName?: string)
+    Descrizione: Elenca i progetti. Se viene fornito il nome cliente, mostra solo i progetti di quel cliente.
+    Esempio utente: "Mostra i progetti di Rossi"
+
+19. updateProject(clientName: string, status?: string, priority?: string, dueDate?: string, notes?: string)
+    Descrizione: Aggiorna il progetto più recente di un cliente.
+    Esempio utente: "Chiudi progetto Rossi"
+    Esempio utente: "Modifica priorità progetto Rossi in alta"
+
+20. deleteProject(clientName: string)
+    Descrizione: Elimina il progetto più recente di un cliente.
+    Esempio utente: "Elimina progetto Rossi"
+
+21. listTasks()
+    Descrizione: Elenca tutte le task.
+    Esempio utente: "Mostra le mie task"
+
+22. updateTask(titleKeyword: string, done?: boolean, dueDate?: string)
+    Descrizione: Aggiorna una task cercandola per parola chiave nel titolo.
+    Esempio utente: "Segna task chiamare cliente come completata"
+    Esempio utente: "Rimanda task preventivo a domani"
+
+23. deleteTask(titleKeyword: string)
+    Descrizione: Elimina una task cercandola per parola chiave nel titolo.
+    Esempio utente: "Elimina task chiamare cliente"
+
+24. addActivity(clientName: string, description: string, type?: string)
+    Descrizione: Aggiunge un'attività o nota a un contatto.
+    Esempio utente: "Aggiungi nota a Rossi: ha chiamato oggi e conferma l'appuntamento"
+
+25. listActivities(clientName: string)
+    Descrizione: Elenca le attività recenti di un contatto.
+    Esempio utente: "Mostra attività di Rossi"
+
+26. reply(message: string)
     Descrizione: Rispondi direttamente all'utente quando nessuna funzione e appropriata o devi chiedere chiarimenti.
     Esempio utente: "Ciao!", "Come funziona?"
 
@@ -308,6 +368,19 @@ const FINAL_TOOLS = new Set([
   "createTask",
   "createContact",
   "updateContact",
+  "deleteContact",
+  "listDeals",
+  "updateDeal",
+  "moveDeal",
+  "deleteDeal",
+  "listProjects",
+  "updateProject",
+  "deleteProject",
+  "listTasks",
+  "updateTask",
+  "deleteTask",
+  "addActivity",
+  "listActivities",
   "reply",
 ]);
 
@@ -474,6 +547,40 @@ Rispondi con il JSON del tool da chiamare.`;
   }
 
   return runReActLoop(messageText, conversationId);
+}
+
+// ---------------------------------------------------------------------------
+// Lookup helpers for update/delete tools
+// ---------------------------------------------------------------------------
+
+async function findContactByName(name: string): Promise<{ id: string; name: string } | null> {
+  const contacts = await listContacts({ search: name });
+  const exact = contacts.find((c) => c.name.toLowerCase() === name.toLowerCase());
+  if (exact) return { id: exact.id, name: exact.name };
+  if (contacts.length === 1) return { id: contacts[0].id, name: contacts[0].name };
+  return null;
+}
+
+async function findDealByClientName(name: string): Promise<import("@/types").DealWithContact | null> {
+  const contact = await findContactByName(name);
+  if (!contact) return null;
+  const deals = await listDeals({ contactId: contact.id });
+  return deals[0] ?? null;
+}
+
+async function findProjectByClientName(name: string): Promise<import("@/types").Project | null> {
+  const contact = await findContactByName(name);
+  if (!contact) return null;
+  const projects = await listProjects();
+  const filtered = projects.filter((p) => p.contactId === contact.id);
+  return filtered[0] ?? null;
+}
+
+async function findTaskByKeyword(keyword: string): Promise<import("@/types").Task | null> {
+  const tasks = await listTasks();
+  const lower = keyword.toLowerCase();
+  const filtered = tasks.filter((t) => t.title.toLowerCase().includes(lower));
+  return filtered[0] ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -697,6 +804,275 @@ export async function executeTool(
           reply: "Errore nell'aggiornamento contatto: " + msg,
           intent: "unknown",
         };
+      }
+    }
+
+    case "deleteContact": {
+      try {
+        const name = (toolCall.args.name as string) || extractNameFromText(messageText);
+        if (!name) {
+          return { success: false, reply: "Non ho capito il nome del contatto da eliminare.", intent: "unknown" };
+        }
+        const contact = await findContactByName(name);
+        if (!contact) {
+          return { success: false, reply: `Contatto "${name}" non trovato.`, intent: "unknown" };
+        }
+        await deleteContact(contact.id);
+        return { success: true, reply: `Contatto *${contact.name}* eliminato.`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'eliminazione contatto: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "listDeals": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        let deals: import("@/types").DealWithContact[] = [];
+        if (clientName) {
+          const contact = await findContactByName(clientName);
+          if (!contact) {
+            return { success: false, reply: `Contatto "${clientName}" non trovato.`, intent: "unknown" };
+          }
+          deals = await listDeals({ contactId: contact.id });
+        } else {
+          deals = await listDeals();
+        }
+        if (deals.length === 0) {
+          return { success: true, reply: "Nessun deal trovato.", intent: "unknown" };
+        }
+        const lines = deals.map((d) => `• ${d.title} — ${d.value ? (d.value / 100).toLocaleString("it-IT") + " €" : "0 €"} (${d.stage?.name || "senza fase"})`);
+        return { success: true, reply: `Deal trovati (${deals.length}):\n${lines.join("\n")}`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nel caricamento deal: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "updateDeal": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        if (!clientName) {
+          return { success: false, reply: "Manca il nome del cliente.", intent: "unknown" };
+        }
+        const deal = await findDealByClientName(clientName);
+        if (!deal) {
+          return { success: false, reply: `Nessun deal trovato per "${clientName}".`, intent: "unknown" };
+        }
+        const payload: Record<string, unknown> = {};
+        if (toolCall.args.value !== undefined) payload.value = (toolCall.args.value as number) * 100;
+        if (toolCall.args.probability !== undefined) payload.probability = toolCall.args.probability as number;
+        if (toolCall.args.expectedClose !== undefined) payload.expectedClose = toolCall.args.expectedClose as string;
+        if (toolCall.args.notes !== undefined) payload.notes = toolCall.args.notes as string;
+        const updated = await updateDeal(deal.id, payload);
+        return { success: true, reply: `Deal aggiornato: *${updated.title}*\nImporto: ${(updated.value / 100).toLocaleString("it-IT")} €\nProbabilità: ${updated.probability ?? 0}%`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'aggiornamento deal: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "moveDeal": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        const stageName = toolCall.args.stageName as string | undefined;
+        if (!clientName || !stageName) {
+          return { success: false, reply: "Manca il nome del cliente o della fase.", intent: "unknown" };
+        }
+        const deal = await findDealByClientName(clientName);
+        if (!deal) {
+          return { success: false, reply: `Nessun deal trovato per "${clientName}".`, intent: "unknown" };
+        }
+        const stages = await getStages();
+        const stage = stages.find((s) => s.name.toLowerCase().includes(stageName.toLowerCase()));
+        if (!stage) {
+          return { success: false, reply: `Fase "${stageName}" non trovata. Fasi disponibili: ${stages.map((s) => s.name).join(", ")}.`, intent: "unknown" };
+        }
+        const updated = await updateDeal(deal.id, { stageId: stage.id });
+        return { success: true, reply: `Deal *${updated.title}* spostato in fase *${stage.name}*.`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nello spostamento deal: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "deleteDeal": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        if (!clientName) {
+          return { success: false, reply: "Manca il nome del cliente.", intent: "unknown" };
+        }
+        const deal = await findDealByClientName(clientName);
+        if (!deal) {
+          return { success: false, reply: `Nessun deal trovato per "${clientName}".`, intent: "unknown" };
+        }
+        await deleteDeal(deal.id);
+        return { success: true, reply: `Deal *${deal.title}* eliminato.`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'eliminazione deal: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "listProjects": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        let projects = await listProjects();
+        if (clientName) {
+          const contact = await findContactByName(clientName);
+          if (!contact) {
+            return { success: false, reply: `Contatto "${clientName}" non trovato.`, intent: "unknown" };
+          }
+          projects = projects.filter((p) => p.contactId === contact.id);
+        }
+        if (projects.length === 0) {
+          return { success: true, reply: "Nessun progetto trovato.", intent: "unknown" };
+        }
+        const lines = projects.map((p) => `• ${p.title} — ${p.status} (priorità: ${p.priority || "non specificata"})`);
+        return { success: true, reply: `Progetti trovati (${projects.length}):\n${lines.join("\n")}`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nel caricamento progetti: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "updateProject": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        if (!clientName) {
+          return { success: false, reply: "Manca il nome del cliente.", intent: "unknown" };
+        }
+        const project = await findProjectByClientName(clientName);
+        if (!project) {
+          return { success: false, reply: `Nessun progetto trovato per "${clientName}".`, intent: "unknown" };
+        }
+        const payload: Record<string, unknown> = {};
+        if (toolCall.args.status !== undefined) payload.status = toolCall.args.status as string;
+        if (toolCall.args.priority !== undefined) payload.priority = toolCall.args.priority as string;
+        if (toolCall.args.dueDate !== undefined) payload.dueDate = toolCall.args.dueDate as string;
+        if (toolCall.args.notes !== undefined) payload.notes = toolCall.args.notes as string;
+        const updated = await updateProject(project.id, payload);
+        return { success: true, reply: `Progetto aggiornato: *${updated.title}*\nStato: ${updated.status}\nPriorità: ${updated.priority || "non specificata"}`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'aggiornamento progetto: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "deleteProject": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        if (!clientName) {
+          return { success: false, reply: "Manca il nome del cliente.", intent: "unknown" };
+        }
+        const project = await findProjectByClientName(clientName);
+        if (!project) {
+          return { success: false, reply: `Nessun progetto trovato per "${clientName}".`, intent: "unknown" };
+        }
+        await deleteProject(project.id);
+        return { success: true, reply: `Progetto *${project.title}* eliminato.`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'eliminazione progetto: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "listTasks": {
+      try {
+        const tasks = await listTasks();
+        if (tasks.length === 0) {
+          return { success: true, reply: "Nessuna task trovata.", intent: "unknown" };
+        }
+        const lines = tasks.map((t) => `• ${t.title} ${t.done ? "✅" : ""} ${t.dueAt ? "(scadenza: " + new Date(t.dueAt).toLocaleDateString("it-IT") + ")" : ""}`);
+        return { success: true, reply: `Task trovate (${tasks.length}):\n${lines.join("\n")}`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nel caricamento task: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "updateTask": {
+      try {
+        const titleKeyword = toolCall.args.titleKeyword as string | undefined;
+        if (!titleKeyword) {
+          return { success: false, reply: "Manca la parola chiave della task.", intent: "unknown" };
+        }
+        const task = await findTaskByKeyword(titleKeyword);
+        if (!task) {
+          return { success: false, reply: `Nessuna task trovata con "${titleKeyword}".`, intent: "unknown" };
+        }
+        const payload: Record<string, unknown> = {};
+        if (toolCall.args.done !== undefined) payload.done = toolCall.args.done as boolean;
+        if (toolCall.args.dueDate !== undefined) payload.dueAt = toolCall.args.dueDate as string;
+        const updated = await updateTask(task.id, payload);
+        return { success: true, reply: `Task aggiornata: *${updated.title}* ${updated.done ? "✅ completata" : ""}`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'aggiornamento task: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "deleteTask": {
+      try {
+        const titleKeyword = toolCall.args.titleKeyword as string | undefined;
+        if (!titleKeyword) {
+          return { success: false, reply: "Manca la parola chiave della task.", intent: "unknown" };
+        }
+        const task = await findTaskByKeyword(titleKeyword);
+        if (!task) {
+          return { success: false, reply: `Nessuna task trovata con "${titleKeyword}".`, intent: "unknown" };
+        }
+        await deleteTask(task.id);
+        return { success: true, reply: `Task *${task.title}* eliminata.`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'eliminazione task: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "addActivity": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        const description = toolCall.args.description as string | undefined;
+        if (!clientName || !description) {
+          return { success: false, reply: "Manca il nome del cliente o la descrizione dell'attività.", intent: "unknown" };
+        }
+        const contact = await findContactByName(clientName);
+        if (!contact) {
+          return { success: false, reply: `Contatto "${clientName}" non trovato.`, intent: "unknown" };
+        }
+        const type = (toolCall.args.type as string) || "nota";
+        const activity = await createActivity({
+          type,
+          description,
+          contactId: contact.id,
+        });
+        return { success: true, reply: `Attività aggiunta per *${contact.name}*:\n${activity.description}`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nell'aggiunta attività: " + msg, intent: "unknown" };
+      }
+    }
+
+    case "listActivities": {
+      try {
+        const clientName = toolCall.args.clientName as string | undefined;
+        if (!clientName) {
+          return { success: false, reply: "Manca il nome del cliente.", intent: "unknown" };
+        }
+        const contact = await findContactByName(clientName);
+        if (!contact) {
+          return { success: false, reply: `Contatto "${clientName}" non trovato.`, intent: "unknown" };
+        }
+        const activities = await listActivities({ contactId: contact.id });
+        if (activities.length === 0) {
+          return { success: true, reply: `Nessuna attività trovata per ${contact.name}.`, intent: "unknown" };
+        }
+        const lines = activities.map((a) => `• [${a.type}] ${a.description}`);
+        return { success: true, reply: `Attività di ${contact.name} (${activities.length}):\n${lines.join("\n")}`, intent: "unknown" };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, reply: "Errore nel caricamento attività: " + msg, intent: "unknown" };
       }
     }
 
