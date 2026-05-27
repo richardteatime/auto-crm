@@ -16,6 +16,7 @@ import {
   GitBranch,
   CalendarDays,
   Bell,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/deals", label: "Trattative", icon: Briefcase, badge: null },
   { href: "/opportunita", label: "Opportunità", icon: Target, badge: null },
   { href: "/activities", label: "Attività", icon: Activity, badge: "activities" as const },
+  { href: "/tasks", label: "Task", icon: CheckSquare, badge: null },
   { href: "/calendar", label: "Calendario", icon: CalendarDays, badge: "calendar" as const },
   { href: "/timeline", label: "Timeline", icon: GitBranch, badge: "timeline" as const },
   { href: "/preventivi", label: "Preventivi", icon: FileText, badge: null },
