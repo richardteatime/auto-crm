@@ -208,7 +208,11 @@ q2. getContactDetails(id: string)
     Descrizione: Elenca le attività recenti di un contatto.
     Esempio utente: "Mostra attività di Rossi"
 
-26. reply(message: string)
+26. done(message: string)
+    Descrizione: Concludi la conversazione con un messaggio riassuntivo dopo aver completato tutte le azioni richieste. Usa questo SOLO quando hai finito di eseguire tutti i tool necessari.
+    Esempio: l'utente chiede "crea contatto e task", dopo aver creato entrambi, usa done per rispondere.
+
+27. reply(message: string)
     Descrizione: Rispondi direttamente all'utente quando nessuna funzione e appropriata o devi chiedere chiarimenti.
     Esempio utente: "Ciao!", "Come funziona?"
 
@@ -381,6 +385,7 @@ const FINAL_TOOLS = new Set([
   "deleteTask",
   "addActivity",
   "listActivities",
+  "done",
   "reply",
 ]);
 
@@ -547,6 +552,40 @@ Rispondi con il JSON del tool da chiamare.`;
   }
 
   return runReActLoop(messageText, conversationId);
+}
+
+// ---------------------------------------------------------------------------
+// Multi-tool loop: choose next action after a step was executed
+// ---------------------------------------------------------------------------
+
+export async function chooseNextTool(
+  messageText: string,
+  previousSteps: Array<{ tool: string; result: string }>,
+  conversationId?: number,
+): Promise<ToolCall> {
+  if (!hasAI()) {
+    return { tool: "done", args: { message: "" } };
+  }
+
+  const history = previousSteps
+    .map((s, i) => `${i + 1}. Tool: ${s.tool}\nRisultato: ${s.result}`)
+    .join("\n\n");
+
+  const prompt = `${TOOL_DEFINITIONS}\n\nMessaggio originale dell'utente: "${messageText}"\n\nHai già eseguito le seguenti azioni:\n${history}\n\nDevi decidere se c'e un'altra azione da fare per soddisfare COMPLETAMENTE la richiesta dell'utente.\n- Se SI', rispondi con il prossimo tool da chiamare (formato JSON).\n- Se NO, o se hai finito tutto, usa done(message) con un messaggio riassuntivo per l'utente.\n\nRicorda: rispondi SOLO con il JSON del tool.`;
+
+  let responseText: string | null = null;
+  if (openRouterKey) {
+    responseText = await callOpenRouter(prompt);
+  } else if (anthropicKey) {
+    responseText = await callAnthropic(prompt);
+  }
+
+  if (responseText) {
+    const parsed = parseToolCall(responseText);
+    if (parsed) return parsed;
+  }
+
+  return { tool: "done", args: { message: "" } };
 }
 
 // ---------------------------------------------------------------------------
@@ -1074,6 +1113,11 @@ export async function executeTool(
         const msg = err instanceof Error ? err.message : String(err);
         return { success: false, reply: "Errore nel caricamento attività: " + msg, intent: "unknown" };
       }
+    }
+
+    case "done": {
+      const replyMsg = (toolCall.args.message as string) || "";
+      return { success: true, reply: replyMsg, intent: "unknown" };
     }
 
     case "reply": {
