@@ -8,7 +8,7 @@ import type { Contact, ContactWithDeals, Deal, Activity } from "@/types";
 // ---------------------------------------------------------------------------
 
 function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
+  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
   return {
     id: $id,
     createdAt: new Date($createdAt),
@@ -137,20 +137,25 @@ export async function getContactWithRelations(
   const contact = await getContact(id);
   if (!contact) return null;
 
-  const [dealsRes, activitiesRes] = await Promise.all([
-    databases.listDocuments(DB_ID, COLLECTIONS.deals, [
-      Query.equal("contactId", id),
-      Query.limit(200),
-    ]),
-    databases.listDocuments(DB_ID, COLLECTIONS.activities, [
-      Query.equal("contactId", id),
-      Query.limit(200),
-    ]),
-  ]);
+  try {
+    const [dealsRes, activitiesRes] = await Promise.all([
+      databases.listDocuments(DB_ID, COLLECTIONS.deals, [
+        Query.equal("contactId", id),
+        Query.limit(200),
+      ]),
+      databases.listDocuments(DB_ID, COLLECTIONS.activities, [
+        Query.equal("contactId", id),
+        Query.limit(200),
+      ]),
+    ]);
 
-  return {
-    ...contact,
-    deals: dealsRes.documents.map((d) => fromDoc<Deal>(d)),
-    activities: activitiesRes.documents.map((d) => fromDoc<Activity>(d)),
-  };
+    return {
+      ...contact,
+      deals: dealsRes.documents.map((d) => fromDoc<Deal>(d)),
+      activities: activitiesRes.documents.map((d) => fromDoc<Activity>(d)),
+    };
+  } catch {
+    // If related collections fail, return contact with empty relations
+    return { ...contact, deals: [], activities: [] };
+  }
 }
