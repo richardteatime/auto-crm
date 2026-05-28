@@ -830,6 +830,14 @@ export async function executeTool(
         if (toolCall.args.phone !== undefined) payload.phone = toolCall.args.phone as string;
         if (toolCall.args.company !== undefined) payload.company = toolCall.args.company as string;
 
+        if (Object.keys(payload).length === 0) {
+          return {
+            success: false,
+            reply: `Trovato ${contact.name}, ma non ho capito cosa aggiornare. Prova con: "Modifica ${contact.name} temperatura caldo".`,
+            intent: "unknown",
+          };
+        }
+
         const updated = await updateContact(contact.id, payload);
         return {
           success: true,
@@ -1175,8 +1183,18 @@ function extractNameFromText(text: string): string | null {
 
 function extractTemperatureFromText(text: string): string | null {
   const t = text.toLowerCase();
+
+  // Handle negations: "non è freddo" -> warm, "non è tiepido" -> hot
+  const negMatch = t.match(/non\s+(?:è\s+)?(?:un\s+)?(?:contatto\s+)?(fredd[oa]|tiepid[oa]|tibio|caldo|cold|warm|hot)/);
+  if (negMatch) {
+    const matched = negMatch[1];
+    if (/fredd|cold/.test(matched)) return "warm";
+    if (/tib|warm/.test(matched)) return "hot";
+    if (/cald|hot/.test(matched)) return "cold";
+  }
+
   if (/caldo|hot/i.test(t)) return "hot";
-  if (/tibio|warm/i.test(t)) return "warm";
+  if (/tibio|warm|tiepid/i.test(t)) return "warm";
   if (/freddo|cold/i.test(t)) return "cold";
   return null;
 }
