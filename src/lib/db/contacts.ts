@@ -110,11 +110,16 @@ export async function updateContact(
     notes: string | null;
   }>,
 ): Promise<Contact> {
+  // Filter out undefined values to prevent Appwrite "missing document data" errors
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined),
+  ) as Record<string, unknown>;
+
   const doc = await databases.updateDocument(
     DB_ID,
     COLLECTIONS.contacts,
     id,
-    data as Record<string, unknown>,
+    cleanData,
   );
   return fromDoc<Contact>(doc);
 }

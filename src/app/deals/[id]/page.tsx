@@ -40,7 +40,7 @@ export default async function DealDetailPage({
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{deal.title}</h1>
+            <h1 className="text-lg font-semibold tracking-tight">{deal.title}</h1>
             {stage && (
               <Badge
                 variant="outline"
@@ -88,43 +88,43 @@ export default async function DealDetailPage({
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Euro className="h-4 w-4" />
               Valore
             </div>
-            <p className="text-xl font-bold text-primary">
+            <p className="text-xl font-semibold text-primary">
               {formatCurrency(deal.value)}
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Percent className="h-4 w-4" />
               Probabilità
             </div>
-            <p className="text-xl font-bold">{deal.probability}%</p>
+            <p className="text-xl font-semibold">{deal.probability}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Calendar className="h-4 w-4" />
               Chiusura stimata
             </div>
-            <p className="text-xl font-bold">
+            <p className="text-xl font-semibold">
               {formatDate(deal.expectedClose)}
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <Euro className="h-4 w-4" />
               Valore ponderato
             </div>
-            <p className="text-xl font-bold">
+            <p className="text-xl font-semibold">
               {formatCurrency(Math.round(deal.value * (deal.probability / 100)))}
             </p>
           </CardContent>
@@ -132,8 +132,8 @@ export default async function DealDetailPage({
       </div>
 
       {stage?.isWon && (
-        <Card className="border-green-200 dark:border-green-800">
-          <CardContent className="pt-6">
+        <Card className="border-success/20">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
               <Wallet className="h-4 w-4" />
               Pagamento
@@ -143,11 +143,11 @@ export default async function DealDetailPage({
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {deal.notes && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Note</CardTitle>
+              <CardTitle className="text-sm font-medium">Note</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm">{deal.notes}</p>

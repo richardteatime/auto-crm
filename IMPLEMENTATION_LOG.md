@@ -613,4 +613,122 @@ README.md                                — Aggiunta sezione AI Orchestrator co
 
 ---
 
+## Validazione Gate 1 — Blockers risolti (2026-05-28)
+
+### Blocker 1: Workflow app e sito statico NON esposti all'AI
+**Stato: RISOLTO**
+- Aggiunti `generateAppForClient` e `startStaticSiteWorkflow` alle `TOOL_DEFINITIONS` in `src/lib/orchestrator/tools.ts`
+- Aggiunti case in `executeTool` che chiamano le funzioni in `src/lib/orchestrator/command-tools.ts`
+- Aggiunti a `FINAL_TOOLS` per il ReAct loop
+
+### Blocker 2: Messaggio deploy callback troppo povero
+**Stato: RISOLTO**
+- `src/app/api/orchestrator/callback/deploy/route.ts` ora recupera progetto e contatto dal DB
+- Il messaggio Chatwoot include: Cliente, Tipo, Link, QA status, Deploy status
+- Allineato al formato richiesto dal piano (sezione 26)
+
+### Blocker 3: Protezione loop bot insufficiente
+**Stato: RISOLTO**
+- `src/app/api/chatwoot/webhook/route.ts` ora ignora anche messaggi con sender name che include "bot", "crm" o "automation"
+- Protezione aggiuntiva oltre al check `message_type === "outgoing"`
+
+### Gap 4: Fallback unknown senza lista comandi
+**Stato: RISOLTO**
+- `executeTool` case `reply` ora appende la lista comandi disponibili quando la risposta e generica ("Non ho capito.")
+
+### Test automatici eseguiti
+- `npx tsx scripts/test-parsers.ts` — **70/70 pass**
+- `npx tsc --noEmit` — **Build pulito, zero errori TypeScript**
+
+### Test end-to-end automatici
+**Stato: COMPLETATO**
+Creato `scripts/gate1-e2e.ts` che esegue la suite completa senza bisogno di Chatwoot/GitAgent reali (usa mock HTTP interno):
+
+1. ✅ T1 — Non-admin blocked (`checkMessagePermission`)
+2. ✅ T2 — Admin query progetti (`executeTool` → `getActiveProjects`)
+3. ✅ T3 — Admin query ricavi (`executeTool` → `getTodayRevenue`, skipped se collection mancante)
+4. ✅ T4 — Creazione progetto + verifica DB (`createProjectFromMessage`)
+5. ✅ T5 — Workflow project creation smoke test
+6. ✅ T6 — Generate app con GitAgent mock (`generateAppForClient` → mock dispatch)
+7. ✅ T7 — Deploy callback + notifica Chatwoot mock (`createDeploymentResult`, `updateOrchestratorRun`, `sendChatwootMessage`)
+
+**Esecuzione:**
+```bash
+node --env-file=.env.local --import tsx scripts/gate1-e2e.ts
+```
+
+**Risultato ultima run: 7/7 passed.**
+
+### Flusso deploy post-GitAgent
+Il piano non richiede un `dispatchers/deploy.ts` separato per Gate 1. Il payload verso GitAgent include `autodeploy: true` e il callback GitAgent include `deployRequested`. Il deploy e gestito esternamente da GitAgent o da un deploy adapter che chiama il CRM al completamento. Il CRM riceve il callback e notifica il founder. Questo flusso e coerente con l'architettura documentata.
+
+---
+
 ## Prossima fase: Validazione Gate (end-to-end app generation) / Step 2 — Customer mode (futuro)
+
+---
+
+## Integrazione Hermes Agent — Sostituzione orchestrator interno (2026-05-29)
+
+### Contesto
+L'utente ha deciso di abbandonare Gate 2 (customer automation) e sostituire l'orchestrator interno ReAct con Hermes Agent (Nous Research) per l'interazione founder-only in linguaggio naturale via Telegram/Chatwoot.
+
+### Architettura
+- **Chatwoot** rimane il messaging gateway (Telegram → Chatwoot → CRM Webhook → Hermes)
+- **Hermes Agent** sostituisce `handleCommand` / `tools.ts` / `router.ts`
+- **GitAgent** resta invariato (dispatcher build/deploy)
+- Il CRM espone 10 tool MCP via `mcp-server/crm-server.ts`
+
+### File modificati / creati
+
+| File | Azione | Note |
+|------|--------|------|
+| `src/app/api/chatwoot/webhook/route.ts` | Modificato | Sostituito `handleCommand` con `callHermes`; aggiunta mappa sessioni in-memory |
+| `src/lib/hermes/client.ts` | Creato | Wrapper Node.js per `hermes chat -q`; path resolution cross-platform; fallback su resume failure |
+| `scripts/mcp-crm-launcher.cmd` | Creato | Launcher Windows che carica `.env.local` prima di avviare il server MCP |
+| `mcp-server/crm-server.ts` | Spostato (da `mcp/`) | Rinominato per evitare conflitto con pacchetto Python `mcp` |
+| `scripts/test-hermes-webhook-e2e.ts` | Creato | Test E2E multi-turn: webhook → Hermes → tool MCP → Chatwoot mock |
+
+### Bug risolti
+
+1. **MCP server non raggiungibile da Hermes**
+   - Root cause: il pacchetto Python `mcp` non era installato nella venv di Hermes
+   - Fix: `uv pip install --python <hermes-venv> mcp`
+
+2. **Conflitto nome directory `mcp/`**
+   - Root cause: la directory `mcp/` nel progetto sovrascriveva il namespace package Python `mcp` quando Hermes avviava il server dal CWD del progetto
+   - Fix: rinominata `mcp/` → `mcp-server/`
+
+3. **Launcher `.cmd` non eseguibile direttamente da Hermes**
+   - Root cause: Hermes usa `subprocess.Popen` senza shell; Windows non esegue `.cmd` direttamente
+   - Fix: config Hermes cambiata in `command: cmd` + `args: ["/c", "...launcher.cmd"]`
+
+4. **`score: 0` causava errore Appwrite "Unknown attribute"**
+   - Root cause: la collection `contacts` non ha l'attributo `score`
+   - Fix: rimosso `score` dal payload `crm_create_contact`
+
+5. **`createdAt`/`updatedAt` mancanti**
+   - Fix: re-aggiunti i timestamp al payload di creazione contatto
+
+### Limiti noti
+
+- **Memoria multi-turn limitata**: `hermes chat -q` non supporta `--resume` in modo affidabile. Ogni messaggio è tecnicamente una nuova sessione. Il webhook tenta il resume ma fa graceful fallback a fresh session. Per conversazioni multi-turn il founder deve fornire tutto il contesto in un singolo messaggio, oppure Hermes deve essere avviato in modalità persistente (non `-q`).
+
+### Test risultati
+
+- `npx tsc --noEmit` — zero errori
+- `scripts/test-hermes-webhook-e2e.ts` — webhook riceve messaggio, Hermes crea contatto in Appwrite, risponde via Chatwoot mock
+- `hermes mcp test auto-crm` — 10 tool MCP discoverati e funzionanti
+
+### Comandi utili
+
+```bash
+# Test diretto Hermes + CRM
+hermes chat -q "Crea un contatto di test chiamato X" -Q
+
+# Test MCP connection
+PYTHONIOENCODING=utf-8 hermes mcp test auto-crm
+
+# E2E webhook test
+npx tsx scripts/test-hermes-webhook-e2e.ts
+```

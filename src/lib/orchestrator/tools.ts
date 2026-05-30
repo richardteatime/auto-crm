@@ -12,6 +12,8 @@ import {
   createProjectFromMessage,
   createDealFromMessage,
   createTaskFromMessage,
+  startStaticSiteWorkflow,
+  generateAppForClient,
 } from "./command-tools";
 import { createContact, listContacts, getContact, updateContact, deleteContact } from "@/lib/db/contacts";
 import { listDeals, updateDeal, deleteDeal } from "@/lib/db/deals";
@@ -216,6 +218,21 @@ q2. getContactDetails(id: string)
     Descrizione: Rispondi direttamente all'utente quando nessuna funzione e appropriata o devi chiedere chiarimenti.
     Esempio utente: "Ciao!", "Come funziona?"
 
+28. startStaticSiteWorkflow(clientName: string, title?: string, description?: string)
+    Descrizione: Avvia un workflow per generare un sito statico per un cliente. Crea il progetto CRM e mette in coda il workflow per il dispacciamento GitAgent.
+    Esempio utente: "Fai un sito statico per Trattoria Da Marco"
+    Estrazione corretta:
+      clientName: "Trattoria Da Marco"
+      title: "Sito statico Trattoria Da Marco"
+
+29. generateAppForClient(clientName: string, appType?: string, description?: string)
+    Descrizione: Genera un'app/sito web per un cliente e avvia il workflow completo (progetto + deal + dispacciamento GitAgent). Usa questo quando l'utente chiede di creare un'app, un sito, una webapp o simili.
+    Esempio utente: "Crea un'app per FitLab e mandami il link quando è online"
+    Estrazione corretta:
+      clientName: "FitLab"
+      appType: "webapp"
+    ATTENZIONE: se l'utente chiede di generare un'app per un cliente, SE NON SEI SICURO che il contatto esista, USA searchContacts PRIMA di generateAppForClient.
+
 REGOLE:
 - Rispondi SEMPRE in formato JSON valido.
 - Se l'utente vuole creare un CONTATTO/LEAD, usa createContact, NON createTask.
@@ -387,6 +404,8 @@ const FINAL_TOOLS = new Set([
   "listActivities",
   "done",
   "reply",
+  "startStaticSiteWorkflow",
+  "generateAppForClient",
 ]);
 
 function isFinalTool(tool: string): boolean {
@@ -773,6 +792,16 @@ export async function executeTool(
       return { success: !!taskId, reply, intent: "create_task_command" };
     }
 
+    case "startStaticSiteWorkflow": {
+      const { reply, projectId } = await startStaticSiteWorkflow(messageText, runId);
+      return { success: !!projectId, reply, intent: "start_static_site_workflow" };
+    }
+
+    case "generateAppForClient": {
+      const { reply, projectId } = await generateAppForClient(messageText, runId);
+      return { success: !!projectId, reply, intent: "generate_app_for_client" };
+    }
+
     case "createContact": {
       try {
         const name = (toolCall.args.name as string) || extractNameFromText(messageText);
@@ -824,13 +853,24 @@ export async function executeTool(
             intent: "unknown",
           };
         }
-        const payload: Record<string, unknown> = {};
-        if (toolCall.args.temperature !== undefined) payload.temperature = parseTemperature(toolCall.args.temperature as string);
-        if (toolCall.args.email !== undefined) payload.email = toolCall.args.email as string;
-        if (toolCall.args.phone !== undefined) payload.phone = toolCall.args.phone as string;
-        if (toolCall.args.company !== undefined) payload.company = toolCall.args.company as string;
+        // Extract temperature from text as source of truth (handles negations like "non è freddo")
+        const textTemperature = extractTemperatureFromText(messageText);
+        const aiTemperature =
+          toolCall.args.temperature !== undefined && toolCall.args.temperature !== ""
+            ? parseTemperature(toolCall.args.temperature as string)
+            : undefined;
+        const finalTemperature = textTemperature !== null ? textTemperature : aiTemperature;
 
-        if (Object.keys(payload).length === 0) {
+        const payload: Record<string, unknown> = {};
+        if (finalTemperature !== undefined) payload.temperature = finalTemperature;
+        if (toolCall.args.email !== undefined && toolCall.args.email !== "") payload.email = toolCall.args.email as string;
+        if (toolCall.args.phone !== undefined && toolCall.args.phone !== "") payload.phone = toolCall.args.phone as string;
+        if (toolCall.args.company !== undefined && toolCall.args.company !== "") payload.company = toolCall.args.company as string;
+
+        // Filter out any undefined values that might have slipped through
+        const cleanPayload = Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined));
+
+        if (Object.keys(cleanPayload).length === 0) {
           return {
             success: false,
             reply: `Trovato ${contact.name}, ma non ho capito cosa aggiornare. Prova con: "Modifica ${contact.name} temperatura caldo".`,
@@ -838,7 +878,7 @@ export async function executeTool(
           };
         }
 
-        const updated = await updateContact(contact.id, payload);
+        const updated = await updateContact(contact.id, cleanPayload);
         return {
           success: true,
           reply: `Contatto aggiornato: *${updated.name}*\nTemperatura: ${updated.temperature || "non specificata"}\nID: ${updated.id}`,
@@ -1129,7 +1169,12 @@ export async function executeTool(
     }
 
     case "reply": {
-      const replyMsg = (toolCall.args.message as string) || "Non ho capito.";
+      let replyMsg = (toolCall.args.message as string) || "Non ho capito.";
+      // If the reply is generic, append available commands list
+      const genericReplies = ["Non ho capito.", "Non ho capito il comando.", "Non ho capito. Puoi ripetere?"];
+      if (genericReplies.includes(replyMsg)) {
+        replyMsg += "\n\nComandi disponibili:\n- A che progetti stiamo lavorando?\n- Quanti ricavi abbiamo fatto oggi?\n- Quali progetti sono bloccati?\n- Crea progetto per [cliente]\n- Crea deal per [cliente] da [importo]\n- Avvia workflow sito statico per [cliente]\n- Crea un'app per [cliente]";
+      }
       // Save pending so the next user message is treated as clarification
       if (conversationId != null) {
         setPending(conversationId, toolCall, messageText);
@@ -1170,6 +1215,15 @@ export async function executeTool(
 // ---------------------------------------------------------------------------
 
 function extractNameFromText(text: string): string | null {
+  // Pattern: "[Name] non è ..." or "[Name] è ..." (name before the verb)
+  // Matches names starting with uppercase letter(s), e.g. "Riccardo Consuegra non è freddo"
+  // Uses only flag 'u' so \p{Lu} truly matches uppercase letters (flag 'i' would make it case-insensitive).
+  const nameFirstMatch = text.match(/(?:^|\s)(\p{Lu}[^\s,]*(?:\s+\p{Lu}[^\s,]*)*)\s+(?:[Nn]on\s+)?[èÈeE]/u);
+  if (nameFirstMatch) {
+    const candidate = nameFirstMatch[1].trim();
+    if (candidate.toLowerCase() !== "non") return candidate;
+  }
+
   // "contatto [Name]" or "contatto [Name] temperatura"
   const match = text.match(/contatto\s+([^,]+?)(?:\s+(?:temperatura|temp|caldo|freddo|tibio|hot|cold|warm)|$)/i);
   if (match) return match[1].trim();
@@ -1184,12 +1238,13 @@ function extractNameFromText(text: string): string | null {
 function extractTemperatureFromText(text: string): string | null {
   const t = text.toLowerCase();
 
-  // Handle negations: "non è freddo" -> warm, "non è tiepido" -> hot
-  const negMatch = t.match(/non\s+(?:è\s+)?(?:un\s+)?(?:contatto\s+)?(fredd[oa]|tiepid[oa]|tibio|caldo|cold|warm|hot)/);
+  // Handle negations: "non è freddo" -> warm, "non è tiepido" -> hot, "non è caldo" -> cold
+  // Also: "neanche tiepido", "neppure freddo", "non è neanche caldo"
+  const negMatch = t.match(/(?:non|neanche|neppure)\s+(?:è\s+|e\s+|sono\s+|siamo\s+)?(?:un\s+|una\s+)?(?:contatto\s+)?(fredd[oa]|tiepid[oa]|tibio|caldo|cold|warm|hot)/);
   if (negMatch) {
     const matched = negMatch[1];
     if (/fredd|cold/.test(matched)) return "warm";
-    if (/tib|warm/.test(matched)) return "hot";
+    if (/tib|warm|tiepid/.test(matched)) return "hot";
     if (/cald|hot/.test(matched)) return "cold";
   }
 

@@ -294,6 +294,7 @@ async function handleTool(
     // -----------------------------------------------------------------------
     case "crm_create_contact": {
       const now = new Date().toISOString();
+      console.error("[mcp] crm_create_contact args:", JSON.stringify(args));
 
       const doc = await databases.createDocument(
         DB_ID,
@@ -306,7 +307,6 @@ async function handleTool(
           company: (args.company as string) || null,
           source: (args.source as string) || "otro",
           temperature: (args.temperature as string) || "cold",
-          score: 0,
           notes: (args.notes as string) || null,
           createdAt: now,
           updatedAt: now,

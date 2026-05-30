@@ -60,7 +60,7 @@ export function DealCard({
         <div className="flex items-start justify-between gap-1">
           <p className="text-sm font-medium leading-tight flex-1">{title}</p>
           {billingType && billingType !== "una_tantum" && (
-            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${billingType === "annuale" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"}`}>
+            <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0 rounded font-medium shrink-0 ${billingType === "annuale" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
               <RefreshCw className="h-2.5 w-2.5" />
               {recurringMonths ?? 12}m
             </span>

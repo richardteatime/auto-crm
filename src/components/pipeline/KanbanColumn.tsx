@@ -40,9 +40,9 @@ export function KanbanColumn({ id, name, color, isWon, deals }: KanbanColumnProp
         isOver ? "bg-muted" : ""
       }`}
     >
-      <div className="flex items-center gap-2 p-3 border-b">
+      <div className="flex items-center gap-2 p-2.5 border-b">
         <div
-          className="w-3 h-3 rounded-full shrink-0"
+          className="w-2 h-2 rounded-full shrink-0"
           style={{ backgroundColor: color }}
         />
         <h3 className="text-sm font-semibold flex-1 truncate">{name}</h3>
@@ -51,7 +51,7 @@ export function KanbanColumn({ id, name, color, isWon, deals }: KanbanColumnProp
         </span>
       </div>
 
-      <div className="p-2 text-xs text-muted-foreground text-center border-b">
+      <div className="p-1.5 text-xs text-muted-foreground text-center border-b">
         {formatCurrency(totalValue)}
       </div>
 

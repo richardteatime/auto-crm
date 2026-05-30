@@ -1,11 +1,16 @@
 import type { SenderRole, RunStatus, RiskLevel, OrchestratorRun } from "./types";
 
-// Graceful import: if the collection doesn't exist yet, we don't crash
+// Lazy import to avoid top-level await (keeps scripts compatible with CJS transform)
 let dbModule: typeof import("@/lib/db/orchestrator-runs") | null = null;
-try {
-  dbModule = await import("@/lib/db/orchestrator-runs");
-} catch {
-  dbModule = null;
+
+async function getDbModule() {
+  if (dbModule) return dbModule;
+  try {
+    dbModule = await import("@/lib/db/orchestrator-runs");
+  } catch {
+    dbModule = null;
+  }
+  return dbModule;
 }
 
 export async function createRun(data: {
@@ -20,12 +25,13 @@ export async function createRun(data: {
   autodeploy?: boolean;
   conversationId?: string | null;
 }): Promise<OrchestratorRun | null> {
-  if (!dbModule) {
+  const db = await getDbModule();
+  if (!db) {
     console.error("[orchestrator/runs] DB module not available (collection may not exist yet)");
     return null;
   }
   try {
-    return await dbModule.createOrchestratorRun(data);
+    return await db.createOrchestratorRun(data);
   } catch (err) {
     console.error("[orchestrator/runs] createRun failed:", err instanceof Error ? err.message : err);
     return null;
@@ -51,12 +57,13 @@ export async function updateRun(
     error: string | null;
   }>,
 ): Promise<OrchestratorRun | null> {
-  if (!dbModule) {
+  const db = await getDbModule();
+  if (!db) {
     console.error("[orchestrator/runs] DB module not available");
     return null;
   }
   try {
-    return await dbModule.updateOrchestratorRun(id, data);
+    return await db.updateOrchestratorRun(id, data);
   } catch (err) {
     console.error("[orchestrator/runs] updateRun failed:", err instanceof Error ? err.message : err);
     return null;
@@ -68,9 +75,10 @@ export async function listRuns(filters?: {
   senderPhone?: string;
   limit?: number;
 }): Promise<OrchestratorRun[]> {
-  if (!dbModule) return [];
+  const db = await getDbModule();
+  if (!db) return [];
   try {
-    return await dbModule.listOrchestratorRuns(filters);
+    return await db.listOrchestratorRuns(filters);
   } catch (err) {
     console.error("[orchestrator/runs] listRuns failed:", err instanceof Error ? err.message : err);
     return [];

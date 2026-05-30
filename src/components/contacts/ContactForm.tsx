@@ -104,7 +104,7 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="name">Nome *</Label>
             <Input id="name" {...register("name")} placeholder="Nome completo" />

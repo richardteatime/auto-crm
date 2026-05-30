@@ -40,15 +40,15 @@ function NotificationItem({
       onClick={handleClick}
       className={cn(
         "w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0",
-        !notification.read && "bg-blue-50/50 dark:bg-blue-950/20",
+        !notification.read && "bg-primary/5",
       )}
     >
       <div
         className={cn(
           "mt-0.5 h-8 w-8 rounded-full flex items-center justify-center shrink-0",
           notification.type === "activity_assigned"
-            ? "bg-blue-100 text-blue-600"
-            : "bg-purple-100 text-purple-600",
+            ? "bg-primary/10 text-primary"
+            : "bg-purple-600/10 text-purple-600",
         )}
       >
         {notification.type === "activity_assigned" ? (
@@ -81,7 +81,7 @@ function NotificationItem({
         </p>
       </div>
       {!notification.read && (
-        <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+        <span className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
       )}
     </button>
   );
@@ -124,7 +124,7 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5" />
         {counts.total > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
             {counts.total > 99 ? "99+" : counts.total}
           </span>
         )}
@@ -133,14 +133,14 @@ export function NotificationBell() {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-border bg-card shadow-xl overflow-hidden"
+          className="absolute right-0 top-11 z-50 w-80 rounded-lg border border-border bg-card shadow-xl overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <span className="text-sm font-semibold">
               Notifiche{" "}
               {counts.total > 0 && (
-                <span className="ml-1 rounded-full bg-red-100 text-red-600 text-xs px-1.5 py-0.5">
+                <span className="ml-1 rounded-full bg-destructive/10 text-destructive text-xs px-1.5 py-0.5">
                   {counts.total}
                 </span>
               )}

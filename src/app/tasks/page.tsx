@@ -135,8 +135,8 @@ export default function TasksPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Task</h1>
-          <p className="text-muted-foreground">Cose da fare e follow-up</p>
+          <h1 className="text-lg font-semibold tracking-tight">Task</h1>
+          <p className="text-xs text-muted-foreground">Cose da fare e follow-up</p>
         </div>
       </div>
 
@@ -169,7 +169,7 @@ export default function TasksPage() {
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                 filter === f
                   ? "bg-primary text-primary-foreground border-primary"
                   : "border-border text-muted-foreground hover:bg-muted"
@@ -196,7 +196,7 @@ export default function TasksPage() {
 
       {loading ? (
         <div className="space-y-3">
-          {[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}
+          {[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted rounded-md animate-pulse" />)}
         </div>
       ) : tasks.length === 0 ? (
         <EmptyState
@@ -207,7 +207,7 @@ export default function TasksPage() {
           onAction={() => { setNewTitle("Nuova task"); }}
         />
       ) : (
-        <div className="rounded-lg border">
+        <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>

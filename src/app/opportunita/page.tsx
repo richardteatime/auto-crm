@@ -32,8 +32,8 @@ interface OppRow {
 }
 
 const STATUS_CONFIG = {
-  aperta:      { label: "Aperta",      className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300" },
-  trasformata: { label: "Trasformata", className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300" },
+  aperta:      { label: "Aperta",      className: "bg-primary/10 text-primary border-primary/20" },
+  trasformata: { label: "Trasformata", className: "bg-success/10 text-success border-success/20" },
 };
 
 function parseAttachments(json: string | null): { name: string; url: string }[] {
@@ -155,8 +155,8 @@ export default function OpportunitaPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Opportunità</h1>
-          <p className="text-muted-foreground">Analisi completa — aperte e trasformate in trattativa</p>
+          <h1 className="text-lg font-semibold tracking-tight">Opportunità</h1>
+          <p className="text-xs text-muted-foreground">Analisi completa — aperte e trasformate in trattativa</p>
         </div>
         <Button
           variant="outline" size="sm"
@@ -169,12 +169,12 @@ export default function OpportunitaPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpis.map((k) => (
           <Card key={k.label}>
-            <CardContent className="pt-4 pb-3">
+            <CardContent className="p-4">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{k.label}</p>
-              <p className={cn("text-2xl font-bold mt-1", k.color)}>{k.value}</p>
+              <p className={cn("text-xl font-semibold mt-1", k.color)}>{k.value}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{k.sub}</p>
             </CardContent>
           </Card>
@@ -183,10 +183,10 @@ export default function OpportunitaPage() {
 
       {/* Valore potenziale aperte */}
       {openCount > 0 && (
-        <Card className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-4 pb-3">
+        <Card className="bg-primary/5 border-primary/10">
+          <CardContent className="p-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Valore potenziale opportunità aperte</p>
-            <p className="text-3xl font-bold text-blue-600 mt-1">{formatCurrency(totalOpenValue)}</p>
+            <p className="text-xl font-semibold text-primary mt-1">{formatCurrency(totalOpenValue)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{openCount} opportunità ancora aperte</p>
           </CardContent>
         </Card>
@@ -213,7 +213,7 @@ export default function OpportunitaPage() {
               key={key}
               onClick={() => setFilterStatus(key)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                 filterStatus === key
                   ? "bg-primary text-primary-foreground border-primary"
                   : "border-border text-muted-foreground hover:bg-muted"
@@ -228,7 +228,7 @@ export default function OpportunitaPage() {
       {/* Table */}
       {loading ? (
         <div className="space-y-3">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />)}
+          {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-muted rounded-md animate-pulse" />)}
         </div>
       ) : opps.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
@@ -238,7 +238,7 @@ export default function OpportunitaPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-lg border">
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -261,7 +261,7 @@ export default function OpportunitaPage() {
                   const cfg = STATUS_CONFIG[o.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
                   const contactName = contactNames.get(o.contactId);
                   return (
-                    <TableRow key={o.id} className="hover:bg-muted/30">
+                    <TableRow key={o.id} className="hover:bg-muted/50">
                       <TableCell>
                         <div>
                           <p className="font-medium text-sm">{o.title}</p>

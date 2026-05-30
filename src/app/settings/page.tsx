@@ -64,13 +64,13 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Impostazioni</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-lg font-semibold tracking-tight">Impostazioni</h1>
+        <p className="text-xs text-muted-foreground">
           Impostazioni del CRM e comandi disponibili
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Business config */}
         <Card>
           <CardHeader>
@@ -127,7 +127,7 @@ export default function SettingsPage() {
               {stages.map((stage) => (
                 <div
                   key={stage.id}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
+                  className="flex items-center gap-3 p-2 rounded-md bg-muted/50"
                 >
                   <div
                     className="w-3 h-3 rounded-full shrink-0"
@@ -176,7 +176,7 @@ export default function SettingsPage() {
                   <Copy className="h-4 w-4 text-muted-foreground" />
                 </button>
               </div>
-              <div className="p-3 rounded-lg bg-muted/50 text-xs font-mono">
+              <div className="p-3 rounded-md bg-muted/50 text-xs font-mono">
                 <p className="text-muted-foreground mb-1">Esempio:</p>
                 <p>curl -X POST {typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"}/api/webhook \</p>
                 <p className="pl-4">-H &quot;Content-Type: application/json&quot; \</p>
@@ -221,7 +221,7 @@ export default function SettingsPage() {
               {commands.map((cmd) => (
                 <div
                   key={cmd.name}
-                  className="flex items-start gap-3 p-3 rounded-lg border"
+                  className="flex items-start gap-3 p-2.5 rounded-md border"
                 >
                   <Zap className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                   <div>

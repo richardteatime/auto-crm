@@ -28,7 +28,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Attività Recenti</CardTitle>
+        <CardTitle className="text-sm font-medium">Attività Recenti</CardTitle>
       </CardHeader>
       <CardContent>
         {activities.length === 0 ? (
@@ -36,13 +36,13 @@ export function RecentActivity({ activities }: RecentActivityProps) {
             Nessuna attività recente
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {activities.slice(0, 5).map((activity) => {
               const Icon = typeIcons[activity.type] || FileText;
               return (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className="rounded-full bg-muted p-2 shrink-0">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                <div key={activity.id} className="flex items-start gap-2.5">
+                  <div className="rounded-full bg-muted p-1.5 shrink-0">
+                    <Icon className="h-3 w-3 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{activity.description}</p>

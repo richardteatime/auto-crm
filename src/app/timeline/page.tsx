@@ -78,9 +78,9 @@ export default function TimelinePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Timeline Progetti</h1>
+        <h1 className="text-lg font-semibold tracking-tight">Timeline Progetti</h1>
         <div className="space-y-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-md animate-pulse" />)}
         </div>
       </div>
     );
@@ -90,8 +90,8 @@ export default function TimelinePage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Timeline Progetti</h1>
-          <p className="text-muted-foreground">Traccia lo stato di avanzamento dei tuoi progetti tecnici</p>
+          <h1 className="text-lg font-semibold tracking-tight">Timeline Progetti</h1>
+          <p className="text-xs text-muted-foreground">Traccia lo stato di avanzamento dei tuoi progetti tecnici</p>
         </div>
         <Button onClick={() => setShowForm(true)} className="cursor-pointer">
           <Plus className="h-4 w-4 mr-2" />
@@ -120,7 +120,7 @@ export default function TimelinePage() {
           <button
             onClick={() => setFilterStatus("")}
             className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+              "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
               filterStatus === "" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
             )}
           >
@@ -133,7 +133,7 @@ export default function TimelinePage() {
                 key={s}
                 onClick={() => setFilterStatus(s)}
                 className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                  "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                   filterStatus === s
                     ? `${cfg.bg} ${cfg.color} ${cfg.border}`
                     : "border-border text-muted-foreground hover:bg-muted"

@@ -258,7 +258,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               <Label htmlFor="include-setup" className="cursor-pointer">Includi costo sviluppo e installazione</Label>
             </div>
             {setupItem && (
-              <div className="rounded-lg border p-3 bg-muted/30">
+              <div className="rounded-md border p-3 bg-muted/30">
                 <div className="grid grid-cols-4 gap-3 text-sm">
                   <div className="col-span-1 font-medium text-muted-foreground">{setupItem.description}</div>
                   <div>
@@ -300,7 +300,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
           {/* VOCI DEL PREVENTIVO */}
           <div className="space-y-2">
             <Label>Voci del preventivo</Label>
-            <div className="rounded-lg border overflow-hidden">
+            <div className="rounded-md border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/60 border-b">
@@ -330,9 +330,9 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                         <button
                           type="button"
                           onClick={() => toggleBilling(item.id)}
-                          className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer flex items-center gap-1 transition-colors ${
+                          className={`text-xs px-2 py-0 rounded-md border cursor-pointer flex items-center gap-1 transition-colors ${
                             item.billingType !== "una_tantum"
-                              ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300"
+                              ? "bg-primary/10 border-primary/20 text-primary"
                               : "bg-muted border-muted-foreground/20 text-muted-foreground"
                           }`}
                           title="Clicca per cambiare tipo"
@@ -450,14 +450,14 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               )}
               {monthlySub > 0 && (
                 <div className="flex justify-between gap-8 text-muted-foreground">
-                  <span className="flex items-center gap-1 text-blue-600"><RefreshCw className="h-3 w-3" /> Ricorrente/mese</span>
-                  <span className="font-medium text-blue-600 tabular-nums">€{monthlySub.toFixed(2)}/mese</span>
+                  <span className="flex items-center gap-1 text-primary"><RefreshCw className="h-3 w-3" /> Ricorrente/mese</span>
+                  <span className="font-medium text-primary tabular-nums">€{monthlySub.toFixed(2)}/mese</span>
                 </div>
               )}
               {annualSub > 0 && (
                 <div className="flex justify-between gap-8 text-muted-foreground">
-                  <span className="flex items-center gap-1 text-emerald-600"><RefreshCw className="h-3 w-3" /> Ricorrente/anno</span>
-                  <span className="font-medium text-emerald-600 tabular-nums">€{annualSub.toFixed(2)}/anno</span>
+                  <span className="flex items-center gap-1 text-success"><RefreshCw className="h-3 w-3" /> Ricorrente/anno</span>
+                  <span className="font-medium text-success tabular-nums">€{annualSub.toFixed(2)}/anno</span>
                 </div>
               )}
               <div className="flex justify-between gap-8 text-muted-foreground border-t pt-1">

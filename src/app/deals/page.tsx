@@ -161,8 +161,8 @@ export default function DealsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Trattative</h1>
-          <p className="text-muted-foreground">Opportunità di vendita attive</p>
+          <h1 className="text-lg font-semibold tracking-tight">Trattative</h1>
+          <p className="text-xs text-muted-foreground">Opportunità di vendita attive</p>
         </div>
         <div className="flex gap-2">
           <ReportDialog section="deals" />
@@ -202,33 +202,33 @@ export default function DealsPage() {
         </div>
 
         {/* Stage + Tipo quick chips */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setFilterTipo("")}
-            className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+            className={cn("px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
               filterTipo === "" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted")}
           >
             Tutti ({deals.length})
           </button>
           <button
             onClick={() => setFilterTipo("una_tantum")}
-            className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+            className={cn("px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
               filterTipo === "una_tantum" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted")}
           >
             Una Tantum ({deals.filter((d) => d.billingType === "una_tantum").length})
           </button>
           <button
             onClick={() => setFilterTipo("mensile")}
-            className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1",
-              filterTipo === "mensile" ? "bg-blue-600 text-white border-blue-600" : "border-border text-muted-foreground hover:bg-muted")}
+            className={cn("px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer flex items-center gap-1",
+              filterTipo === "mensile" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted")}
           >
             <RefreshCw className="h-3 w-3" />
             / Mese ({deals.filter((d) => d.billingType === "mensile").length})
           </button>
           <button
             onClick={() => setFilterTipo("annuale")}
-            className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1",
-              filterTipo === "annuale" ? "bg-emerald-600 text-white border-emerald-600" : "border-border text-muted-foreground hover:bg-muted")}
+            className={cn("px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer flex items-center gap-1",
+              filterTipo === "annuale" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted")}
           >
             <RefreshCw className="h-3 w-3" />
             / Anno ({deals.filter((d) => d.billingType === "annuale").length})
@@ -237,7 +237,7 @@ export default function DealsPage() {
             <button
               key={s.id}
               onClick={() => setFilterStage(filterStage === s.id ? "" : s.id)}
-              className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+              className={cn("px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                 filterStage === s.id ? "text-white border-transparent" : "border-border text-muted-foreground hover:bg-muted")}
               style={filterStage === s.id ? { backgroundColor: s.color, borderColor: s.color } : {}}
             >
@@ -248,8 +248,8 @@ export default function DealsPage() {
 
         {/* Advanced filters */}
         {showAdvanced && (
-          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rounded-md border bg-muted/30 p-2.5 space-y-2.5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Valore (EUR)</p>
                 <div className="flex gap-1 items-center">
@@ -309,7 +309,7 @@ export default function DealsPage() {
         />
       ) : (
         <>
-          <div className="rounded-lg border">
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -337,7 +337,7 @@ export default function DealsPage() {
                         <div className="flex items-center gap-2">
                           {deal.title}
                           {deal.billingType !== "una_tantum" && (
-                            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-medium ${deal.billingType === "annuale" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"}`}>
+                            <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0 rounded font-medium ${deal.billingType === "annuale" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
                               <RefreshCw className="h-2.5 w-2.5" />
                               {deal.recurringMonths ?? 12}m
                             </span>

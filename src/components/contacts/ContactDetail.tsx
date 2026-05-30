@@ -164,10 +164,10 @@ export function ContactDetailClient({
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{contact.name}</h1>
+            <h1 className="text-lg font-semibold tracking-tight">{contact.name}</h1>
             <StatusBadge temperature={contact.temperature as Temperature} />
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {SOURCE_LABELS[contact.source as LeadSource] || contact.source}
           </p>
         </div>
@@ -193,11 +193,11 @@ export function ContactDetailClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Contact info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Informazioni</CardTitle>
+            <CardTitle className="text-sm font-medium">Informazioni</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {contact.email && (
@@ -271,7 +271,7 @@ export function ContactDetailClient({
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
+              <CardTitle className="text-sm font-medium">
                 Trattative ({deals.length})
               </CardTitle>
               <Button
@@ -293,7 +293,7 @@ export function ContactDetailClient({
                 {deals.map((deal) => (
                   <div
                     key={deal.id}
-                    className="p-3 rounded-lg border cursor-pointer hover:bg-muted/50"
+                    className="p-2.5 rounded-md border cursor-pointer hover:bg-muted/50"
                     onClick={() => router.push(`/deals/${deal.id}`)}
                   >
                     <p className="text-sm font-medium">{deal.title}</p>
@@ -321,7 +321,7 @@ export function ContactDetailClient({
         {/* Activity timeline */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">
+            <CardTitle className="text-sm font-medium">
               Attività ({activities.length})
             </CardTitle>
             <Button
@@ -340,7 +340,7 @@ export function ContactDetailClient({
                 Nessuna attività. Registra una chiamata, email o nota.
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {activities.map((activity) => {
                   const Icon = activityIcons[activity.type] || FileText;
                   const config = ACTIVITY_TYPE_CONFIG[activity.type as ActivityType];
@@ -441,7 +441,7 @@ export function ContactDetailClient({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
               <NotebookPen className="h-4 w-4 text-muted-foreground" />
               Note
             </CardTitle>
@@ -460,7 +460,7 @@ export function ContactDetailClient({
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder="Scrivi qui come stanno andando le cose con questo contatto…"
-            className="w-full min-h-[140px] resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full min-h-[120px] resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </CardContent>
       </Card>

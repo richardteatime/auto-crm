@@ -106,7 +106,7 @@ function KpiCard({
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+            <p className={`text-xl font-semibold mt-1 ${color}`}>{value}</p>
             {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
           </div>
           <div className={`p-2 rounded-lg bg-muted/50 ${color}`}>
@@ -318,7 +318,7 @@ export function FinanceDashboard() {
           value={loading ? "..." : formatCurrency(summary?.totalRevenue ?? 0)}
           sub={loading ? "" : `Mese: ${formatCurrency(summary?.monthlyRevenue ?? 0)} · Anno: ${formatCurrency(summary?.annualRevenue ?? 0)} · Una t.: ${formatCurrency(summary?.oneTimeRevenue ?? 0)}`}
           icon={TrendingUp}
-          color="text-green-400"
+          color="text-success"
           onClick={() => {
             if (loading) return;
             const { start, end } = getRange();
@@ -330,14 +330,14 @@ export function FinanceDashboard() {
           value={loading ? "..." : formatCurrency(summary?.mrr ?? 0)}
           sub={loading ? "" : `ARR: ${formatCurrency((summary?.mrr ?? 0) * 12)}`}
           icon={RefreshCw}
-          color="text-blue-400"
+          color="text-primary"
           onClick={() => !loading && router.push("/finance/mrr")}
         />
         <KpiCard
           title="Spese Periodo"
           value={loading ? "..." : formatCurrency(summary?.totalExpenses ?? 0)}
           icon={TrendingDown}
-          color="text-red-400"
+          color="text-destructive"
           onClick={() => {
             if (loading) return;
             const { start, end } = getRange();
@@ -349,14 +349,14 @@ export function FinanceDashboard() {
           value={loading ? "..." : formatCurrency(summary?.cashFlow ?? 0)}
           sub="Fatturato - Spese"
           icon={Wallet}
-          color={(summary?.cashFlow ?? 0) >= 0 ? "text-green-400" : "text-red-400"}
+          color={(summary?.cashFlow ?? 0) >= 0 ? "text-success" : "text-destructive"}
         />
       </div>
 
       {/* Chart */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Andamento Ultimi 12 Mesi</CardTitle>
+          <CardTitle className="text-sm font-medium">Andamento Ultimi 12 Mesi</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={260}>
@@ -391,8 +391,8 @@ export function FinanceDashboard() {
       {/* Revenues */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            <Banknote className="h-4 w-4 text-green-500" />
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Banknote className="h-4 w-4 text-success" />
             Incassi
           </h2>
           <Button
@@ -427,7 +427,7 @@ export function FinanceDashboard() {
             <div className="flex flex-wrap gap-1.5">
               {[{ value: "" as const, label: "Tutti" }, { value: "una_tantum" as const, label: "Una tantum" }, { value: "mensile" as const, label: "Ricorrente/mese" }, { value: "annuale" as const, label: "Ricorrente/anno" }, { value: "external" as const, label: "Esterno" }].map(({ value, label }) => (
                 <button key={value} onClick={() => setRevFilterType(value)}
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
                     revFilterType === value ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
                   }`}>
                   {label}
@@ -451,22 +451,22 @@ export function FinanceDashboard() {
             {filteredRevenues.map((r) => (
               <div
                 key={r.id}
-                className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-green-500/30" : "border-border"}`}
+                className={`flex items-center gap-3 rounded-md border bg-card px-3 py-2.5 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-success/20" : "border-border"}`}
               >
-                <div className={`shrink-0 p-2 rounded-lg ${r.billingType === "una_tantum" ? "bg-green-500/10" : r.billingType === "annuale" ? "bg-emerald-500/10" : "bg-blue-500/10"}`}>
+                <div className={`shrink-0 p-2 rounded-md ${r.billingType === "una_tantum" ? "bg-success/10" : r.billingType === "annuale" ? "bg-success/10" : "bg-primary/10"}`}>
                   {r.billingType === "una_tantum"
-                    ? <Banknote className="h-4 w-4 text-green-500" />
-                    : <RefreshCw className={`h-4 w-4 ${r.billingType === "annuale" ? "text-emerald-500" : "text-blue-500"}`} />
+                    ? <Banknote className="h-4 w-4 text-success" />
+                    : <RefreshCw className={`h-4 w-4 ${r.billingType === "annuale" ? "text-success" : "text-primary"}`} />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{r.description}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <Badge variant="outline" className={`text-[10px] ${r.billingType === "annuale" ? "text-emerald-500 border-emerald-500/30" : r.billingType === "mensile" ? "text-blue-500 border-blue-500/30" : "text-green-500 border-green-500/30"}`}>
+                    <Badge variant="outline" className={`text-[10px] ${r.billingType === "annuale" ? "text-success border-success/20" : r.billingType === "mensile" ? "text-primary border-primary/20" : "text-success border-success/20"}`}>
                       {r.billingType === "annuale" ? `Ricorrente/anno${r.recurringMonths ? ` ×${r.recurringMonths}m` : ""}` : r.billingType === "mensile" ? `Ricorrente/mese${r.recurringMonths ? ` ×${r.recurringMonths}m` : ""}` : "Una tantum"}
                     </Badge>
                     {r.isExternal && (
-                      <Badge variant="outline" className="text-[10px] text-purple-500 border-purple-500/30">
+                      <Badge variant="outline" className="text-[10px] text-purple-600 border-purple-600/20">
                         Esterno
                       </Badge>
                     )}
@@ -479,7 +479,7 @@ export function FinanceDashboard() {
                   </div>
                 </div>
                 <div className="shrink-0 text-right min-w-[100px]">
-                  <p className="text-sm font-bold text-green-500">+{formatCurrency(r.amount)}</p>
+                  <p className="text-sm font-bold text-success">+{formatCurrency(r.amount)}</p>
                 </div>
                 <div className="shrink-0 flex items-center gap-0.5">
                   <Button
@@ -509,7 +509,7 @@ export function FinanceDashboard() {
       {/* Expenses */}
       <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Spese e Investimenti</h2>
+            <h2 className="text-sm font-semibold">Spese e Investimenti</h2>
             <Button
               size="sm"
               className="cursor-pointer"
@@ -543,7 +543,7 @@ export function FinanceDashboard() {
               <div className="flex flex-wrap gap-1.5">
                 {[{ value: "", label: "Tutti i tipi" }, { value: "spesa", label: "Spesa" }, { value: "investimento", label: "Investimento" }, { value: "stipendio", label: "Stipendio" }].map(({ value, label }) => (
                   <button key={value} onClick={() => setExpFilterType(value)}
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
                       expFilterType === value ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
                     }`}>
                     {label}
@@ -553,14 +553,14 @@ export function FinanceDashboard() {
                   <>
                     <span className="text-muted-foreground text-xs self-center">|</span>
                     <button onClick={() => setExpFilterCategory("")}
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
                         !expFilterCategory ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
                       }`}>
                       Tutte le categorie
                     </button>
                     {expenseCategories.map((cat) => (
                       <button key={cat} onClick={() => setExpFilterCategory(expFilterCategory === cat ? "" : cat)}
-                        className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
                           expFilterCategory === cat ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
                         }`}>
                         {cat}
@@ -589,9 +589,9 @@ export function FinanceDashboard() {
                 return (
                   <div
                     key={exp.id}
-                    className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors ${cfg?.border ?? "border-border"}`}
+                    className={`flex items-center gap-3 rounded-md border bg-card px-3 py-2.5 hover:bg-muted/30 transition-colors ${cfg?.border ?? "border-border"}`}
                   >
-                    <div className={`shrink-0 p-2 rounded-lg ${cfg?.bg ?? "bg-muted"}`}>
+                    <div className={`shrink-0 p-2 rounded-md ${cfg?.bg ?? "bg-muted"}`}>
                       <Icon className={`h-4 w-4 ${cfg?.color ?? ""}`} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -605,7 +605,7 @@ export function FinanceDashboard() {
                       </div>
                     </div>
                     <div className="shrink-0 text-right min-w-[100px]">
-                      <p className="text-sm font-bold text-red-500">-{formatCurrency(exp.amount)}</p>
+                      <p className="text-sm font-bold text-destructive">-{formatCurrency(exp.amount)}</p>
                     </div>
                     <div className="shrink-0 flex items-center gap-0.5">
                       <Button

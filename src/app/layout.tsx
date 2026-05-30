@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { NotificationChecker } from "@/components/shared/NotificationChecker";
+import { ThemeProvider } from "@/components/shared/ThemeProvider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -25,11 +26,13 @@ export default function RootLayout({
   return (
     <html lang="it" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex" suppressHydrationWarning>
-        <TooltipProvider>
-          <AppShell>{children}</AppShell>
-          <Toaster />
-          <NotificationChecker />
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <AppShell>{children}</AppShell>
+            <Toaster />
+            <NotificationChecker />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

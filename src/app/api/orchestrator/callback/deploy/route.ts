@@ -3,6 +3,8 @@ import { getOrchestratorRun, updateOrchestratorRun } from "@/lib/db/orchestrator
 import { createDeploymentResult } from "@/lib/db/deployment-results";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
 import { sendChatwootMessage } from "@/lib/chatwoot/client";
+import { getProject } from "@/lib/db/projects";
+import { getContact } from "@/lib/db/contacts";
 
 const DEPLOY_CALLBACK_SECRET = process.env.DEPLOY_CALLBACK_SECRET || "";
 
@@ -86,15 +88,40 @@ export async function POST(req: NextRequest) {
       metadata: { url: payload.url },
     });
 
+    // Enrich notification with project and contact info
+    let clientName = "Cliente";
+    let appType = "app";
+    try {
+      if (run.projectId) {
+        const project = await getProject(run.projectId);
+        if (project) {
+          appType = project.title || "app";
+          if (project.contactId) {
+            const contact = await getContact(project.contactId);
+            if (contact) {
+              clientName = contact.name;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[deploy-callback] Failed to enrich notification:", err);
+    }
+
+    const deployMessage =
+      `App deployata con successo.\n\n` +
+      `Cliente: ${clientName}\n` +
+      `Tipo: ${appType}\n` +
+      `Link: ${payload.url}\n` +
+      `QA: ${payload.healthcheckStatus || "N/A"}\n` +
+      `Deploy: completed`;
+
     // Notify Chatwoot if conversationId is available
     if (run.conversationId) {
       try {
         const convId = parseInt(run.conversationId, 10);
         if (!Number.isNaN(convId)) {
-          await sendChatwootMessage(
-            convId,
-            `App deployata con successo.\n\nLink: ${payload.url}`,
-          );
+          await sendChatwootMessage(convId, deployMessage);
 
           await logWorkflowEvent({
             runId: payload.runId,

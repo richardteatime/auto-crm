@@ -32,11 +32,11 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contatti</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-lg font-semibold tracking-tight">Contatti</h1>
+          <p className="text-xs text-muted-foreground">
             Gestisci i tuoi lead e prospect
           </p>
         </div>
@@ -52,7 +52,7 @@ export default function ContactsPage() {
       {loading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
+            <div key={i} className="h-12 bg-muted rounded-md animate-pulse" />
           ))}
         </div>
       ) : (

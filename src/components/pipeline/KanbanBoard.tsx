@@ -161,7 +161,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
                 key={value}
                 onClick={() => setFilterTemp(value)}
                 className={cn(
-                  "px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                  "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                   filterTemp === value
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border text-muted-foreground hover:bg-muted"
@@ -179,7 +179,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
                 key={value}
                 onClick={() => setFilterTipo(value)}
                 className={cn(
-                  "px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                  "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                   filterTipo === value
                     ? value === "recurring" ? "bg-blue-600 text-white border-blue-600" : "bg-primary text-primary-foreground border-primary"
                     : "border-border text-muted-foreground hover:bg-muted"

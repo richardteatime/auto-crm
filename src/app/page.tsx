@@ -54,36 +54,36 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-xs text-muted-foreground">
           Riepilogo del tuo pipeline di vendita
         </p>
       </div>
 
       {isFirstRun && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
-          <h2 className="text-lg font-semibold mb-2">
+        <div className="rounded-md border border-primary/10 bg-primary/5 p-4">
+          <h2 className="text-sm font-semibold mb-1.5">
             Benvenuto in SarconX CRM
           </h2>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-xs text-muted-foreground mb-3">
             Il tuo CRM è pronto. Ecco come iniziare:
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <div className="p-3 rounded-lg bg-card border">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div className="p-2.5 rounded-md bg-card border">
               <p className="font-medium">1. Personalizza il tuo CRM</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 Esegui <code className="bg-muted px-1 rounded">/setup</code> in Claude Code
               </p>
             </div>
-            <div className="p-3 rounded-lg bg-card border">
+            <div className="p-2.5 rounded-md bg-card border">
               <p className="font-medium">2. Aggiungi contatti</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 Vai su Contatti o usa <code className="bg-muted px-1 rounded">/add-lead</code>
               </p>
             </div>
-            <div className="p-3 rounded-lg bg-card border">
+            <div className="p-2.5 rounded-md bg-card border">
               <p className="font-medium">3. Carica dati demo</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 Esegui <code className="bg-muted px-1 rounded">npm run seed</code> nel terminale
               </p>
             </div>
@@ -95,7 +95,7 @@ export default async function DashboardPage() {
 
       <KPICards stats={stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <PipelineChart data={pipelineData} />
         </div>

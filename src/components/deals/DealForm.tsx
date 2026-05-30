@@ -202,7 +202,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
           <DialogTitle>{isEditing ? "Modifica Trattativa" : "Nuova Trattativa"}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="deal-title">Titolo *</Label>
             <Input id="deal-title" {...register("title")} placeholder="Servizio Premium - Azienda X" />
@@ -282,9 +282,9 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
                 type="button"
                 onClick={() => setBillingType("mensile")}
                 className={cn(
-                  "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                  "flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors cursor-pointer",
                   billingType === "mensile"
-                    ? "bg-blue-600 text-white border-blue-600"
+                    ? "bg-primary text-primary-foreground border-primary"
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
               >
@@ -295,9 +295,9 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
                 type="button"
                 onClick={() => setBillingType("annuale")}
                 className={cn(
-                  "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                  "flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors cursor-pointer",
                   billingType === "annuale"
-                    ? "bg-emerald-600 text-white border-emerald-600"
+                    ? "bg-success text-success-foreground border-success"
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
               >
@@ -337,9 +337,9 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
                 type="button"
                 onClick={() => setIsPaid(false)}
                 className={cn(
-                  "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                  "flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors cursor-pointer",
                   !isPaid
-                    ? "bg-amber-500 text-white border-amber-500"
+                    ? "bg-warning text-warning-foreground border-warning"
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
               >
@@ -349,9 +349,9 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
                 type="button"
                 onClick={() => setIsPaid(true)}
                 className={cn(
-                  "flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer",
+                  "flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium border transition-colors cursor-pointer",
                   isPaid
-                    ? "bg-green-600 text-white border-green-600"
+                    ? "bg-success text-success-foreground border-success"
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}
               >

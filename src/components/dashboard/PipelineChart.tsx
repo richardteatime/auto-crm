@@ -27,7 +27,7 @@ export function PipelineChart({ data }: PipelineChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Pipeline di Vendita</CardTitle>
+        <CardTitle className="text-sm font-medium">Pipeline di Vendita</CardTitle>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
@@ -35,16 +35,20 @@ export function PipelineChart({ data }: PipelineChartProps) {
             Nessuna trattativa nel pipeline
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
                 className="fill-muted-foreground"
               />
               <YAxis
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
                 className="fill-muted-foreground"
               />
               <Tooltip
@@ -53,12 +57,14 @@ export function PipelineChart({ data }: PipelineChartProps) {
                   "Quantità",
                 ]}
                 contentStyle={{
-                  borderRadius: "8px",
+                  borderRadius: "6px",
                   border: "1px solid var(--border)",
                   backgroundColor: "var(--card)",
+                  fontSize: "12px",
                 }}
+                cursor={{ fill: "var(--muted)", opacity: 0.5 }}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="count" radius={[3, 3, 0, 0]}>
                 {data.map((entry, index) => (
                   <Cell key={index} fill={entry.color} />
                 ))}

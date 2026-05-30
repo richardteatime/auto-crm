@@ -5,25 +5,30 @@ import { createChatwootMessage } from "@/lib/db/chatwoot-messages";
 import { sendChatwootMessage } from "@/lib/chatwoot/client";
 import { checkMessagePermission } from "@/lib/orchestrator/permissions";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
-import { handleCommand } from "@/lib/orchestrator/router";
+import { createRun, updateRun } from "@/lib/orchestrator/runs";
+import { callHermes } from "@/lib/hermes/client";
 import type { ChatwootMessagePayload } from "@/lib/chatwoot/types";
 
 /**
- * Chatwoot webhook endpoint.
+ * Chatwoot webhook endpoint — Hermes integration.
  *
  * Handles:
  * - message_created events
  * - Ignores outbound messages (avoid loops)
  * - Validates webhook secret if configured
  * - Normalizes and saves inbound messages
- * - Permission check (Phase 2): blocks non-admin senders
- * - Orchestrator routing (Phase 3): classifies intent and executes
+ * - Permission check: blocks non-admin senders
+ * - Forwards to Hermes Agent for natural-language CRM interaction
  */
 
 // Simple in-memory rate limiter
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const WEBHOOK_RATE_LIMIT = 60;
 const WEBHOOK_WINDOW_MS = 60_000;
+
+// In-memory session cache: conversationId -> Hermes sessionId
+// Persists as long as the Next.js server process is alive.
+const hermesSessionMap = new Map<number, string>();
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -78,6 +83,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ignored: true, reason: "outbound_message" });
   }
 
+  // Ignore bot/CRM messages to avoid loops
+  const senderName = payload.sender?.name?.toLowerCase() || "";
+  if (senderName.includes("bot") || senderName.includes("crm") || senderName.includes("automation")) {
+    return NextResponse.json({ ignored: true, reason: "bot_message" });
+  }
+
   // Ignore empty content
   if (!payload.content?.trim()) {
     return NextResponse.json({ ignored: true, reason: "empty_content" });
@@ -87,7 +98,6 @@ export async function POST(request: NextRequest) {
     const normalized = normalizeChatwootMessage(payload);
 
     // Save to chatwoot_messages collection
-    // If collection doesn't exist yet (Phase 4), log gracefully
     let saved: unknown = null;
     try {
       saved = await createChatwootMessage(normalized);
@@ -98,11 +108,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Phase 2 — Permission check
+    // Permission check
     const permission = checkMessagePermission(normalized.senderPhone, normalized.senderTelegramId);
 
     if (!permission.allowed) {
-      // Reply to Chatwoot with block message
       await sendChatwootMessage(
         normalized.conversationId,
         permission.reason ?? "Questo canale al momento è riservato ai comandi interni SarconX.",
@@ -128,23 +137,109 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Phase 3 — Forward to orchestrator
-    const result = await handleCommand({
-      senderPhone: normalized.senderPhone,
-      senderTelegramId: normalized.senderTelegramId,
-      senderName: normalized.senderName,
-      conversationId: normalized.conversationId,
-      messageText: normalized.messageText,
+    // Create audit run
+    const run = await createRun({
       source: "chatwoot",
+      senderPhone: normalized.senderPhone,
+      senderRole: "founder_admin",
+      commandText: normalized.messageText,
+      status: "running",
+      conversationId: String(normalized.conversationId),
+    });
+    const runId = run?.id ?? null;
+
+    await logWorkflowEvent({
+      runId: runId ?? undefined,
+      eventType: "message_received",
+      message: `Messaggio ricevuto da ${normalized.senderPhone || "sconosciuto"}`,
+      metadata: {
+        senderPhone: normalized.senderPhone,
+        senderName: normalized.senderName,
+        conversationId: normalized.conversationId,
+        messageText: normalized.messageText,
+      },
+    });
+
+    // Forward to Hermes Agent (with session memory)
+    let hermesReply: string;
+    let hermesSessionId: string | undefined;
+    const existingSessionId = hermesSessionMap.get(normalized.conversationId);
+
+    try {
+      const result = await callHermes(
+        normalized.messageText,
+        normalized.conversationId,
+        existingSessionId,
+      );
+      hermesReply = result.reply;
+      hermesSessionId = result.sessionId;
+
+      // Persist sessionId for follow-up messages in this conversation
+      if (hermesSessionId) {
+        hermesSessionMap.set(normalized.conversationId, hermesSessionId);
+      }
+    } catch (hermesErr) {
+      const errorMsg = hermesErr instanceof Error ? hermesErr.message : String(hermesErr);
+      console.error("[chatwoot/webhook] Hermes error:", errorMsg);
+
+      await logWorkflowEvent({
+        runId: runId ?? undefined,
+        eventType: "error",
+        message: `Hermes error: ${errorMsg}`,
+        metadata: { conversationId: normalized.conversationId, error: errorMsg },
+      });
+
+      if (runId) {
+        await updateRun(runId, { status: "failed", error: errorMsg });
+      }
+
+      await sendChatwootMessage(
+        normalized.conversationId,
+        "Si è verificato un errore nel processare la richiesta. Riprova più tardi.",
+      );
+
+      return NextResponse.json({
+        success: false,
+        messageId: payload.id,
+        conversationId: payload.conversation.id,
+        role: permission.role,
+        error: errorMsg,
+        saved: !!saved,
+      });
+    }
+
+    // Send Hermes reply to Chatwoot
+    if (hermesReply) {
+      await sendChatwootMessage(normalized.conversationId, hermesReply);
+    }
+
+    // Update run
+    if (runId) {
+      await updateRun(runId, {
+        status: "completed",
+        resultSummary: hermesReply.slice(0, 500),
+        error: null,
+      });
+    }
+
+    await logWorkflowEvent({
+      runId: runId ?? undefined,
+      eventType: "reply_sent",
+      message: "Risposta inviata su Chatwoot",
+      metadata: {
+        conversationId: normalized.conversationId,
+        hermesSessionId,
+        replyLength: hermesReply.length,
+      },
     });
 
     return NextResponse.json({
-      success: result.success,
+      success: true,
       messageId: payload.id,
       conversationId: payload.conversation.id,
       role: permission.role,
-      intent: result.intent,
-      runId: result.runId,
+      runId,
+      hermesSessionId,
       saved: !!saved,
     });
   } catch (err) {

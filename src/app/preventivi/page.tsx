@@ -212,7 +212,7 @@ export default function PreventiviPage() {
         <div className="h-8 w-48 bg-muted rounded animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+            <div key={i} className="h-20 bg-muted rounded-md animate-pulse" />
           ))}
         </div>
       </div>
@@ -223,8 +223,8 @@ export default function PreventiviPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Preventivi</h1>
-          <p className="text-muted-foreground">Analisi e monitoraggio di tutti i preventivi</p>
+          <h1 className="text-lg font-semibold tracking-tight">Preventivi</h1>
+          <p className="text-xs text-muted-foreground">Analisi e monitoraggio di tutti i preventivi</p>
         </div>
         <ReportDialog section="quotes" />
       </div>
@@ -250,8 +250,8 @@ export default function PreventiviPage() {
           </div>
           <button
             onClick={() => setFilterOverdue((v) => !v)}
-            className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors cursor-pointer ${
-              filterOverdue ? "bg-destructive text-white border-destructive" : "border-border text-muted-foreground hover:bg-muted"
+            className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
+              filterOverdue ? "bg-destructive text-destructive-foreground border-destructive" : "border-border text-muted-foreground hover:bg-muted"
             }`}
           >
             Solo scaduti
@@ -266,47 +266,47 @@ export default function PreventiviPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
-          <CardContent className="pt-5">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <FileText className="h-4 w-4" />
               Totale
             </div>
-            <p className="text-2xl font-bold">{kpi.total}</p>
+            <p className="text-xl font-semibold">{kpi.total}</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-5">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 text-success" />
               Valore accettato
             </div>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-xl font-semibold text-success">
               {formatCurrency(kpi.acceptedValue)}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-5">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <TrendingUp className="h-4 w-4 text-primary" />
               Tasso accettazione
             </div>
-            <p className="text-2xl font-bold">{kpi.winRate}%</p>
+            <p className="text-xl font-semibold">{kpi.winRate}%</p>
             <p className="text-xs text-muted-foreground mt-0.5">su preventivi inviati</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-5">
+          <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
               <AlertCircle className="h-4 w-4 text-destructive" />
               Scaduti
             </div>
-            <p className="text-2xl font-bold text-destructive">{kpi.overdueCount}</p>
+            <p className="text-xl font-semibold text-destructive">{kpi.overdueCount}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{kpi.sentCount} in attesa</p>
           </CardContent>
         </Card>
@@ -316,7 +316,7 @@ export default function PreventiviPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Preventivi per stato</CardTitle>
+            <CardTitle className="text-sm font-medium">Preventivi per stato</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
@@ -344,7 +344,7 @@ export default function PreventiviPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Valore totale per stato</CardTitle>
+            <CardTitle className="text-sm font-medium">Valore totale per stato</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>

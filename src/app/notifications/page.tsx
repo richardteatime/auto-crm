@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 const typeConfig = {
-  activity_assigned: { label: "Attività", icon: Activity, color: "text-blue-600", bg: "bg-blue-100" },
-  project_assigned: { label: "Progetto", icon: GitBranch, color: "text-purple-600", bg: "bg-purple-100" },
-  calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-100" },
-  chat_message: { label: "Chat", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-100" },
+  activity_assigned: { label: "Attività", icon: Activity, color: "text-primary", bg: "bg-primary/10" },
+  project_assigned: { label: "Progetto", icon: GitBranch, color: "text-purple-600", bg: "bg-purple-600/10" },
+  calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-success", bg: "bg-success/10" },
+  chat_message: { label: "Chat", icon: MessageSquare, color: "text-warning", bg: "bg-warning/10" },
 };
 
 export default function NotificationsPage() {
@@ -41,8 +41,8 @@ export default function NotificationsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Notifiche</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-lg font-semibold tracking-tight">Notifiche</h1>
+          <p className="text-xs text-muted-foreground">
             {counts.total > 0
               ? `${counts.total} non letta${counts.total > 1 ? "e" : ""}`
               : "Tutto letto"}
@@ -63,7 +63,7 @@ export default function NotificationsPage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Elenco notifiche</CardTitle>
+          <CardTitle className="text-sm font-medium">Elenco notifiche</CardTitle>
         </CardHeader>
         <CardContent>
           {notifications.length === 0 ? (
@@ -92,9 +92,9 @@ export default function NotificationsPage() {
                   <div
                     key={n.id}
                     className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                      "flex items-start gap-3 p-2.5 rounded-md border transition-colors",
                       !n.read
-                        ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900"
+                        ? "bg-primary/5 border-primary/10"
                         : "bg-card border-border hover:bg-muted/30"
                     )}
                   >

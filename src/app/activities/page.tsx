@@ -196,9 +196,9 @@ export default function ActivitiesPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold tracking-tight">Attività</h1></div>
+        <div><h1 className="text-lg font-semibold tracking-tight">Attività</h1></div>
         <div className="space-y-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-muted rounded-md animate-pulse" />)}
         </div>
       </div>
     );
@@ -208,8 +208,8 @@ export default function ActivitiesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Attività</h1>
-          <p className="text-muted-foreground">Storico interazioni e follow-up</p>
+          <h1 className="text-lg font-semibold tracking-tight">Attività</h1>
+          <p className="text-xs text-muted-foreground">Storico interazioni e follow-up</p>
         </div>
         <div className="flex gap-2">
           <ReportDialog section="activities" />
@@ -231,7 +231,7 @@ export default function ActivitiesPage() {
             key={key}
             onClick={() => setView(key as typeof view)}
             className={cn(
-              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer",
+              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 transition-colors cursor-pointer",
               view === key
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -250,7 +250,7 @@ export default function ActivitiesPage() {
       />
 
       {/* Filter bar */}
-      <div className="bg-muted/40 border rounded-lg p-4 space-y-4">
+      <div className="bg-muted/40 border rounded-md p-3 space-y-3">
         {/* Top row: search + actions */}
         <div className="flex gap-2 items-center">
           <div className="relative flex-1">
@@ -281,7 +281,7 @@ export default function ActivitiesPage() {
                   key={value}
                   onClick={() => setFilterType(value)}
                   className={cn(
-                    "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                    "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                     filterType === value
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-background border-border text-muted-foreground hover:bg-muted"
@@ -302,7 +302,7 @@ export default function ActivitiesPage() {
                   key={value}
                   onClick={() => setFilterStatus(value)}
                   className={cn(
-                    "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                    "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                     filterStatus === value
                       ? value === "overdue" ? "bg-red-500 text-white border-red-500"
                         : value === "completed" ? "bg-green-600 text-white border-green-600"
@@ -335,7 +335,7 @@ export default function ActivitiesPage() {
                     key={label}
                     onClick={() => applyPreset(days)}
                     className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+                      "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
                       active
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border text-muted-foreground hover:bg-muted"

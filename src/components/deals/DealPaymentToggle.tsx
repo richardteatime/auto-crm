@@ -40,21 +40,21 @@ export function DealPaymentToggle({ dealId, isPaid: initial }: DealPaymentToggle
     <div className="space-y-3">
       <div
         className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg border",
+          "flex items-center gap-2 px-3 py-2 rounded-md border",
           isPaid
-            ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800"
-            : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
+            ? "bg-success/10 border-success/20"
+            : "bg-warning/10 border-warning/20"
         )}
       >
         {isPaid ? (
-          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+          <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
         ) : (
-          <Circle className="h-4 w-4 text-amber-500 shrink-0" />
+          <Circle className="h-4 w-4 text-warning shrink-0" />
         )}
         <span
           className={cn(
             "text-sm font-medium",
-            isPaid ? "text-green-700 dark:text-green-400" : "text-amber-700 dark:text-amber-400"
+            isPaid ? "text-success" : "text-warning"
           )}
         >
           {isPaid ? "Pagato" : "Non pagato"}

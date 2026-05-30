@@ -146,6 +146,48 @@ function extractExpectedClose(text: string): Date | null {
   return null;
 }
 
+function extractNameFromText(text: string): string | null {
+  const nameFirstMatch = text.match(/(?:^|\s)(\p{Lu}[^\s,]*(?:\s+\p{Lu}[^\s,]*)*)\s+(?:[Nn]on\s+)?[èÈeE]/u);
+  if (nameFirstMatch) {
+    const candidate = nameFirstMatch[1].trim();
+    if (candidate.toLowerCase() !== "non") return candidate;
+  }
+
+  const match = text.match(/contatto\s+([^,]+?)(?:\s+(?:temperatura|temp|caldo|freddo|tibio|hot|cold|warm)|$)/i);
+  if (match) return match[1].trim();
+
+  const match2 = text.match(/aggiungi\s+([^,]+?)(?:\s+(?:temperatura|temp|caldo|freddo|tibio|hot|cold|warm)|$)/i);
+  if (match2) return match2[1].trim();
+
+  return null;
+}
+
+function extractTemperatureFromText(text: string): string | null {
+  const t = text.toLowerCase();
+
+  const negMatch = t.match(/(?:non|neanche|neppure)\s+(?:è\s+|e\s+|sono\s+|siamo\s+)?(?:un\s+|una\s+)?(?:contatto\s+)?(fredd[oa]|tiepid[oa]|tibio|caldo|cold|warm|hot)/);
+  if (negMatch) {
+    const matched = negMatch[1];
+    if (/fredd|cold/.test(matched)) return "warm";
+    if (/tib|warm|tiepid/.test(matched)) return "hot";
+    if (/cald|hot/.test(matched)) return "cold";
+  }
+
+  if (/caldo|hot/i.test(t)) return "hot";
+  if (/tibio|warm|tiepid/i.test(t)) return "warm";
+  if (/freddo|cold/i.test(t)) return "cold";
+  return null;
+}
+
+function parseTemperature(t: string | null): string | undefined {
+  if (!t) return undefined;
+  const lower = t.toLowerCase();
+  if (lower === "hot" || lower === "caldo") return "hot";
+  if (lower === "warm" || lower === "tibio") return "warm";
+  if (lower === "cold" || lower === "freddo") return "cold";
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Test runner
 // ---------------------------------------------------------------------------
@@ -285,6 +327,24 @@ const expectedCloseTests = [
   { name: "dd/mm/yyyy full", input: "20/12/2026", fn: extractExpectedClose, expected: "2026-12-20" },
 ];
 
+const contactNameTests: ParserTest[] = [
+  { name: "Name before negation", input: "Riccardo non è un contatto freddo", fn: extractNameFromText, expected: "Riccardo" },
+  { name: "Full name before negation", input: "Riccardo Consuegra non è tiepido", fn: extractNameFromText, expected: "Riccardo Consuegra" },
+  { name: "Name before 'è'", input: "Mario Rossi è caldo", fn: extractNameFromText, expected: "Mario Rossi" },
+  { name: "Old pattern still works", input: "Aggiungi contatto Marco Bianchi", fn: extractNameFromText, expected: "Marco Bianchi" },
+  { name: "No name", input: "Non è neanche tiepido", fn: extractNameFromText, expected: "null" },
+];
+
+const temperatureTests: ParserTest[] = [
+  { name: "Non freddo -> warm", input: "Riccardo non è un contatto freddo", fn: extractTemperatureFromText, expected: "warm" },
+  { name: "Neanche tiepido -> hot", input: "Non è neanche tiepido", fn: extractTemperatureFromText, expected: "hot" },
+  { name: "Neppure freddo -> warm", input: "Neppure freddo", fn: extractTemperatureFromText, expected: "warm" },
+  { name: "Non è caldo -> cold", input: "non è caldo", fn: extractTemperatureFromText, expected: "cold" },
+  { name: "Positive caldo -> hot", input: "Riccardo è caldo", fn: extractTemperatureFromText, expected: "hot" },
+  { name: "Positive tiepido -> warm", input: "è tiepido", fn: extractTemperatureFromText, expected: "warm" },
+  { name: "No temperature", input: "Ciao come stai", fn: extractTemperatureFromText, expected: "null" },
+];
+
 const parseItalianDateTests = [
   { name: "dd/mm", input: "20/06", fn: parseItalianDate, expected: "2026-06-20" },
   { name: "dd/mm/yyyy", input: "15/03/2027", fn: parseItalianDate, expected: "2027-03-15" },
@@ -323,6 +383,14 @@ function main() {
   const pid = runDateTests("parseItalianDate", parseItalianDateTests);
   totalPassed += pid.passed;
   totalFailed += pid.failed;
+
+  const cn2 = runTests("extractNameFromText (contact)", contactNameTests);
+  totalPassed += cn2.passed;
+  totalFailed += cn2.failed;
+
+  const temp = runTests("extractTemperatureFromText", temperatureTests);
+  totalPassed += temp.passed;
+  totalFailed += temp.failed;
 
   console.log(`\n\n========================================`);
   console.log(`TOTAL: ${totalPassed}/${totalPassed + totalFailed} passed`);

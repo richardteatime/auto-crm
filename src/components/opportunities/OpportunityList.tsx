@@ -38,8 +38,8 @@ interface OppRow {
 }
 
 const STATUS_CONFIG = {
-  aperta:      { label: "Aperta",               variant: "secondary"   as const, className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300" },
-  trasformata: { label: "Trasformata",          variant: "outline"     as const, className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300" },
+  aperta:      { label: "Aperta",               variant: "secondary"   as const, className: "bg-primary/10 text-primary border-primary/20" },
+  trasformata: { label: "Trasformata",          variant: "outline"     as const, className: "bg-success/10 text-success border-success/20" },
 };
 
 function parseAttachments(json: string | null): { name: string; url: string }[] {
@@ -126,7 +126,7 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Opportunità ({list.length})
           </CardTitle>
@@ -231,12 +231,12 @@ function OppCard({
   const isOpen = opp.status === "aperta";
 
   return (
-    <div className="rounded-lg border p-3 space-y-2 hover:bg-muted/30 transition-colors">
+    <div className="rounded-md border p-2.5 space-y-2 hover:bg-muted/30 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm">{opp.title}</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${cfg.className}`}>
+            <span className={`text-[10px] px-1.5 py-0 rounded-md border font-medium ${cfg.className}`}>
               {cfg.label}
             </span>
           </div>
@@ -273,7 +273,7 @@ function OppCard({
             <Button
               variant="ghost"
               size="sm"
-              className="cursor-pointer h-7 text-xs gap-1 text-green-700"
+              className="cursor-pointer h-7 text-xs gap-1 text-success"
               onClick={() => router.push(`/deals/${opp.dealId}`)}
             >
               <ArrowRight className="h-3 w-3" />

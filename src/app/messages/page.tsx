@@ -152,8 +152,8 @@ export default function MessagesPage() {
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Chat Team</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-lg font-semibold tracking-tight">Chat Team</h1>
+          <p className="text-xs text-muted-foreground">
             Comunica con i tuoi colleghi in tempo reale
           </p>
         </div>
@@ -168,7 +168,7 @@ export default function MessagesPage() {
           {loading ? (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-12 bg-muted rounded-lg animate-pulse" />
+                <div key={i} className="h-12 bg-muted rounded-md animate-pulse" />
               ))}
             </div>
           ) : messages.length === 0 ? (

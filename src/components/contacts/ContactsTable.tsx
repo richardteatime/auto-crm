@@ -118,13 +118,13 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
       </div>
 
       {/* Temperature quick chips */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {TEMP_OPTIONS.map(({ value, label }) => (
           <button
             key={value}
             onClick={() => setFilterTemp(value as Temperature | "")}
             className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
+              "px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer",
               filterTemp === value
                 ? "bg-primary text-primary-foreground border-primary"
                 : "border-border text-muted-foreground hover:bg-muted"
@@ -142,8 +142,8 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
 
       {/* Advanced filters panel */}
       {showAdvanced && (
-        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-md border bg-muted/30 p-2.5 space-y-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fonte lead</p>
               <div className="flex flex-wrap gap-1">
@@ -179,7 +179,7 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -206,18 +206,18 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
                 >
                   <TableCell>
                     <div>
-                      <p className="font-medium">{contact.name}</p>
+                      <p className="text-sm font-medium">{contact.name}</p>
                       <p className="text-xs text-muted-foreground">{contact.email || "Senza email"}</p>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">{contact.company || "-"}</TableCell>
-                  <TableCell className="hidden md:table-cell text-sm">
+                  <TableCell className="hidden sm:table-cell text-sm">{contact.company || "-"}</TableCell>
+                  <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                     {SOURCE_LABELS[contact.source as LeadSource] || contact.source}
                   </TableCell>
                   <TableCell>
                     <StatusBadge temperature={contact.temperature as Temperature} size="sm" />
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                  <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                     {formatDate(contact.createdAt)}
                   </TableCell>
                 </TableRow>

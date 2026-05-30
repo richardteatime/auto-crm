@@ -9,7 +9,7 @@
     "lint": "eslint",
     "setup": "npx tsx scripts/setup-appwrite.ts",
     "seed": "npx tsx scripts/seed.ts",
-    "mcp": "npx tsx mcp/crm-server.ts"
+    "mcp": "npx tsx mcp-server/crm-server.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
