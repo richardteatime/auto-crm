@@ -10,8 +10,12 @@
 //   - Hermes installato e configurato con MCP auto-crm
 // ---------------------------------------------------------------------------
 
+import { config as dotenvConfig } from "dotenv";
+dotenvConfig({ path: ".env.local" });
+
 import { createServer } from "http";
 import type { Server } from "http";
+import type { NextRequest } from "next/server";
 
 // Env setup — PRIMA di importare il progetto
 process.env.CHATWOOT_URL = "http://localhost:9999";
@@ -66,7 +70,7 @@ function startMockChatwoot(): Promise<Server> {
 }
 
 async function sendWebhook(
-  POST: (req: any) => Promise<any>,
+  POST: (req: NextRequest) => Promise<Response>,
   content: string,
   conversationId: number,
 ) {
@@ -84,11 +88,14 @@ async function sendWebhook(
 
   const request = new Request("http://localhost:3000/api/chatwoot/webhook", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-webhook-secret": process.env.CHATWOOT_WEBHOOK_SECRET || "",
+    },
     body: JSON.stringify(payload),
   });
 
-  return POST(request as any);
+  return POST(request as NextRequest);
 }
 
 async function main() {

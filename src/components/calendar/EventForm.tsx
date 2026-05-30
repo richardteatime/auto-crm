@@ -132,45 +132,51 @@ export function EventForm({
   const [isPrivate, setIsPrivate] = useState(false);
 
   useEffect(() => {
-    if (event) {
-      setTitle(event.title);
-      setDescription(event.description ?? "");
-      setStartAt(allDay ? formatDateLocal(event.startAt) : formatDatetimeLocal(event.startAt));
-      setEndAt(allDay ? formatDateLocal(event.endAt) : formatDatetimeLocal(event.endAt));
-      setAllDay(event.allDay);
-      setType(event.type);
-      setAssignedTo(event.assignedTo);
-      setContactId(event.contactId ?? "");
-      setLocation(event.location ?? "");
-      setColor(event.color ?? "");
-      setIsPrivate(event.isPrivate);
-    } else if (initialStart) {
-      const isAllDay = initialAllDay ?? false;
-      setTitle("");
-      setDescription("");
-      setStartAt(isAllDay ? formatDateLocal(initialStart) : formatDatetimeLocal(initialStart));
-      setEndAt(initialEnd ? (isAllDay ? formatDateLocal(initialEnd) : formatDatetimeLocal(initialEnd)) : startAt);
-      setAllDay(isAllDay);
-      setType("activity");
-      setAssignedTo([currentUserId]);
-      setContactId("");
-      setLocation("");
-      setColor("");
-      setIsPrivate(false);
-    }
+    queueMicrotask(() => {
+      if (event) {
+        const isAllDay = event.allDay;
+        setTitle(event.title);
+        setDescription(event.description ?? "");
+        setStartAt(isAllDay ? formatDateLocal(event.startAt) : formatDatetimeLocal(event.startAt));
+        setEndAt(isAllDay ? formatDateLocal(event.endAt) : formatDatetimeLocal(event.endAt));
+        setAllDay(isAllDay);
+        setType(event.type);
+        setAssignedTo(event.assignedTo);
+        setContactId(event.contactId ?? "");
+        setLocation(event.location ?? "");
+        setColor(event.color ?? "");
+        setIsPrivate(event.isPrivate);
+      } else if (initialStart) {
+        const isAllDay = initialAllDay ?? false;
+        const nextStart = isAllDay
+          ? formatDateLocal(initialStart)
+          : formatDatetimeLocal(initialStart);
+        setTitle("");
+        setDescription("");
+        setStartAt(nextStart);
+        setEndAt(initialEnd ? (isAllDay ? formatDateLocal(initialEnd) : formatDatetimeLocal(initialEnd)) : nextStart);
+        setAllDay(isAllDay);
+        setType("activity");
+        setAssignedTo([currentUserId]);
+        setContactId("");
+        setLocation("");
+        setColor("");
+        setIsPrivate(false);
+      }
+    });
   }, [event, initialStart, initialEnd, initialAllDay, currentUserId]);
 
-  // When allDay changes, reformat existing values
-  useEffect(() => {
+  const handleAllDayChange = (nextAllDay: boolean) => {
+    setAllDay(nextAllDay);
     if (!startAt || !endAt) return;
-    if (allDay) {
+    if (nextAllDay) {
       setStartAt((s) => s.slice(0, 10));
       setEndAt((s) => s.slice(0, 10));
     } else {
       if (startAt.length === 10) setStartAt((s) => `${s}T09:00`);
       if (endAt.length === 10) setEndAt((s) => `${s}T10:00`);
     }
-  }, [allDay]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,7 +291,7 @@ export function EventForm({
                   <Checkbox
                     id="allDay"
                     checked={allDay}
-                    onCheckedChange={(v) => setAllDay(!!v)}
+                    onCheckedChange={(v) => handleAllDayChange(!!v)}
                   />
                   <Label htmlFor="allDay" className="cursor-pointer text-sm">
                     Tutto il giorno

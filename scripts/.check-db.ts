@@ -13,12 +13,18 @@ async function main() {
   try {
     await db.get(process.env.APPWRITE_DATABASE_ID!);
     console.log("Database exists");
-  } catch (e: any) {
-    if (e.message?.includes("not found") || e.code === 404 || e.type === "database_not_found") {
+  } catch (error: unknown) {
+    const details =
+      typeof error === "object" && error !== null
+        ? (error as { code?: unknown; message?: unknown; type?: unknown })
+        : {};
+    const message =
+      typeof details.message === "string" ? details.message : String(error);
+    if (message.includes("not found") || details.code === 404 || details.type === "database_not_found") {
       await db.create(process.env.APPWRITE_DATABASE_ID!, process.env.APPWRITE_DATABASE_ID!);
       console.log("Database created");
     } else {
-      console.error("Error:", e.message || e);
+      console.error("Error:", message);
       process.exit(1);
     }
   }

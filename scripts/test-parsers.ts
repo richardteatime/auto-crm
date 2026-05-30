@@ -3,23 +3,11 @@
 // No API key or DB needed. Tests the regex extraction logic inline.
 // ---------------------------------------------------------------------------
 
-function extractAfterKeyword(text: string, keywords: string[]): string | null {
-  const lower = text.toLowerCase();
-  for (const kw of keywords) {
-    const idx = lower.indexOf(kw);
-    if (idx !== -1) {
-      const after = text.slice(idx + kw.length).trim();
-      return after.replace(/^[:\-\s]+/, "").trim() || null;
-    }
-  }
-  return null;
-}
-
 function extractAmount(text: string): number | null {
   const match = text.match(/(\d[\d.\s,]*)(?:\s*(?:k|eur[o?]|€|\$))?/i);
   if (!match) return null;
 
-  let raw = match[1]
+  const raw = match[1]
     .replace(/\s/g, "")
     .replace(/\./g, "")
     .replace(/,/g, "");
@@ -177,15 +165,6 @@ function extractTemperatureFromText(text: string): string | null {
   if (/tibio|warm|tiepid/i.test(t)) return "warm";
   if (/freddo|cold/i.test(t)) return "cold";
   return null;
-}
-
-function parseTemperature(t: string | null): string | undefined {
-  if (!t) return undefined;
-  const lower = t.toLowerCase();
-  if (lower === "hot" || lower === "caldo") return "hot";
-  if (lower === "warm" || lower === "tibio") return "warm";
-  if (lower === "cold" || lower === "freddo") return "cold";
-  return undefined;
 }
 
 // ---------------------------------------------------------------------------

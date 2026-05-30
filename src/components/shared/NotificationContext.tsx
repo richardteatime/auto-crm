@@ -63,12 +63,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [fetchNotifications]);
 
   useEffect(() => {
-    refresh();
+    queueMicrotask(() => {
+      void fetchNotifications();
+    });
     timerRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [fetchNotifications, refresh]);
+  }, [fetchNotifications]);
 
   const markRead = useCallback(async (id: string) => {
     setNotifications((prev) =>

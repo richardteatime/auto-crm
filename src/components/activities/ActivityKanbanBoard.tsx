@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -11,7 +11,6 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
@@ -23,9 +22,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  Phone, Mail, Users, FileText, Clock, CheckCircle2, GripVertical,
+  Phone, Mail, Users, FileText, Clock, GripVertical,
 } from "lucide-react";
-import { ACTIVITY_TYPE_CONFIG, ACTIVITY_STATUS_STYLE } from "@/lib/constants";
+import { ACTIVITY_TYPE_CONFIG } from "@/lib/constants";
 import type { ActivityType } from "@/types";
 import { formatDate } from "@/lib/constants";
 import { toMs } from "@/lib/utils";
@@ -149,23 +148,19 @@ export function ActivityKanbanBoard({ activities, users, onUpdate, onEdit }: Kan
     })
   );
 
-  const [items, setItems] = useState<ActivityItem[]>(activities);
-
-  useMemo(() => setItems(activities), [activities]);
-
   const columns = useMemo(() => {
     const groups: Record<string, ActivityItem[]> = {
       todo: [],
       "in-progress": [],
       done: [],
     };
-    for (const a of items) {
+    for (const a of activities) {
       const col = getColumnId(a);
       groups[col] = groups[col] || [];
       groups[col].push(a);
     }
     return groups;
-  }, [items]);
+  }, [activities]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -173,11 +168,11 @@ export function ActivityKanbanBoard({ activities, users, onUpdate, onEdit }: Kan
 
     const activeId = String(active.id);
     const overId = String(over.id);
-    const activeItem = items.find((i) => i.id === activeId);
+    const activeItem = activities.find((i) => i.id === activeId);
     if (!activeItem) return;
 
     // Determine target column from over item
-    const overItem = items.find((i) => i.id === overId);
+    const overItem = activities.find((i) => i.id === overId);
     let targetCol = overItem ? getColumnId(overItem) : null;
 
     if (!targetCol) {
@@ -192,17 +187,7 @@ export function ActivityKanbanBoard({ activities, users, onUpdate, onEdit }: Kan
 
     const currentCol = getColumnId(activeItem);
     if (currentCol === targetCol) {
-      // Reorder within same column
-      const colItems = columns[currentCol];
-      const oldIndex = colItems.findIndex((i) => i.id === activeId);
-      const newIndex = colItems.findIndex((i) => i.id === overId);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newColItems = arrayMove(colItems, oldIndex, newIndex);
-        const newItems = items.map((i) =>
-          newColItems.find((c) => c.id === i.id) || i
-        );
-        setItems(newItems);
-      }
+      // Ordering is not persisted by the backend, so same-column drags are no-ops.
       return;
     }
 
@@ -217,9 +202,6 @@ export function ActivityKanbanBoard({ activities, users, onUpdate, onEdit }: Kan
     }
 
     onUpdate(activeId, updates);
-    setItems((prev) =>
-      prev.map((i) => (i.id === activeId ? { ...i, ...updates } : i))
-    );
   };
 
   const colConfig = [

@@ -2,7 +2,6 @@ import { createRun, updateRun } from "./runs";
 import { logWorkflowEvent } from "./logger";
 import type { Intent } from "./types";
 import { sendChatwootMessage } from "@/lib/chatwoot/client";
-import { checkMessagePermission } from "./permissions";
 import { chooseTool, chooseNextTool, executeTool } from "./tools";
 
 interface CommandInput {
@@ -72,7 +71,7 @@ export async function handleCommand(input: CommandInput): Promise<CommandResult>
       if (step === 0) {
         toolCall = await chooseTool(input.messageText, input.conversationId);
       } else {
-        toolCall = await chooseNextTool(input.messageText, executedSteps, input.conversationId);
+        toolCall = await chooseNextTool(input.messageText, executedSteps);
       }
     } catch {
       toolCall = { tool: "reply", args: { message: "Non ho capito il comando." } };

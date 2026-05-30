@@ -18,16 +18,26 @@ import {
   Bell,
   Bot,
   CheckSquare,
+  Inbox,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
 
-const dashboardItem = { href: "/", label: "Dashboard", icon: LayoutDashboard };
+type BadgeKey = "activities" | "timeline" | "calendar" | "chat" | "total";
 
-const navGroups = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: BadgeKey;
+}
+
+const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "Vendite",
     items: [
+      { href: "/leads", label: "Lead", icon: Inbox },
       { href: "/pipeline", label: "Pipeline", icon: Kanban },
       { href: "/contacts", label: "Contatti", icon: Users },
       { href: "/deals", label: "Trattative", icon: Briefcase },
@@ -98,7 +108,7 @@ export function MobileNav() {
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/" && pathname.startsWith(item.href));
-                const badgeCount = item.badge ? (counts as any)[item.badge] : 0;
+                const badgeCount = item.badge ? counts[item.badge] : 0;
                 return (
                   <Link
                     key={item.href}

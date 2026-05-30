@@ -38,11 +38,21 @@ export function RevenueDealsDialog({ open, onClose, start, end, totalRevenue }: 
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setLoading(true);
+    });
     fetch(`/api/finance/deals?start=${start}&end=${end}`)
       .then((r) => r.json())
-      .then((data) => setDeals(data.deals ?? []))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setDeals(data.deals ?? []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, start, end]);
 
   const totalOneTime = deals.filter((d) => d.billingType === "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);

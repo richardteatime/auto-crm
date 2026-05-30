@@ -7,7 +7,7 @@ function fromDoc(doc: Models.Document): WorkflowEvent {
   const { $id, $createdAt, ...rest } = doc;
   return {
     id: $id,
-    runId: rest.runId as string,
+    runId: (rest.runId as string | null) ?? null,
     eventType: rest.eventType as WorkflowEvent["eventType"],
     message: rest.message as string,
     metadata: rest.metadata ? parseMetadata(rest.metadata as string) : null,

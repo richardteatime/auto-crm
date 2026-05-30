@@ -40,7 +40,6 @@ export default function MrrPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalArr = totalMrr * 12;
   const totalContractValue = deals.reduce((s, d) => s + d.totalContractValue, 0);
 
   return (

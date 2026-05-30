@@ -14,10 +14,8 @@ import {
   subMonths,
 } from "date-fns";
 import { it } from "date-fns/locale";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { cn, toMs } from "@/lib/utils";
 import { ACTIVITY_TYPE_CONFIG } from "@/lib/constants";
 import type { ActivityType } from "@/types";

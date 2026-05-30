@@ -8,7 +8,7 @@ import type { PipelineStage, PipelineColumn, DealWithContact } from "@/types";
 // ---------------------------------------------------------------------------
 
 function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
+  const { $id, ...rest } = doc;
   return {
     id: $id,
     ...(rest as Record<string, unknown>),

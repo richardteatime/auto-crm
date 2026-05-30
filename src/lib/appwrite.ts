@@ -29,6 +29,13 @@ export const COLLECTIONS = {
   deploymentResults: "deployment_results",
   automationPolicies: "automation_policies",
   tasks: "tasks",
+  // Lead Pipeline Automation MVP
+  leads: "leads",
+  pipelineMovements: "pipeline_movements",
+  automationRules: "automation_rules",
+  automationRuns: "automation_runs",
+  callTasks: "call_tasks",
+  leadQuotes: "lead_quotes",
 } as const;
 
 // ---------------------------------------------------------------------------

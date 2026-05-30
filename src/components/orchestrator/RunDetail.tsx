@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RunStatusBadge } from "./RunStatusBadge";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { formatDate } from "@/lib/constants";
 import type { OrchestratorRun, WorkflowEvent, AgentTask, ProjectArtifact } from "@/lib/orchestrator/types";
 import { ArrowLeft, Bot, GitBranch, Package, Activity } from "lucide-react";

@@ -25,12 +25,12 @@ function serializeAssignedTo(value: string[] | undefined | null): string | null 
 }
 
 function fromDoc<T extends Project | ProjectLog>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
+  const { $id, $createdAt, $updatedAt, ...rest } = doc;
   const base = {
+    ...rest,
     id: $id,
     createdAt: new Date($createdAt),
     updatedAt: new Date($updatedAt),
-    ...rest,
   } as Record<string, unknown>;
   if ("assignedTo" in base) {
     base.assignedTo = parseAssignedTo(base.assignedTo);

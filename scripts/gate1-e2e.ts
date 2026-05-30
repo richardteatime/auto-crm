@@ -12,10 +12,13 @@
 
 import { createServer } from "http";
 import type { Server, IncomingMessage, ServerResponse } from "http";
+import { config } from "dotenv";
 
 // ---------------------------------------------------------------------------
 // 0. Env setup — PRIMA di qualsiasi import del progetto
 // ---------------------------------------------------------------------------
+config({ path: ".env.local" });
+
 process.env.ENABLE_INTERNAL_COMMANDS = "true";
 process.env.ENABLE_GITAGENT_DISPATCH = "true";
 process.env.ENABLE_AUTODEPLOY_PREVIEW = "true";
@@ -167,7 +170,6 @@ async function main() {
   const {
     createProjectFromMessage,
     generateAppForClient,
-    startStaticSiteWorkflow,
   } = await import("@/lib/orchestrator/command-tools");
   const {
     getOrchestratorRun,
@@ -181,16 +183,6 @@ async function main() {
   const { listContacts, deleteContact } = await import("@/lib/db/contacts");
   const { sendChatwootMessage } = await import("@/lib/chatwoot/client");
   const { logWorkflowEvent } = await import("@/lib/orchestrator/logger");
-
-  // Pre-check: some collections may not exist yet in the target Appwrite instance
-  let revenuesAvailable = false;
-  try {
-    const { listRevenues } = await import("@/lib/db/revenues");
-    await listRevenues();
-    revenuesAvailable = true;
-  } catch {
-    revenuesAvailable = false;
-  }
 
   // Track created entities for cleanup
   const created = {
@@ -248,10 +240,6 @@ async function main() {
 
     // ── T3: Admin revenue query ────────────────────────────────────────────
     await test("T3: Admin can query revenue", async () => {
-      if (!revenuesAvailable) {
-        console.log("⚠️  T3 skipped: revenues collection not available in this Appwrite instance");
-        return;
-      }
       const result = await executeTool(
         { tool: "getTodayRevenue", args: {} },
         "Qual è il fatturato di oggi?",

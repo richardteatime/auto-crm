@@ -17,14 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -35,7 +27,7 @@ import { RevenueForm } from "@/components/finance/RevenueForm";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, ArrowRight, Banknote } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, Banknote } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import type { FinanceSummary, Expense, Revenue } from "@/types";
@@ -439,7 +431,7 @@ export function FinanceDashboard() {
 
         {revenues.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
-            Nessun incasso registrato. Clicca "Aggiungi incasso" per registrare il primo.
+            Nessun incasso registrato. Clicca &quot;Aggiungi incasso&quot; per registrare il primo.
           </div>
         ) : filteredRevenues.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
@@ -668,7 +660,7 @@ export function FinanceDashboard() {
       <Dialog open={!!deletingRevenue} onOpenChange={(v) => !v && setDeletingRevenue(null)}>
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Eliminare l'incasso?</DialogTitle>
+            <DialogTitle>Eliminare l&apos;incasso?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Stai per eliminare <strong>{deletingRevenue?.description}</strong> ({deletingRevenue ? formatCurrency(deletingRevenue.amount) : ""}).

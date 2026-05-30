@@ -10,6 +10,29 @@ const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
 const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
 const DB_ID = process.env.APPWRITE_DATABASE_ID || "crm";
 
+function isTransientNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const cause = error.cause instanceof Error ? error.cause.message : "";
+  return /fetch failed|ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|socket hang up|UND_ERR/i.test(
+    `${error.message} ${cause}`,
+  );
+}
+
+async function withRetry<T>(label: string, operation: () => Promise<T>): Promise<T> {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      if (!isTransientNetworkError(error) || attempt === maxAttempts) throw error;
+      const delayMs = attempt * 750;
+      console.warn(`    Transient network error during ${label}; retry ${attempt}/${maxAttempts - 1}`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw new Error(`Unreachable retry state: ${label}`);
+}
+
 async function main() {
   const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
@@ -25,7 +48,9 @@ async function main() {
   // Helper to create collection
   async function ensureCollection(collectionId: string, name: string) {
     try {
-      await db.createCollection(DB_ID, collectionId, name);
+      await withRetry(`create collection "${collectionId}"`, () =>
+        db.createCollection(DB_ID, collectionId, name),
+      );
       console.log(`  Collection "${collectionId}" created`);
     } catch (e: unknown) {
       if (e instanceof Error && (e.message.includes("already exists") || e.message.includes("Duplicate"))) {
@@ -39,12 +64,12 @@ async function main() {
   // Helper to create attribute (ignore if exists)
   async function addAttr(collectionId: string, factory: () => Promise<unknown>) {
     try {
-      await factory();
+      await withRetry(`create attribute in "${collectionId}"`, factory);
     } catch (e: unknown) {
       if (e instanceof Error && (e.message.includes("already exists") || e.message.includes("Duplicate"))) {
         // Attribute exists, skip
       } else {
-        console.error(`    Error in ${collectionId}:`, e instanceof Error ? e.message : e);
+        throw e;
       }
     }
   }
@@ -52,15 +77,33 @@ async function main() {
   // Helper to create index (ignore if exists)
   async function addIndex(collectionId: string, key: string, type: IndexType, attrs: string[]) {
     try {
-      await db.createIndex(DB_ID, collectionId, key, type, attrs);
+      await withRetry(`create index "${collectionId}.${key}"`, () =>
+        db.createIndex(DB_ID, collectionId, key, type, attrs),
+      );
       console.log(`    Index "${key}" created`);
     } catch (e: unknown) {
       if (e instanceof Error && (e.message.includes("already exists") || e.message.includes("Duplicate"))) {
         // Index exists, skip
       } else {
-        console.error(`    Index error in ${collectionId}:`, e instanceof Error ? e.message : e);
+        throw e;
       }
     }
+  }
+
+  async function ensureStringAttributeOptional(collectionId: string, key: string, size: number) {
+    const attribute = await withRetry(`read attribute "${collectionId}.${key}"`, () =>
+      db.getAttribute(DB_ID, collectionId, key),
+    ) as {
+      required?: boolean;
+    };
+    if (attribute.required === false) return;
+
+    await withRetry(`update attribute "${collectionId}.${key}"`, () =>
+      // The generated SDK runtime requires the nullable default parameter even
+      // though its TypeScript declaration marks it optional.
+      db.updateStringAttribute(DB_ID, collectionId, key, false, null as unknown as string, size),
+    );
+    console.log(`    Attribute "${collectionId}.${key}" migrated to optional`);
   }
 
   // Shorthand helpers matching old column API
@@ -191,6 +234,28 @@ async function main() {
   await addAttr("expenses", dt("expenses", "updatedAt", true));
   await addIndex("expenses", "idx_date", "key", ["date"]);
 
+  // === REVENUES ===
+  await ensureCollection("revenues", "Revenues");
+  await addAttr("revenues", text("revenues", "description", true));
+  await addAttr("revenues", int("revenues", "amount", true));
+  await addAttr("revenues", dt("revenues", "date", true));
+  await addAttr("revenues", enm("revenues", "billingType", ["una_tantum", "mensile", "annuale"], true, "una_tantum"));
+  await addAttr("revenues", int("revenues", "recurringMonths", false));
+  await addAttr("revenues", dt("revenues", "startDate", false));
+  await addAttr("revenues", text("revenues", "collectedBy", false));
+  await addAttr("revenues", bool("revenues", "isExternal", true, false));
+  await addAttr("revenues", text("revenues", "notes", false));
+  await addAttr("revenues", str("revenues", "dealId", 128, false));
+  await addAttr("revenues", str("revenues", "opportunityId", 128, false));
+  await addAttr("revenues", text("revenues", "deleteReason", false));
+  await addAttr("revenues", dt("revenues", "deletedAt", false));
+  await addAttr("revenues", dt("revenues", "createdAt", true));
+  await addAttr("revenues", dt("revenues", "updatedAt", true));
+  await addIndex("revenues", "idx_date", "key", ["date"]);
+  await addIndex("revenues", "idx_deletedAt", "key", ["deletedAt"]);
+  await addIndex("revenues", "idx_dealId", "key", ["dealId"]);
+  await addIndex("revenues", "idx_opportunityId", "key", ["opportunityId"]);
+
   // === QUOTES ===
   await ensureCollection("quotes", "Quotes");
   await addAttr("quotes", str("quotes", "dealId", 128, true));
@@ -311,7 +376,8 @@ async function main() {
 
   // === WORKFLOW EVENTS ===
   await ensureCollection("workflow_events", "Workflow Events");
-  await addAttr("workflow_events", str("workflow_events", "runId", 128, true));
+  await addAttr("workflow_events", str("workflow_events", "runId", 128, false));
+  await ensureStringAttributeOptional("workflow_events", "runId", 128);
   await addAttr("workflow_events", enm("workflow_events", "eventType", ["message_received", "permission_checked", "intent_classified", "query_executed", "command_executed", "project_created", "deal_created", "task_created", "workflow_started", "gitagent_dispatched", "gitagent_callback_received", "deploy_callback_received", "final_url_saved", "reply_sent", "unauthorized", "error"], true));
   await addAttr("workflow_events", text("workflow_events", "message", true));
   await addAttr("workflow_events", text("workflow_events", "metadata", false));
@@ -409,33 +475,205 @@ async function main() {
       console.log("  Automation policies already exist, skipping seed");
     }
   } catch (e: unknown) {
-    console.error("  Policy seed error:", e instanceof Error ? e.message : e);
+    throw e;
+  }
+
+  // =========================================================================
+  // LEAD PIPELINE AUTOMATION MVP
+  // =========================================================================
+
+  // === LEADS ===
+  await ensureCollection("leads", "Leads");
+  await addAttr("leads", str("leads", "firstName", 128, false));
+  await addAttr("leads", str("leads", "lastName", 128, false));
+  await addAttr("leads", str("leads", "fullName", 255, true));
+  await addAttr("leads", email("leads", "email", false));
+  await addAttr("leads", str("leads", "phone", 50, false));
+  await addAttr("leads", str("leads", "company", 255, false));
+  await addAttr("leads", str("leads", "businessName", 255, false));
+  await addAttr("leads", str("leads", "website", 500, false));
+  await addAttr("leads", str("leads", "projectType", 128, false));
+  await addAttr("leads", enm("leads", "category", ["static_website", "webapp", "crm", "automation", "other", "unknown"], true, "unknown"));
+  await addAttr("leads", str("leads", "source", 64, true, "email"));
+  await addAttr("leads", str("leads", "formName", 128, false));
+  await addAttr("leads", text("leads", "message", false));
+  await addAttr("leads", str("leads", "rawSubject", 1000, false));
+  await addAttr("leads", text("leads", "rawBody", false, 65535));
+  await addAttr("leads", text("leads", "customFields", false));
+  await addAttr("leads", enm("leads", "status", ["new", "to_call", "working", "qualified", "lost", "won"], true, "new"));
+  await addAttr("leads", enm("leads", "pipelineStage", ["prospect", "opportunity", "contacted", "proposal"], true, "prospect"));
+  await addAttr("leads", str("leads", "assignedTo", 128, false));
+  await addAttr("leads", int("leads", "leadScore", true, 0, 0, 100));
+  await addAttr("leads", str("leads", "contactId", 128, false));
+  await addAttr("leads", dt("leads", "createdAt", true));
+  await addAttr("leads", dt("leads", "updatedAt", true));
+  await addIndex("leads", "idx_pipelineStage", "key", ["pipelineStage"]);
+  await addIndex("leads", "idx_status", "key", ["status"]);
+  await addIndex("leads", "idx_category", "key", ["category"]);
+  await addIndex("leads", "idx_email", "key", ["email"]);
+  await addIndex("leads", "idx_phone", "key", ["phone"]);
+  await addIndex("leads", "idx_createdAt", "key", ["createdAt"]);
+
+  // === PIPELINE MOVEMENTS ===
+  await ensureCollection("pipeline_movements", "Pipeline Movements");
+  await addAttr("pipeline_movements", str("pipeline_movements", "leadId", 128, true));
+  await addAttr("pipeline_movements", str("pipeline_movements", "fromStage", 64, false));
+  await addAttr("pipeline_movements", str("pipeline_movements", "toStage", 64, true));
+  await addAttr("pipeline_movements", text("pipeline_movements", "reason", false));
+  await addAttr("pipeline_movements", str("pipeline_movements", "triggeredBy", 128, true, "system"));
+  await addAttr("pipeline_movements", text("pipeline_movements", "metadata", false));
+  await addAttr("pipeline_movements", dt("pipeline_movements", "createdAt", true));
+  await addIndex("pipeline_movements", "idx_leadId", "key", ["leadId"]);
+  await addIndex("pipeline_movements", "idx_createdAt", "key", ["createdAt"]);
+
+  // === AUTOMATION RULES ===
+  await ensureCollection("automation_rules", "Automation Rules");
+  await addAttr("automation_rules", str("automation_rules", "name", 255, true));
+  await addAttr("automation_rules", bool("automation_rules", "enabled", true, true));
+  await addAttr("automation_rules", str("automation_rules", "triggerType", 64, true));
+  await addAttr("automation_rules", str("automation_rules", "pipelineStage", 64, false));
+  await addAttr("automation_rules", str("automation_rules", "leadCategory", 64, false));
+  await addAttr("automation_rules", text("automation_rules", "conditions", false));
+  await addAttr("automation_rules", text("automation_rules", "actions", false));
+  await addAttr("automation_rules", dt("automation_rules", "createdAt", true));
+  await addAttr("automation_rules", dt("automation_rules", "updatedAt", true));
+  await addIndex("automation_rules", "idx_triggerType", "key", ["triggerType"]);
+  await addIndex("automation_rules", "idx_enabled", "key", ["enabled"]);
+
+  // === AUTOMATION RUNS ===
+  await ensureCollection("automation_runs", "Automation Runs");
+  await addAttr("automation_runs", str("automation_runs", "ruleId", 128, false));
+  await addAttr("automation_runs", str("automation_runs", "leadId", 128, true));
+  await addAttr("automation_runs", str("automation_runs", "triggerType", 64, true));
+  await addAttr("automation_runs", enm("automation_runs", "status", ["pending", "running", "completed", "failed", "partial"], true, "pending"));
+  await addAttr("automation_runs", text("automation_runs", "actionsExecuted", false));
+  await addAttr("automation_runs", text("automation_runs", "error", false));
+  await addAttr("automation_runs", dt("automation_runs", "createdAt", true));
+  await addAttr("automation_runs", dt("automation_runs", "updatedAt", true));
+  await addIndex("automation_runs", "idx_leadId", "key", ["leadId"]);
+  await addIndex("automation_runs", "idx_triggerType", "key", ["triggerType"]);
+  await addIndex("automation_runs", "idx_status", "key", ["status"]);
+  await addIndex("automation_runs", "idx_createdAt", "key", ["createdAt"]);
+
+  // === CALL TASKS ===
+  await ensureCollection("call_tasks", "Call Tasks");
+  await addAttr("call_tasks", str("call_tasks", "leadId", 128, true));
+  await addAttr("call_tasks", str("call_tasks", "assignedTo", 128, true));
+  await addAttr("call_tasks", str("call_tasks", "assigneeName", 255, false));
+  await addAttr("call_tasks", enm("call_tasks", "status", ["pending", "scheduled", "completed", "failed", "no_answer", "reschedule", "not_interested", "qualified"], true, "pending"));
+  await addAttr("call_tasks", dt("call_tasks", "scheduledAt", false));
+  await addAttr("call_tasks", dt("call_tasks", "completedAt", false));
+  await addAttr("call_tasks", enm("call_tasks", "callOutcome", ["qualified", "not_qualified", "no_answer", "call_later", "wrong_number", "interested", "not_interested", "needs_quote"], false));
+  await addAttr("call_tasks", text("call_tasks", "notes", false));
+  await addAttr("call_tasks", dt("call_tasks", "createdAt", true));
+  await addAttr("call_tasks", dt("call_tasks", "updatedAt", true));
+  await addIndex("call_tasks", "idx_leadId", "key", ["leadId"]);
+  await addIndex("call_tasks", "idx_assignedTo", "key", ["assignedTo"]);
+  await addIndex("call_tasks", "idx_status", "key", ["status"]);
+  await addIndex("call_tasks", "idx_createdAt", "key", ["createdAt"]);
+
+  // === LEAD QUOTES (draft) ===
+  await ensureCollection("lead_quotes", "Lead Quotes");
+  await addAttr("lead_quotes", str("lead_quotes", "leadId", 128, true));
+  await addAttr("lead_quotes", enm("lead_quotes", "status", ["draft", "approved", "sent", "rejected"], true, "draft"));
+  await addAttr("lead_quotes", enm("lead_quotes", "category", ["static_website", "webapp", "crm", "automation", "other", "unknown"], true, "unknown"));
+  await addAttr("lead_quotes", int("lead_quotes", "amountSuggested", true, 0));
+  await addAttr("lead_quotes", text("lead_quotes", "items", true, 100000));
+  await addAttr("lead_quotes", text("lead_quotes", "summary", false));
+  await addAttr("lead_quotes", text("lead_quotes", "generatedText", false, 65535));
+  await addAttr("lead_quotes", dt("lead_quotes", "createdAt", true));
+  await addAttr("lead_quotes", dt("lead_quotes", "updatedAt", true));
+  await addIndex("lead_quotes", "idx_leadId", "key", ["leadId"]);
+  await addIndex("lead_quotes", "idx_status", "key", ["status"]);
+  await addIndex("lead_quotes", "idx_createdAt", "key", ["createdAt"]);
+
+  // Seed default lead automation rules
+  console.log("\n--- Seeding Lead Automation Rules ---\n");
+  try {
+    const { total } = await db.listDocuments(DB_ID, "automation_rules", [Query.limit(1)]);
+    if (total === 0) {
+      const now = new Date().toISOString();
+      const defaultRules = [
+        {
+          name: "New lead automation",
+          enabled: true,
+          triggerType: "lead_created",
+          actions: JSON.stringify(["classify_lead_category", "create_or_update_contact", "set_pipeline_stage_prospect", "create_leo_call_task", "notify_internal_team"]),
+        },
+        {
+          name: "Prospect automation",
+          enabled: true,
+          triggerType: "stage_changed_to_prospect",
+          pipelineStage: "prospect",
+          actions: JSON.stringify(["create_call_task_for_leo", "send_internal_email_to_leo"]),
+        },
+        {
+          name: "Opportunity automation",
+          enabled: true,
+          triggerType: "stage_changed_to_opportunity",
+          pipelineStage: "opportunity",
+          actions: JSON.stringify(["enrich_lead_summary", "prepare_call_questions", "notify_sales"]),
+        },
+        {
+          name: "Contacted automation",
+          enabled: true,
+          triggerType: "stage_changed_to_contacted",
+          pipelineStage: "contacted",
+          actions: JSON.stringify(["save_call_outcome", "summarize_call_notes", "decide_next_stage_if_possible"]),
+        },
+        {
+          name: "Proposal automation",
+          enabled: true,
+          triggerType: "stage_changed_to_proposal",
+          pipelineStage: "proposal",
+          actions: JSON.stringify(["generate_quote_draft", "create_quote_record", "notify_founder_admin", "prepare_proposal_email_draft"]),
+        },
+        {
+          name: "Call completed automation",
+          enabled: true,
+          triggerType: "call_completed",
+          actions: JSON.stringify(["save_call_outcome", "route_lead_by_outcome"]),
+        },
+      ];
+      for (const rule of defaultRules) {
+        await db.createDocument(DB_ID, "automation_rules", ID.unique(), {
+          pipelineStage: null,
+          leadCategory: null,
+          conditions: null,
+          ...rule,
+          createdAt: now,
+          updatedAt: now,
+        });
+        console.log(`  Rule "${rule.name}" created`);
+      }
+    } else {
+      console.log("  Automation rules already exist, skipping seed");
+    }
+  } catch (e: unknown) {
+    throw e;
   }
 
   // === STORAGE BUCKET ===
   console.log("\n--- Creating Storage Bucket ---\n");
   try {
-    await storage.createBucket(
+    await withRetry('create bucket "uploads"', () => storage.createBucket(
       "uploads",
       "Uploads",
       [],
       true,   // fileSecurity
       true,   // enabled
-      undefined,
-      undefined,
-      undefined,
       20 * 1024 * 1024, // 20MB
       ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "mp4", "mov"],
       undefined,
       true,   // encryption
       true    // antivirus
-    );
+    ));
     console.log('  Bucket "uploads" created');
   } catch (e: unknown) {
     if (e instanceof Error && (e.message.includes("already exists") || e.message.includes("Duplicate"))) {
       console.log('  Bucket "uploads" already exists');
     } else {
-      console.error('  Bucket error:', e instanceof Error ? e.message : e);
+      throw e;
     }
   }
 

@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn, toMs } from "@/lib/utils";
 import { ACTIVITY_TYPE_CONFIG } from "@/lib/constants";
 import type { ActivityType } from "@/types";
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, differenceInDays } from "date-fns";
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { it } from "date-fns/locale";
 
 interface ActivityItem {
@@ -30,12 +28,12 @@ interface ActivityItem {
 
 interface TimelineProps {
   activities: ActivityItem[];
-  users: Record<string, string>;
   onEdit: (activity: ActivityItem) => void;
 }
 
-export function ActivityTimeline({ activities, users, onEdit }: TimelineProps) {
+export function ActivityTimeline({ activities, onEdit }: TimelineProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [fallbackNow] = useState(() => Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -61,10 +59,10 @@ export function ActivityTimeline({ activities, users, onEdit }: TimelineProps) {
       .filter(Boolean) as (ActivityItem & { startMs: number; endMs: number })[];
 
     const allMs = items.flatMap((i) => [i.startMs, i.endMs]);
-    const min = allMs.length ? Math.min(...allMs) : Date.now();
-    const max = allMs.length ? Math.max(...allMs) : Date.now() + 86400000;
+    const min = allMs.length ? Math.min(...allMs) : fallbackNow;
+    const max = allMs.length ? Math.max(...allMs) : fallbackNow + 86400000;
     return { bars: items, minMs: min, maxMs: max };
-  }, [activities]);
+  }, [activities, fallbackNow]);
 
   const totalMs = Math.max(maxMs - minMs, 86400000);
 

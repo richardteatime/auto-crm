@@ -90,7 +90,7 @@ export default function CalendarPage() {
           updatedAt: new Date(e.updatedAt),
         }))
       );
-    } catch (e) {
+    } catch {
       toast.error("Errore nel caricamento degli eventi");
     } finally {
       setLoading(false);

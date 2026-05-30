@@ -1,5 +1,9 @@
 import type { SenderRole } from "./types";
-import { getAdminWhatsAppNumbers, getAdminTelegramIds } from "./config";
+import {
+  getAdminWhatsAppNumbers,
+  getAdminTelegramIds,
+  ORCHESTRATOR_CONFIG,
+} from "./config";
 
 /**
  * Normalize a phone number for comparison.
@@ -47,7 +51,7 @@ export function isInternalCommandAllowed(role: SenderRole): boolean {
  * Must be both enabled AND unlocked.
  */
 export function isCustomerAutomationActive(): boolean {
-  const { enableCustomerAutomation, customerAutomationUnlocked } = require("./config").ORCHESTRATOR_CONFIG;
+  const { enableCustomerAutomation, customerAutomationUnlocked } = ORCHESTRATOR_CONFIG;
   return enableCustomerAutomation && customerAutomationUnlocked;
 }
 

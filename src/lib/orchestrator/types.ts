@@ -49,7 +49,7 @@ export interface OrchestratorRun {
 
 export interface WorkflowEvent {
   id: string;
-  runId: string;
+  runId: string | null;
   eventType: WorkflowEventType;
   message: string;
   metadata: Record<string, unknown> | null;

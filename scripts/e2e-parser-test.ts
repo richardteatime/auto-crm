@@ -7,22 +7,10 @@
 // NOTE: These parsers are inlined to keep the script standalone.
 // When you fix a parser bug, update BOTH this file AND src/lib/orchestrator/command-tools.ts
 
-function extractAfterKeyword(text: string, keywords: string[]): string | null {
-  const lower = text.toLowerCase();
-  for (const kw of keywords) {
-    const idx = lower.indexOf(kw);
-    if (idx !== -1) {
-      const after = text.slice(idx + kw.length).trim();
-      return after.replace(/^[:\-\s]+/, "").trim() || null;
-    }
-  }
-  return null;
-}
-
 function extractAmount(text: string): number | null {
   const match = text.match(/(\d[\d.\s,]*)(?:\s*(?:k|eur[o?]|€|\$))?/i);
   if (!match) return null;
-  let raw = match[1].replace(/\s/g, "").replace(/\./g, "").replace(/,/g, "");
+  const raw = match[1].replace(/\s/g, "").replace(/\./g, "").replace(/,/g, "");
   const hasK = /\d\s*k/i.test(text);
   const val = parseInt(raw, 10);
   if (Number.isNaN(val)) return null;

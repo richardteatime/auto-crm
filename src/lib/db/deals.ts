@@ -1,7 +1,7 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
 import { ID, type Models } from "node-appwrite";
 import { Query } from "@/lib/query17";
-import type { Deal, DealWithContact, PipelineStage } from "@/types";
+import type { DealWithContact } from "@/types";
 import { getContact } from "./contacts";
 import { getStage } from "./pipeline";
 
@@ -20,12 +20,12 @@ function toIsoDate(
 }
 
 function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
+  const { $id, $createdAt, $updatedAt, ...rest } = doc;
   return {
+    ...rest,
     id: $id,
     createdAt: new Date($createdAt),
     updatedAt: new Date($updatedAt),
-    ...rest,
   } as T;
 }
 

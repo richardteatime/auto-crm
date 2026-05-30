@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,18 +101,18 @@ export function QuoteList({ dealId }: QuoteListProps) {
   const [editingQuote, setEditingQuote] = useState<QuoteInitialData | undefined>(undefined);
   const [deletingQuote, setDeletingQuote] = useState<QuoteRow | null>(null);
 
-  const load = () => {
+  const load = useCallback(() => {
     fetch(`/api/deals/${dealId}/quotes`)
       .then((r) => r.json())
       .then((data) => {
         setQuoteList(data);
         setLoading(false);
       });
-  };
+  }, [dealId]);
 
   useEffect(() => {
     load();
-  }, [dealId]);
+  }, [load]);
 
   const openCreate = () => {
     setEditingQuote(undefined);

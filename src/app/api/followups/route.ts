@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
   // Get all incomplete activities with scheduled dates
   const pendingFollowups = await listActivities({ isCompleted: false });
 
-  const now = Date.now();
   const startOfDay = new Date().setHours(0, 0, 0, 0);
   const endOfDay = startOfDay + 86400000;
 

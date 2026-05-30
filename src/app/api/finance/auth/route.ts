@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ success: true });
     setFinanceCookie(response, userId);
     return response;
-  } catch (e) {
+  } catch {
     return NextResponse.json(
       { error: "Credenziali non valide" },
       { status: 401 }
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ authenticated: true });
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   const response = NextResponse.json({ success: true });
   clearFinanceCookie(response);
   return response;

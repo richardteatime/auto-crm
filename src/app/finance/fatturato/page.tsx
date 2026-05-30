@@ -31,7 +31,6 @@ function FatturatoContent() {
 
   useEffect(() => {
     if (!start || !end) return;
-    setLoading(true);
     fetch(`/api/finance/deals?start=${start}&end=${end}`)
       .then((r) => r.json())
       .then((data) => setDeals(data.deals ?? []))

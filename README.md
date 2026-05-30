@@ -284,6 +284,93 @@ CUSTOMER_AUTOMATION_UNLOCKED=false
 
 Lo Step 2 si attiva solo quando il flusso end-to-end e validato (founder puo generare app da WhatsApp e ricevere il link deployato). **Non cambiare questi flag finche il Gate non e superato.**
 
+## Lead Pipeline (MVP)
+
+Sistema automatico, indipendente dall'orchestrator, che porta un lead dal form
+fino alla bozza di preventivo:
+
+```text
+Form email -> CRM -> Pipeline -> Automazioni -> Chiamata Leo -> Preventivo (bozza)
+```
+
+### Fasi pipeline
+
+`prospect` -> `opportunity` -> `contacted` -> `proposal`
+
+Ogni cambio di fase e tracciato in `pipeline_movements` e fa partire le
+automazioni associate (`automation_runs`). Nessun movimento avviene senza log.
+
+### Endpoint
+
+| Endpoint | Metodo | Auth | Cosa fa |
+|----------|--------|------|---------|
+| `/api/leads/email-inbound` | POST | webhook secret opzionale + rate limit IP | Riceve l'email del form, fa parsing (chiave-valore/HTML/AI), scoring, deduplica, crea il lead in `prospect` e fa partire `lead_created` |
+| `/api/leads/[id]/move-stage` | POST | sessione | Sposta il lead di fase (idempotente) e fa partire `stage_changed_to_<fase>` |
+| `/api/leads/[id]/call-outcome` | POST | sessione | Leo registra l'esito chiamata; instrada il lead in base all'esito e fa partire `call_completed` |
+| `/api/leads/[id]/generate-quote` | POST | sessione | Genera/persiste la bozza preventivo (idempotente; `{regenerate:true}` per rigenerare) |
+
+### Scoring lead
+
++20 per ciascuno di: email, telefono, richiesta chiara, categoria nota, budget
+(max 100). Banda: `>=70` hot, `40-69` medium, `<40` weak.
+
+### UI
+
+`/leads` mostra la board a 4 colonne (una per fase) con ricerca. Il dettaglio
+`/leads/[id]` mostra dati email, email raw, campi personalizzati, storico
+automazioni, call task Leo e bozza preventivo, e permette di cambiare fase,
+registrare l'esito chiamata e generare la bozza.
+
+### Regola di sicurezza — preventivo sempre bozza
+
+Il preventivo viene **sempre** generato come bozza con la nota *"NON inviata al
+cliente: richiede approvazione manuale prima dell'invio"*. Nessun invio
+automatico al cliente.
+
+### Esecutore automazioni — interno (default) o n8n
+
+L'engine interno gira le regole in-process ed e la rete di sicurezza. Per
+delegare a [n8n](https://n8n.io) (workflow visuali/esterni) bastano **entrambe**
+le env (nessuna modifica al codice):
+
+```env
+ENABLE_N8N_AUTOMATIONS=true
+N8N_WEBHOOK_URL=https://<tuo-n8n>/webhook/<id>
+# opzionale
+N8N_API_KEY=
+```
+
+Se n8n e disabilitato o un dispatch fallisce, il sistema torna automaticamente
+all'engine interno: il flusso lead non si blocca mai.
+
+### Test end-to-end
+
+Scenario "Marco Rossi" completo (parser -> scoring -> categoria -> pipeline ->
+automazioni -> esito chiamata -> proposal -> bozza preventivo):
+
+```bash
+# Lo script carica .env.local. PART A gira sempre; PART B usa Appwrite se raggiungibile.
+npx tsx scripts/lead-pipeline-e2e.ts
+
+# Gate persistente: fallisce se PART B Appwrite viene saltata.
+REQUIRE_APPWRITE_E2E=true npx tsx scripts/lead-pipeline-e2e.ts
+```
+
+Il test non cancella mai i lead: la PART B crea dati univoci per run e stampa
+l'id del lead per ispezione manuale. La deduplicazione viene verificata
+richiamando l'endpoint inbound una seconda volta nello stesso run.
+
+### Verifiche locali consigliate
+
+```bash
+npm run lint
+npx tsc --noEmit
+npx tsx scripts/gate1-e2e.ts
+REQUIRE_APPWRITE_E2E=true npx tsx scripts/lead-pipeline-e2e.ts
+npx tsx scripts/test-hermes-webhook-e2e.ts
+npm audit --audit-level=low
+```
+
 ## Variabili d'Ambiente
 
 > **Template**: copia `.env.example` a `.env.local` e riempi i valori.
@@ -316,6 +403,16 @@ Lo Step 2 si attiva solo quando il flusso end-to-end e validato (founder puo gen
 | `GITAGENT_CALLBACK_SECRET` | Secret per validare callback GitAgent |
 | `DEPLOY_CALLBACK_SECRET` | Secret per validare callback deploy |
 | `NEXT_PUBLIC_APP_URL` | URL pubblico del CRM (per callback) |
+| `LEAD_INBOUND_WEBHOOK_SECRET` | Secret opzionale per `/api/leads/email-inbound` |
+| `LEAD_FROM_EMAIL` | Mittente delle email automazioni lead (Resend) |
+| `LEAD_NOTIFY_EMAIL` | Email del team interno per le notifiche lead |
+| `LEO_EMAIL` | Email di Leo (riceve le call task) |
+| `FOUNDER_EMAIL` | Email del founder (notifica in fase proposal) |
+| `LEO_USER_ID` | ID agente per le call task (default: `leo`) |
+| `LEO_NAME` | Nome agente per le call task (default: `Leo`) |
+| `ENABLE_N8N_AUTOMATIONS` | Delega le automazioni lead a n8n (`false` di default) |
+| `N8N_WEBHOOK_URL` | Webhook n8n; serve insieme al flag per attivare n8n |
+| `N8N_API_KEY` | API key opzionale inviata come header `x-n8n-api-key` |
 
 ## Modalita IA
 

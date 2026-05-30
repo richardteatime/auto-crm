@@ -11,10 +11,8 @@ import { it } from "date-fns/locale";
 
 function NotificationItem({
   notification,
-  onRead,
 }: {
   notification: AppNotification;
-  onRead: (id: string) => void;
 }) {
   const router = useRouter();
 
@@ -88,7 +86,7 @@ function NotificationItem({
 }
 
 export function NotificationBell() {
-  const { notifications, counts, markRead, markAllRead, refresh } = useNotifications();
+  const { notifications, counts, markAllRead, refresh } = useNotifications();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -176,10 +174,6 @@ export function NotificationBell() {
                 <NotificationItem
                   key={n.id}
                   notification={n}
-                  onRead={(id) => {
-                    // Only mark as read from the bell if user explicitly wants to dismiss
-                    markRead(id);
-                  }}
                 />
               ))
             )}

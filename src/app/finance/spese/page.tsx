@@ -29,7 +29,6 @@ function SpeseContent() {
 
   useEffect(() => {
     if (!start || !end) return;
-    setLoading(true);
     fetch(`/api/expenses?start=${start}&end=${end}`)
       .then((r) => r.json())
       .then((data) => setExpenses(Array.isArray(data) ? data : []))

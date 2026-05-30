@@ -1,30 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
 
-export function NotificationToggle() {
-  const [mounted, setMounted] = useState(false);
-  const [supported, setSupported] = useState(false);
-  const [enabled, setEnabled] = useState(false);
+const NOTIFICATION_STORAGE_KEY = "crm-notifications";
+const NOTIFICATION_STORAGE_EVENT = "crm-notifications-change";
+const subscribeToMount = () => () => {};
 
-  useEffect(() => {
-    setMounted(true);
-    if ("Notification" in window) {
-      setSupported(true);
-      setEnabled(localStorage.getItem("crm-notifications") === "true");
-    }
-  }, []);
+function subscribeToNotificationPreference(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(NOTIFICATION_STORAGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(NOTIFICATION_STORAGE_EVENT, callback);
+  };
+}
+
+function getNotificationPreference() {
+  return localStorage.getItem(NOTIFICATION_STORAGE_KEY) === "true";
+}
+
+function setNotificationPreference(enabled: boolean) {
+  localStorage.setItem(NOTIFICATION_STORAGE_KEY, String(enabled));
+  window.dispatchEvent(new Event(NOTIFICATION_STORAGE_EVENT));
+}
+
+export function NotificationToggle() {
+  const mounted = useSyncExternalStore(subscribeToMount, () => true, () => false);
+  const enabled = useSyncExternalStore(
+    subscribeToNotificationPreference,
+    getNotificationPreference,
+    () => false,
+  );
+  const supported = mounted && "Notification" in window;
 
   const toggle = async () => {
 
     if (!enabled) {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
-        localStorage.setItem("crm-notifications", "true");
-        setEnabled(true);
+        setNotificationPreference(true);
         toast.success("Notifiche attivate");
 
         // Show test notification
@@ -35,8 +52,7 @@ export function NotificationToggle() {
         toast.error("Permesso notifiche negato");
       }
     } else {
-      localStorage.setItem("crm-notifications", "false");
-      setEnabled(false);
+      setNotificationPreference(false);
       toast.success("Notifiche disattivate");
     }
   };

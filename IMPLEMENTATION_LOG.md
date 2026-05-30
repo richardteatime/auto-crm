@@ -732,3 +732,405 @@ PYTHONIOENCODING=utf-8 hermes mcp test auto-crm
 # E2E webhook test
 npx tsx scripts/test-hermes-webhook-e2e.ts
 ```
+
+---
+
+# ===========================================================================
+# LEAD PIPELINE AUTOMATION MVP (PLAN.md) — inizio 2026-05-30
+# ===========================================================================
+
+> Sistema parallelo e indipendente dall'orchestrator Hermes.
+> Flusso: Form email → CRM → Pipeline → Automazioni → Leo call → Preventivo automatico
+
+## Giorno 1 — Audit + data model (COMPLETATA)
+
+### Decisioni di architettura (importante)
+
+1. **Collection `leads` dedicata** (NON estende `contacts`). Motivo: `contacts` è
+   già usata pesantemente da deals/activities/quotes/orchestrator. Aggiungere
+   campi lead-specifici (pipelineStage, leadScore, rawBody, customFields...) la
+   inquinerebbe. Il lead ha un campo `contactId` opzionale per linkare al
+   contatto CRM (creato dall'azione `create_or_update_contact`).
+
+2. **Lead pipeline stage come enum sul lead**, NON FK a `pipeline_stages`. Motivo:
+   `pipeline_stages` esistente è per i DEALS (Prospetto/Contattato/Proposta/
+   Negoziazione/Vinto/Perso). Il lead pipeline (prospect/opportunity/contacted/
+   proposal) è concettualmente separato. Usare enum string evita collisioni con
+   la pipeline deals live.
+
+3. **Collection `lead_quotes` dedicata**, NON estende `quotes`. Motivo: `quotes`
+   esistente ha `dealId` REQUIRED + flusso PDF live (`/api/quotes/[id]/pdf`).
+   Cambiare required→optional in Appwrite 1.7.4 richiede ricreare l'attributo
+   (rischioso su dati live). `lead_quotes` è self-contained e matcha lo schema
+   del PLAN (leadId, category, amountSuggested, items, summary, generatedText).
+
+4. **`automation_runs` separata** da `orchestrator_runs`/`workflow_events`. Il
+   logging delle automazioni lead è isolato dal logging orchestrator.
+
+### Collection create (setup-appwrite.ts)
+
+| Collection | Schema chiave |
+|------------|---------------|
+| `leads` | firstName, lastName, fullName, email, phone, company, businessName, website, projectType, category(enum), source, formName, message, rawSubject, rawBody, customFields(JSON), status(enum), pipelineStage(enum), assignedTo, leadScore(0-100), contactId |
+| `pipeline_movements` | leadId, fromStage, toStage, reason, triggeredBy, metadata(JSON) |
+| `automation_rules` | name, enabled, triggerType, pipelineStage, leadCategory, conditions(JSON), actions(JSON) |
+| `automation_runs` | ruleId, leadId, triggerType, status(enum), actionsExecuted(JSON), error |
+| `call_tasks` | leadId, assignedTo, assigneeName, status(enum), scheduledAt, completedAt, callOutcome(enum), notes |
+| `lead_quotes` | leadId, status(enum), category(enum), amountSuggested(cents), items(JSON), summary, generatedText |
+
+### Enum definiti
+
+- **category**: static_website, webapp, crm, automation, other, unknown
+- **pipelineStage**: prospect, opportunity, contacted, proposal
+- **lead status**: new, to_call, working, qualified, lost, won
+- **call_task status**: pending, scheduled, completed, failed, no_answer, reschedule, not_interested, qualified
+- **callOutcome**: qualified, not_qualified, no_answer, call_later, wrong_number, interested, not_interested, needs_quote
+- **automation_run status**: pending, running, completed, failed, partial
+
+### Seed
+
+6 automation rules di default (una per trigger principale) create se la
+collection è vuota: New lead, Prospect, Opportunity, Contacted, Proposal,
+Call completed.
+
+### File creati
+
+```text
+src/lib/leads/types.ts          — tipi core + label italiane
+src/lib/db/leads.ts             — CRUD + findDuplicateLead (dedup email/phone/company)
+src/lib/db/pipeline-movements.ts
+src/lib/db/automation-rules.ts
+src/lib/db/automation-runs.ts
+src/lib/db/call-tasks.ts
+src/lib/db/lead-quotes.ts
+```
+
+### File modificati
+
+```text
+src/lib/appwrite.ts             — +6 collection a COLLECTIONS
+src/lib/db/index.ts             — export nuovi moduli
+scripts/setup-appwrite.ts       — +6 collection con index + seed rules
+```
+
+### Da fare per attivare in Appwrite
+`npm run setup` (richiede Appwrite running + env). Le collection sono create
+in modo idempotente (skip se esistono).
+
+---
+
+## Giorno 2 — Email inbound + parser (COMPLETATA)
+
+### File creati
+```text
+src/lib/leads/parser/fields.ts     — estrazione campi (regex key-value, html→text, free text)
+src/lib/leads/parser/index.ts      — parseLeadEmail: regex → AI opzionale, mai blocca
+src/lib/leads/scoring.ts           — computeLeadScore/scoreFromParsed/scoreBand/scoreBandLabel
+src/app/api/leads/email-inbound/route.ts — endpoint inbound esterno
+```
+
+### Comportamento endpoint `/api/leads/email-inbound`
+- Esterno (no session auth): rate limit IP 30/min + `x-webhook-secret` opzionale (da `getSetting("webhook_secret")`, stesso pattern di `/api/webhook`).
+- Normalizza i molti formati provider (subject/text/body/html/from/formName con alias case-insensitive).
+- `parseLeadEmail`: regex/HTML/free-text, poi AI opzionale (OpenRouter→Anthropic). **Mai blocca**: degrada a regex se nessun provider.
+- Estrae identità dal From header (`Marco Rossi <m@acme.com>`) quando il body manca.
+- Scoring: +20 per email/telefono/messaggio chiaro/categoria nota/budget. ≥70 hot, 40-69 medium, <40 weak.
+- **Dedup** (`findDuplicateLead` su email/phone/company): se duplicato → `buildGapFill` riempie SOLO i campi vuoti, alza lo score se maggiore, fonde customFields (esistente vince). Mai crea un secondo lead.
+- Nuovo lead: `createLead` → `createPipelineMovement` (fromStage null → prospect) → `fireTrigger("lead_created")`.
+
+### Decisione (ambiguità → opzione più sicura)
+- Budget non ha colonna dedicata → preservato dentro `customFields` JSON (`collectCustomFields`).
+
+---
+
+## Giorno 3 — Pipeline movement service (COMPLETATA)
+
+### File creati
+```text
+src/lib/leads/pipeline.ts                    — moveLeadStage (unico punto di cambio stage)
+src/app/api/leads/[id]/move-stage/route.ts   — endpoint session-auth
+```
+
+### Comportamento
+- `moveLeadStage({leadId, toStage, reason?, triggeredBy?, metadata?})`: valida stage (`isValidStage`), getLead (404→not_found), **idempotente** (stage uguale = no-op, `changed:false`), `updateLead`, `createPipelineMovement` (ogni movimento tracciato), poi `fireTrigger("stage_changed_to_<toStage>")`.
+- Endpoint POST: body `{toStage|stage, reason?}`, valida (400 + validStages), `triggeredBy:"user"`, `metadata:{actor: auth.user.email}`. not_found→404.
+
+---
+
+## Giorno 4 — Automation engine interno (COMPLETATA)
+
+### File creati
+```text
+src/lib/leads/automation/types.ts             — AutomationContext, ActionResult, ActionHandler, ok/skip/fail
+src/lib/leads/automation/engine.ts            — runTrigger (NON lancia mai)
+src/lib/leads/automation/actions.ts           — registry handler azioni
+src/lib/leads/automation/index.ts             — AutomationEngine abstraction + fireTrigger
+src/lib/leads/automation/adapters/email.ts    — wrapper Resend (graceful)
+src/lib/leads/automation/adapters/messaging.ts— stub WhatsApp (graceful, mai crasha)
+```
+
+### Comportamento engine
+- `runTrigger(trigger, payload)`: legge leadId, getLead, `listAutomationRules({triggerType, enabledOnly})` filtrate da `ruleMatchesLead` (stage/categoria null = qualsiasi).
+- Per ogni regola: `createAutomationRun(running)` → `parseActions` (JSON array di stringhe o `{action}`) → `executeAction` per nome → status (completed/partial/failed) → `updateAutomationRun` con righe `action:status(detail)`.
+- Nessuna regola → logga una run con `(no matching rule)`. **Ogni automazione è loggata** (regola PLAN).
+- `AutomationEngine` abstraction: `internalEngine` attivo; n8n predisposto ma disabilitato (`ENABLE_N8N_AUTOMATIONS`). `fireTrigger` = entry point unico.
+
+### Decisione (sicurezza)
+- Email/messaging adapters **graceful**: se non configurati → `skip`, mai crash, mai bloccano il flusso (regola PLAN).
+- WhatsApp logga la riga esatta "WhatsApp adapter not configured; skipped message." e ritorna skipped.
+
+---
+
+## Giorno 5 — Leo call tasks (COMPLETATA)
+
+### File creati
+```text
+src/app/api/leads/[id]/call-outcome/route.ts  — Leo registra l'esito chiamata
+```
+### File modificati
+```text
+src/lib/leads/automation/actions.ts           — createLeoCallTask + handler create_leo_call_task/create_call_task_for_leo
+```
+
+### Comportamento
+- `createLeoCallTask`: **idempotente** (`getOpenCallTaskForLead` → skip se task aperto esiste, niente duplicati), `createCallTask` (assegnato a Leo, pending, notes=messaggio lead), `updateLead` status `to_call`, `sendToLeo` email (graceful).
+- `leoIdentity = {id: LEO_USER_ID||"leo", name: LEO_NAME||"Leo"}` (env-overridable), ora ri-esportato da `automation/index.ts`.
+- `lead_created` fa partire la call task all'intake; `stage_changed_to_prospect` riusa lo stesso handler idempotente → nessun doppione.
+
+---
+
+## Giorno 6 — Post-call automations (COMPLETATA)
+
+### File modificati
+```text
+src/lib/leads/automation/actions.ts   — routeLeadByOutcome + save_call_outcome/route_lead_by_outcome
+```
+
+### Comportamento `/api/leads/[id]/call-outcome` (POST, session auth)
+- Body `{outcome, notes?}`, valida `outcome ∈ CALL_OUTCOMES`. Upsert call task → `completed` con `callOutcome`+`completedAt`. Fire `call_completed` con `{leadId, outcome, notes, callTaskId}`. Ricarica lead.
+
+### Routing per esito (`routeLeadByOutcome`, tabella regole PLAN)
+| Gruppo | Esiti | Azione |
+|--------|-------|--------|
+| PROPOSAL | qualified, interested, needs_quote | status `qualified` + moveLeadStage `proposal` |
+| FOLLOWUP | no_answer, call_later | moveLeadStage `contacted` + status `working` + call task `scheduled` +24h |
+| LOST | not_qualified, not_interested, wrong_number | status `lost` + moveLeadStage `contacted` |
+
+### Decisione (ciclo import)
+- `moveLeadStage` importato **dinamicamente** (`await import("../pipeline")`) dentro l'handler per rompere il ciclo statico pipeline→automation→engine→actions→pipeline.
+
+---
+
+## Giorno 7 — Quote draft generator (COMPLETATA)
+
+### File creati
+```text
+src/lib/leads/quotes.ts                        — buildQuoteDraft (deterministico, no AI)
+src/app/api/leads/[id]/generate-quote/route.ts — endpoint manuale (session auth)
+```
+### File modificati
+```text
+src/lib/leads/automation/actions.ts   — generate_quote_draft + create_quote_record + prepare_proposal_email_draft
+src/lib/leads/automation/index.ts     — ri-esporta leoIdentity
+```
+
+### Comportamento
+- `PRICING` per categoria (euro): static_website 1200, webapp 3500, crm 5000, automation 2500, other/unknown 0. `INCLUDED` = bullet list per categoria.
+- `buildQuoteDraft(lead)`: `amountSuggested` in **centesimi** (basePrice×100), `items[]`, `summary`, `generatedText` italiano completo (sezioni: PREVENTIVO BOZZA, Cliente, Categoria, Contatti, Richiesta, Informazioni raccolte, Proposta, Elementi inclusi, Prezzo, Budget cliente, Note/prossimi step). Legge budget cliente da `customFields`.
+- Handler automazione (regola `stage_changed_to_proposal`): `generate_quote_draft` (idempotente: skip se esiste già un draft via `listLeadQuotes`; salva la bozza su `ctx.payload`) → `create_quote_record` (persiste via `createLeadQuote`, status `draft`) → `prepare_proposal_email_draft` (prepara il corpo email, **NON inviato**).
+- Endpoint `POST /api/leads/[id]/generate-quote`: genera+persiste la bozza, idempotente di default (ritorna draft esistente; `{regenerate:true}` per rigenerare).
+
+### Regola di sicurezza (PLAN, verbatim)
+- **Preventivo SEMPRE bozza**: `generatedText` contiene "NON inviata al cliente: richiede approvazione manuale prima dell'invio". Nessun invio automatico al cliente.
+
+---
+
+## Giorno 8 — UI pipeline (COMPLETATA)
+
+### File creati
+```text
+src/components/leads/lead-badges.tsx       — StageBadge, CategoryBadge, ScoreBadge, StatusBadge, OutcomeBadge (presentazionali)
+src/components/leads/LeadPipelineBoard.tsx — board 4 colonne (prospect/opportunity/contacted/proposal) + ricerca
+src/components/leads/LeadDetail.tsx        — dettaglio lead interattivo
+src/app/leads/page.tsx                     — Server Component lista (listLeads)
+src/app/leads/[id]/page.tsx                — Server Component dettaglio (getLead + storico in Promise.all)
+```
+### File modificati
+```text
+src/components/layout/Sidebar.tsx    — link "Lead" (icona Inbox) in gruppo Vendite
+src/components/layout/MobileNav.tsx  — stesso link "Lead"
+```
+
+### Architettura UI (decisione: opzione più sicura)
+- **Server Component pattern**: le pagine (`force-dynamic`) fetchano via `lib/db` e passano i dati ai Client Component. I Client Component fanno POST agli endpoint API e poi `router.refresh()`. Nessun GET API necessario per la UI lead.
+- **Niente drag-and-drop** (@dnd-kit): non testabile visivamente con dev server/Bash non disponibili → rischio. Board statica a 4 colonne (card → link al dettaglio); il cambio stage avviene dal dettaglio via `<select>` nativo + bottone che chiama `/api/leads/[id]/move-stage`. Soddisfa il requisito PLAN "Kanban o lista".
+- **`<select>` nativo** (stilizzato Tailwind) invece di shadcn Select per ridurre il rischio di API non testate.
+
+### LeadDetail — sezioni
+Header (back link, nome, ScoreBadge, StageBadge); Dati lead; Richiesta + "Sposta in pipeline"; Chiamata Leo (select CALL_OUTCOMES + note + "Registra esito" → `/call-outcome`); Bozza preventivo (status, importo `formatCurrency`, `generatedText`, nota "non inviata senza approvazione manuale", bottone "Genera/Rigenera" → `/generate-quote`); Campi personalizzati + Email raw; Automation runs; Storico pipeline.
+
+---
+
+## Giorno 9 — N8N adapter placeholder + cleanup (COMPLETATA)
+
+### File creati
+```text
+src/lib/leads/automation/adapters/n8n.ts   — n8nEngine (AutomationEngine) + isN8nConfigured()
+```
+### File modificati
+```text
+src/lib/leads/automation/types.ts   — interfaccia AutomationEngine spostata qui (da index.ts)
+src/lib/leads/automation/index.ts   — getAutomationEngine() seleziona n8n se configurato; re-export n8n + AutomationEngine
+.env.example                        — sezione Lead Pipeline + n8n (ENABLE_N8N_AUTOMATIONS, N8N_WEBHOOK_URL, N8N_API_KEY)
+```
+
+### Comportamento n8n adapter (placeholder, disabilitato di default)
+- `isN8nConfigured()` = `ENABLE_N8N_AUTOMATIONS === "true"` **AND** `N8N_WEBHOOK_URL` valorizzato. Servono **entrambi**.
+- **Disabilitato/non configurato** (default): `n8nEngine.runTrigger` delega all'engine interno (`runTrigger` da `./engine`). Comportamento identico a prima.
+- **Abilitato + configurato**: POST `{trigger, payload}` a `N8N_WEBHOOK_URL` (header `x-n8n-api-key` se `N8N_API_KEY` presente), timeout 10s via `AbortSignal.timeout`. Successo → ritorna `TriggerResult` "dispatched" (`runs: []`, audit su n8n). Fallimento/timeout → **fallback automatico all'engine interno**.
+- **Mai blocca il flusso, mai lancia, mai logga la API key** (regole PLAN/sicurezza). L'engine interno resta sempre la rete di sicurezza.
+
+### Quando usare n8n
+- L'engine interno copre l'MVP (regole DB → azioni in-process). n8n serve quando si vogliono workflow visuali/esterni, integrazioni con servizi terzi, o orchestrazione complessa fuori dal processo Next.js. Si attiva senza toccare il codice chiamante: `fireTrigger`/`getAutomationEngine` scelgono l'adapter in base alle env.
+
+### Cleanup TypeScript / error handling
+- `AutomationEngine` ora vive in `types.ts` → adapter importano il tipo senza rischio di ciclo di import a runtime (grafo: index → adapters/n8n → engine; nessun ritorno a index).
+- Tutti gli adapter (email, messaging, n8n) e l'engine: `try/catch`, `console.error`, mai `throw`. Secret mai loggati.
+
+---
+
+## Giorno 10 — Test E2E + documentazione (COMPLETATA)
+
+### File creati
+```text
+scripts/lead-pipeline-e2e.ts   — test end-to-end scenario "Marco Rossi"
+```
+### File modificati
+```text
+README.md                      — sezione "Lead Pipeline (MVP)" + env lead/n8n nella tabella
+```
+
+### Struttura del test (`npx tsx scripts/lead-pipeline-e2e.ts`)
+Due parti, stesso runner di `scripts/gate1-e2e.ts` (test/assert/eq, summary, exitCode):
+
+- **PART A — logica deterministica (gira SEMPRE, no Appwrite):**
+  - A1 parser chiave-valore → firstName Marco, lastName Rossi, fullName "Marco Rossi", email, telefono, azienda, budget "1500", message contiene "sito", strategy `key_value`.
+  - A2 categoria = `static_website`.
+  - A3 score = 100 con breakdown esplicito dei 5 fattori, banda `hot`.
+  - A4 `buildQuoteDraft` da lead sintetico → `amountSuggested` 120000 cent, `clientBudget` 1500, `items[0].amount` 120000, `generatedText` contiene "BOZZA" + "approvazione manuale" (regola sicurezza).
+- **PART B — flusso completo su Appwrite (skip graceful se Appwrite non raggiungibile, via probe `listLeads()`):**
+  - B1 `createLead` (email unica `marco.rossi+e2e-<ts>@example.com`, source `e2e-test`, "[E2E]") in prospect.
+  - B2 `createPipelineMovement` → prospect tracciato.
+  - B3 `fireTrigger("lead_created")` → automation run loggata + call task Leo creata.
+  - B4 `updateCallTask` completed/needs_quote + `fireTrigger("call_completed", {outcome:"needs_quote"})`.
+  - B5 lead → proposal, status qualified.
+  - B6 `listLeadQuotes` → bozza, category static_website, 120000 cent, nota "approvazione manuale".
+  - B7 run `stage_changed_to_proposal` contiene azione `notify_founder_admin`.
+
+### Sicurezza (regole PLAN rispettate dal test)
+- **Non cancella mai i lead**: la PART B crea un lead marcato e ne stampa l'id per ispezione manuale (nessun delete).
+- **Nessun preventivo inviato**: A4/B6 verificano la nota di approvazione manuale.
+- n8n forzato off nel test (`ENABLE_N8N_AUTOMATIONS="false"`) → engine interno deterministico.
+
+### Decisione (ambiguità → opzione più sicura → documentata → continua)
+- **Score 80 vs 100.** Il PLAN (riga 850) scrive *"Score calcolato (80/100 — email, telefono, messaggio, categoria, budget)"*: la prosa dice 80 ma elenca **5** fattori, e la tabella di scoring vale +20 ciascuno = **100**. Il parser estrae davvero "Budget: 1500" nel campo scored (`FIELD_ALIASES["budget"]="budget"`), quindi tutti e 5 i fattori sono presenti. **Scelta: seguire la tabella autorevole (100), non la prosa.** Il "80" è un'incongruenza aritmetica del piano (sembra contare 4 fattori). Il test asserisce 100 e lo documenta inline. Non ho alterato il rubric per forzare 80.
+
+### Definition of Done — verifica (PLAN righe 862-884)
+| # | Voce | Stato | Dove |
+|---|------|-------|------|
+| 1 | Build passa — TypeScript zero errori | ⏳ DA VERIFICARE | `npx tsc --noEmit` non eseguibile in questa sessione (classifier Bash non disponibile). Da rieseguire appena torna. |
+| 2 | Email inbound endpoint | ✅ | `src/app/api/leads/email-inbound/route.ts` (G2) |
+| 3 | Parser chiave-valore + HTML | ✅ | `src/lib/leads/parser/*` (G2); test A1 |
+| 4 | Lead creato/aggiornato + dedup | ✅ | `findDuplicateLead` + `buildGapFill` (G2) |
+| 5 | Lead entra in `prospect` | ✅ | route inbound → createLead prospect (G2); test B1 |
+| 6 | Fasi prospect/opportunity/contacted/proposal | ✅ | enum `pipelineStage` (G1) |
+| 7 | Movimento pipeline → trigger + log | ✅ | `moveLeadStage` + `pipeline_movements` (G3); test B2 |
+| 8 | `automation_runs` per ogni trigger | ✅ | `engine.runTrigger` logga sempre (G4); test B3 |
+| 9 | Leo call task automatica | ✅ | `createLeoCallTask` (G5); test B3 |
+| 10 | Leo aggiorna esito via UI o API | ✅ | `/call-outcome` (G6) + LeadDetail (G8); test B4 |
+| 11 | `call_completed` attiva automazioni | ✅ | route + seed rule (G6); test B4 |
+| 12 | Lead qualificato → `proposal` | ✅ | `routeLeadByOutcome` (G6); test B5 |
+| 13 | Quote draft con dati reali | ✅ | `buildQuoteDraft` (G7); test A4/B6 |
+| 14 | UI pipeline mostra lead nelle fasi | ✅ | `LeadPipelineBoard` + `/leads` (G8) |
+| 15 | Lead detail: email/raw/custom/automazioni/call/quote | ✅ | `LeadDetail` (G8) |
+| 16 | N8N adapter predisposto, non obbligatorio | ✅ | `adapters/n8n.ts` (G9) |
+| 17 | Nessun preventivo senza approvazione | ✅ | `generatedText` nota (G7); test A4/B6 |
+| 18 | README aggiornato | ✅ | sezione "Lead Pipeline (MVP)" (G10) |
+| 19 | `IMPLEMENTATION_LOG.md` aggiornato | ✅ | questa sezione |
+
+**18/19 verificati. Unico aperto: #1 build `tsc --noEmit`** — codice scritto seguendo le firme reali lette dai moduli esistenti, ma la compilazione non è stata eseguibile in questa sessione per indisponibilità del classifier Bash. È l'unico gate residuo da rieseguire.
+
+### Note operative
+- Il sistema Lead Pipeline è completo end-to-end a livello di codice e documentazione.
+- Resta da eseguire una volta: `npx tsc --noEmit` (e idealmente la PART B con Appwrite attivo, `npm run setup` per creare le 6 collection lead).
+
+---
+
+## Verifica finale release candidate (2026-05-31)
+
+La nota precedente è superata: provisioning remoto e gate tecnici sono stati
+eseguiti sulla configurazione Appwrite autorizzata.
+
+### Provisioning Appwrite applicato
+
+- Endpoint verificato: `https://appwrite.app.easlydev.online/v1`
+- Database: `crm`
+- Create e seed idempotenti completati con `npm run setup`
+- Collection Lead Pipeline e regole seed presenti
+- Bucket `uploads` creato correttamente
+- Collection `revenues` aggiunta al setup con indici
+- `workflow_events.runId` migrato a opzionale: gli eventi pre-run non vengono più persi
+- Setup reso fail-fast sugli errori non transitori e resiliente agli `ECONNRESET`
+  remoti con retry limitati
+
+### Lead Pipeline E2E aggiornato
+
+`scripts/lead-pipeline-e2e.ts` attraversa l'endpoint reale
+`POST /api/leads/email-inbound`, verifica la deduplicazione richiamando la route
+una seconda volta e usa email, telefono e azienda univoci per ogni run.
+
+Verificato due volte consecutive:
+
+```text
+Lead Pipeline E2E: 12 passed, 0 skipped, 0 failed / 12 totale
+Lead Pipeline E2E: 12 passed, 0 skipped, 0 failed / 12 totale
+```
+
+### Gate eseguiti senza build
+
+Per regola repository non è stato eseguito `npm run build`.
+
+| Comando | Esito |
+|---------|-------|
+| `npm run setup` | ✅ provisioning remoto completato |
+| `npm run lint` | ✅ zero finding |
+| `npx tsc --noEmit` | ✅ zero errori |
+| `npm audit --audit-level=low` | ✅ zero vulnerabilità |
+| `npx tsx scripts/test-parsers.ts` | ✅ 70/70 |
+| `npx tsx scripts/e2e-parser-test.ts` | ✅ 35/35 |
+| `npx tsx scripts/gate1-e2e.ts` | ✅ 7/7, nessuno skip |
+| `REQUIRE_APPWRITE_E2E=true npx tsx scripts/lead-pipeline-e2e.ts` | ✅ 12/12, ripetibile |
+| `npx tsx scripts/test-hermes-webhook-e2e.ts` | ✅ webhook + memoria multi-turn |
+| `git -c core.whitespace=cr-at-eol diff --check` | ✅ |
+
+### Browser smoke autenticato
+
+Avviata la working copy attiva su `http://localhost:3001`, creato un account
+Appwrite tecnico temporaneo via UI, poi eliminato. Verificati:
+
+- dashboard
+- `/leads`
+- dettaglio lead con raw email, custom fields, quote draft, automation run e storico pipeline
+- `/activities`
+- `/calendar`
+- `/opportunita`
+- redirect `/finance` → `/finance-login`
+
+L'area finance completa richiede credenziali di uno dei tre user ID autorizzati:
+un account temporaneo viene correttamente respinto dalla whitelist.
+
+### Definition of Done
+
+**19/19 verificati.** Il piano Lead Pipeline MVP è completato. La build non è
+stata eseguita intenzionalmente per rispettare la regola del repository; il gate
+TypeScript equivalente richiesto dal piano è verde con `npx tsc --noEmit`.

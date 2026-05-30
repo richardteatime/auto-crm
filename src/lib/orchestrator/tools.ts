@@ -19,7 +19,7 @@ import { createContact, listContacts, getContact, updateContact, deleteContact }
 import { listDeals, updateDeal, deleteDeal } from "@/lib/db/deals";
 import { listProjects, updateProject, deleteProject } from "@/lib/db/projects";
 import { listTasks, updateTask, deleteTask } from "@/lib/db/tasks";
-import { createActivity, listActivities, deleteActivity } from "@/lib/db/activities";
+import { createActivity, listActivities } from "@/lib/db/activities";
 import { getStages } from "@/lib/db/pipeline";
 
 // ---------------------------------------------------------------------------
@@ -482,10 +482,7 @@ function buildReActPrompt(messageText: string, steps: ReActStep[]): string {
   return prompt;
 }
 
-async function runReActLoop(
-  messageText: string,
-  conversationId?: number,
-): Promise<ToolCall> {
+async function runReActLoop(messageText: string): Promise<ToolCall> {
   const steps: ReActStep[] = [];
 
   for (let i = 0; i < MAX_REACT_STEPS; i++) {
@@ -570,7 +567,7 @@ Rispondi con il JSON del tool da chiamare.`;
     return classifyByKeywords(messageText);
   }
 
-  return runReActLoop(messageText, conversationId);
+  return runReActLoop(messageText);
 }
 
 // ---------------------------------------------------------------------------
@@ -580,7 +577,6 @@ Rispondi con il JSON del tool da chiamare.`;
 export async function chooseNextTool(
   messageText: string,
   previousSteps: Array<{ tool: string; result: string }>,
-  conversationId?: number,
 ): Promise<ToolCall> {
   if (!hasAI()) {
     return { tool: "done", args: { message: "" } };
@@ -667,7 +663,7 @@ export async function executeTool(
       try {
         const reply = await getActiveProjects();
         return { success: true, reply, intent: "project_status_query" };
-      } catch (err) {
+      } catch {
         return {
           success: false,
           reply: "Errore nel caricamento progetti.",
@@ -680,7 +676,7 @@ export async function executeTool(
       try {
         const reply = await getTodayRevenue();
         return { success: true, reply, intent: "revenue_today_query" };
-      } catch (err) {
+      } catch {
         return {
           success: false,
           reply: "Errore nel caricamento ricavi.",
@@ -693,7 +689,7 @@ export async function executeTool(
       try {
         const reply = await getLeadSummary();
         return { success: true, reply, intent: "lead_summary_query" };
-      } catch (err) {
+      } catch {
         return {
           success: false,
           reply: "Errore nel caricamento lead.",
@@ -706,7 +702,7 @@ export async function executeTool(
       try {
         const reply = await getBlockedProjects();
         return { success: true, reply, intent: "blocked_projects_query" };
-      } catch (err) {
+      } catch {
         return {
           success: false,
           reply: "Errore nel caricamento progetti bloccati.",
@@ -719,7 +715,7 @@ export async function executeTool(
       try {
         const reply = await getAgentStatus();
         return { success: true, reply, intent: "agent_status_query" };
-      } catch (err) {
+      } catch {
         return {
           success: false,
           reply: "Errore nel caricamento stato agenti.",
@@ -732,7 +728,7 @@ export async function executeTool(
       try {
         const reply = await getDeploymentStatus();
         return { success: true, reply, intent: "deployment_status_query" };
-      } catch (err) {
+      } catch {
         return {
           success: false,
           reply: "Errore nel caricamento stato deploy.",
@@ -745,7 +741,7 @@ export async function executeTool(
       try {
         const reply = await getMyTasksToday();
         return { success: true, reply, intent: "tasks_query" };
-      } catch (err) {
+      } catch {
         return {
           success: false,
           reply: "Errore nel caricamento task.",
@@ -1186,7 +1182,7 @@ export async function executeTool(
       try {
         const reply = await executeQueryTool(toolCall);
         return { success: true, reply, intent: "unknown" };
-      } catch (err) {
+      } catch {
         return { success: false, reply: "Errore nella ricerca contatti.", intent: "unknown" };
       }
     }
@@ -1195,7 +1191,7 @@ export async function executeTool(
       try {
         const reply = await executeQueryTool(toolCall);
         return { success: true, reply, intent: "unknown" };
-      } catch (err) {
+      } catch {
         return { success: false, reply: "Errore nel caricamento contatto.", intent: "unknown" };
       }
     }

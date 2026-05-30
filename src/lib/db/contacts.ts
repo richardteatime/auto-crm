@@ -8,12 +8,12 @@ import type { Contact, ContactWithDeals, Deal, Activity } from "@/types";
 // ---------------------------------------------------------------------------
 
 function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
+  const { $id, $createdAt, $updatedAt, ...rest } = doc;
   return {
+    ...rest,
     id: $id,
     createdAt: new Date($createdAt),
     updatedAt: new Date($updatedAt),
-    ...rest,
   } as T;
 }
 

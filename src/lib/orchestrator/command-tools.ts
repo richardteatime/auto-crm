@@ -34,7 +34,7 @@ export function extractAmount(text: string): number | null {
   const match = text.match(/(\d[\d.\s,]*)(?:\s*(?:k|eur[o?]|€|\$))?/i);
   if (!match) return null;
 
-  let raw = match[1]
+  const raw = match[1]
     .replace(/\s/g, "")
     .replace(/\./g, "")
     .replace(/,/g, "");

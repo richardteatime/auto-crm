@@ -168,3 +168,54 @@ export {
   listWorkflowEvents,
   createWorkflowEvent,
 } from "./workflow-events";
+
+// ===========================================================================
+// Lead Pipeline Automation MVP
+// ===========================================================================
+
+// Leads
+export {
+  listLeads,
+  getLead,
+  createLead,
+  updateLead,
+  findDuplicateLead,
+} from "./leads";
+export type { CreateLeadInput } from "./leads";
+
+// Pipeline Movements
+export {
+  listPipelineMovements,
+  createPipelineMovement,
+} from "./pipeline-movements";
+
+// Automation Rules
+export {
+  listAutomationRules,
+  createAutomationRule,
+  updateAutomationRule,
+} from "./automation-rules";
+
+// Automation Runs
+export {
+  listAutomationRuns,
+  createAutomationRun,
+  updateAutomationRun,
+} from "./automation-runs";
+
+// Call Tasks
+export {
+  listCallTasks,
+  getCallTask,
+  createCallTask,
+  updateCallTask,
+  getOpenCallTaskForLead,
+} from "./call-tasks";
+
+// Lead Quotes
+export {
+  listLeadQuotes,
+  getLeadQuote,
+  createLeadQuote,
+  updateLeadQuote,
+} from "./lead-quotes";

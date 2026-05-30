@@ -13,7 +13,7 @@ import { ActivityTimeline } from "@/components/activities/ActivityTimeline";
 import {
   Phone, Mail, Users, FileText, Clock, AlertCircle, Activity,
   Plus, Paperclip, CalendarDays, Search, X, Pencil,
-  LayoutList, Kanban, Calendar1, GanttChart,
+  LayoutList, Kanban, Calendar1,
 } from "lucide-react";
 import { formatRelativeDate, formatDate, getActivityStatus, ACTIVITY_STATUS_STYLE, ACTIVITY_TYPE_CONFIG } from "@/lib/constants";
 import { cn, toMs } from "@/lib/utils";
@@ -39,13 +39,6 @@ const STATUS_OPTIONS = [
   { value: "completed", label: "Completate" },
   { value: "open", label: "In attesa" },
   { value: "overdue", label: "Scadute" },
-];
-
-const PERIOD_OPTIONS = [
-  { value: "", label: "Sempre" },
-  { value: "7", label: "Ultimi 7 giorni" },
-  { value: "30", label: "Ultimi 30 giorni" },
-  { value: "90", label: "Ultimi 90 giorni" },
 ];
 
 interface ActivityItem {
@@ -183,15 +176,6 @@ export default function ActivitiesPage() {
       setDateFrom(d); setDateTo(today);
     }
   };
-
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { "": allActivities.length };
-    for (const a of allActivities) {
-      const s = getActivityStatus(a);
-      counts[s] = (counts[s] ?? 0) + 1;
-    }
-    return counts;
-  }, [allActivities]);
 
   if (loading) {
     return (
@@ -467,7 +451,6 @@ export default function ActivitiesPage() {
       {view === "timeline" && (
         <ActivityTimeline
           activities={filtered}
-          users={usersMap}
           onEdit={(activity) => setEditingActivity({
             id: activity.id,
             type: activity.type,

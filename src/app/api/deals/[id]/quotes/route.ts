@@ -38,11 +38,10 @@ export async function POST(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  const { title, items, notes, status, vatRate, validUntil } = body as {
+  const { title, items, notes, vatRate, validUntil } = body as {
     title?: string;
     items?: unknown[];
     notes?: string;
-    status?: string;
     vatRate?: number;
     validUntil?: string | null;
   };

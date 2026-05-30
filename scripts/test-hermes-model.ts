@@ -30,6 +30,7 @@ async function testModel(model: string) {
       const elapsed = Date.now() - start;
       console.log(`[test] Model: ${model} | Code: ${code} | Time: ${elapsed}ms`);
       console.log(`[test] stdout:`, stdout.trim());
+      if (stderr.trim()) console.log(`[test] stderr:`, stderr.trim());
       resolve();
     });
   });

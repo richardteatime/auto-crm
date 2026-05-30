@@ -7,6 +7,7 @@ import { checkMessagePermission } from "@/lib/orchestrator/permissions";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
 import { createRun, updateRun } from "@/lib/orchestrator/runs";
 import { callHermes } from "@/lib/hermes/client";
+import { buildHermesContextPrompt } from "@/lib/hermes/context";
 import type { ChatwootMessagePayload } from "@/lib/chatwoot/types";
 
 /**
@@ -160,14 +161,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Forward to Hermes Agent (with session memory)
+    // Forward to Hermes Agent (with CRM context injection)
     let hermesReply: string;
     let hermesSessionId: string | undefined;
     const existingSessionId = hermesSessionMap.get(normalized.conversationId);
 
     try {
-      const result = await callHermes(
+      const promptWithContext = await buildHermesContextPrompt(
         normalized.messageText,
+      );
+      const result = await callHermes(
+        promptWithContext,
         normalized.conversationId,
         existingSessionId,
       );

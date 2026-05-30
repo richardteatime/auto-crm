@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ProjectForm } from "@/components/timeline/ProjectForm";
 import { PROJECT_STATUS_CONFIG, PROJECT_STATUS_OPTIONS, PROJECT_PRIORITY_CONFIG } from "@/components/timeline/projectConstants";
 import {
-  Plus, Search, CalendarDays, Users, User, ArrowRight, Flag, Building2,
+  Plus, Search, CalendarDays, Users, ArrowRight, Flag, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectStatus } from "@/types";
@@ -67,7 +67,7 @@ export default function TimelinePage() {
         p.description?.toLowerCase().includes(q);
     }
     return true;
-  }), [projects, filterStatus, search, usersMap]);
+  }), [projects, filterStatus, search, usersMap, contactsMap]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { "": projects.length };

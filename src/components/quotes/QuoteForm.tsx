@@ -130,7 +130,6 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   const subtotal = setupLineTotal + oneTimeSub + monthlySub + annualSub;
   const vatAmount = subtotal * vatRate / 100;
   const total = subtotal + vatAmount;
-  const hasRecurring = monthlySub > 0 || annualSub > 0;
   const hasOneTime = oneTimeSub > 0;
 
   const handleSubmit = async () => {
