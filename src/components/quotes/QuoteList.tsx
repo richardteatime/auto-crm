@@ -172,77 +172,133 @@ export function QuoteList({ dealId }: QuoteListProps) {
               Nessun preventivo per questa trattativa.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Numero</TableHead>
-                  <TableHead>Titolo</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead className="text-right">Totale</TableHead>
-                  <TableHead className="hidden md:table-cell">Valido fino</TableHead>
-                  <TableHead className="w-28" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {quoteList.map((q) => {
-                  const cfg = STATUS_CONFIG[q.status] ?? STATUS_CONFIG.bozza;
-                  return (
-                    <TableRow key={q.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {q.number}
-                      </TableCell>
-                      <TableCell className="font-medium">{q.title}</TableCell>
-                      <TableCell>
-                        <Badge variant={cfg.variant}>{cfg.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-primary">
-                        {formatCurrency(calcTotal(q))}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {formatDate(q.validUntil)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="cursor-pointer h-8 w-8"
-                            onClick={() =>
-                              window.open(`/api/quotes/${q.id}/pdf?t=${Date.now()}`, "_blank")
-                            }
-                            aria-label="Scarica PDF"
-                            title="Scarica PDF"
-                          >
-                            <FileDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="cursor-pointer h-8 w-8"
-                            onClick={(e) => openEdit(e, q)}
-                            aria-label="Modifica preventivo"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingQuote(q);
-                            }}
-                            aria-label="Elimina preventivo"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <>
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Numero</TableHead>
+                    <TableHead>Titolo</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead className="text-right">Totale</TableHead>
+                    <TableHead className="hidden md:table-cell">Valido fino</TableHead>
+                    <TableHead className="w-28" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quoteList.map((q) => {
+                    const cfg = STATUS_CONFIG[q.status] ?? STATUS_CONFIG.bozza;
+                    return (
+                      <TableRow key={q.id}>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {q.number}
+                        </TableCell>
+                        <TableCell className="font-medium">{q.title}</TableCell>
+                        <TableCell>
+                          <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-primary">
+                          {formatCurrency(calcTotal(q))}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                          {formatDate(q.validUntil)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="cursor-pointer h-8 w-8"
+                              onClick={() =>
+                                window.open(`/api/quotes/${q.id}/pdf?t=${Date.now()}`, "_blank")
+                              }
+                              aria-label="Scarica PDF"
+                              title="Scarica PDF"
+                            >
+                              <FileDown className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="cursor-pointer h-8 w-8"
+                              onClick={(e) => openEdit(e, q)}
+                              aria-label="Modifica preventivo"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingQuote(q);
+                              }}
+                              aria-label="Elimina preventivo"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-3">
+              {quoteList.map((q) => {
+                const cfg = STATUS_CONFIG[q.status] ?? STATUS_CONFIG.bozza;
+                return (
+                  <div key={q.id} className="rounded-md border bg-card p-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{q.title}</p>
+                        <p className="text-xs font-mono text-muted-foreground">{q.number}</p>
+                      </div>
+                      <span className="text-sm font-semibold text-primary shrink-0">{formatCurrency(calcTotal(q))}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                      <span className="text-xs text-muted-foreground">{formatDate(q.validUntil)}</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="cursor-pointer h-8 w-8"
+                        onClick={() => window.open(`/api/quotes/${q.id}/pdf?t=${Date.now()}`, "_blank")}
+                        aria-label="Scarica PDF"
+                        title="Scarica PDF"
+                      >
+                        <FileDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="cursor-pointer h-8 w-8"
+                        onClick={(e) => openEdit(e, q)}
+                        aria-label="Modifica preventivo"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); setDeletingQuote(q); }}
+                        aria-label="Elimina preventivo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

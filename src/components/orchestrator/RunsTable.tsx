@@ -118,7 +118,8 @@ export function RunsTable({ runs }: RunsTableProps) {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      {/* Desktop table */}
+      <div className="hidden sm:block rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -159,6 +160,30 @@ export function RunsTable({ runs }: RunsTableProps) {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden space-y-3">
+        {filtered.map((run) => (
+          <div
+            key={run.id}
+            className="rounded-md border bg-card p-3 space-y-1.5 cursor-pointer"
+            onClick={() => router.push(`/orchestrator/${run.id}`)}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <RunStatusBadge status={run.status} size="sm" />
+              <span className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(run.createdAt)}</span>
+            </div>
+            <p className="text-sm font-medium truncate">{run.commandText}</p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Intento: {run.intent}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 pt-1 border-t">
+              <span className="text-xs text-muted-foreground">Sorgente: {run.source}</span>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

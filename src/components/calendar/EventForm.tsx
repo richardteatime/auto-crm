@@ -204,7 +204,7 @@ export function EventForm({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-[900px] max-w-[95vw] h-auto max-h-[85vh] p-0 flex flex-col">
+      <DialogContent className="w-full md:w-[900px] max-w-[95vw] h-auto max-h-[85vh] p-0 flex flex-col">
         <DialogHeader className="px-6 pt-5 pb-2">
           <DialogTitle className="text-xl">
             {event ? "Modifica evento" : "Nuovo evento"}
@@ -212,9 +212,9 @@ export function EventForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
             {/* Titolo */}
-            <div className="col-span-2 space-y-1.5">
+            <div className="md:col-span-2 space-y-1.5">
               <Label htmlFor="evt-title" className="text-sm font-semibold flex items-center gap-1.5">
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 Titolo <span className="text-red-500">*</span>
@@ -281,7 +281,7 @@ export function EventForm({
             </div>
 
             {/* Data/Ora box */}
-            <div className="col-span-2 bg-muted/40 rounded-lg p-4 grid grid-cols-2 gap-x-6 gap-y-3">
+            <div className="md:col-span-2 bg-muted/40 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
               <div className="col-span-2 flex items-center justify-between">
                 <Label className="text-sm font-semibold flex items-center gap-1.5">
                   <Clock className="h-4 w-4 text-muted-foreground" />
@@ -322,7 +322,7 @@ export function EventForm({
             </div>
 
             {/* Assegnazione */}
-            <div className="col-span-2 space-y-1.5">
+            <div className="md:col-span-2 space-y-1.5">
               <Label className="text-sm font-semibold flex items-center gap-1.5">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 Assegnato a
@@ -366,7 +366,7 @@ export function EventForm({
             </div>
 
             {/* Note */}
-            <div className="col-span-2 space-y-1.5">
+            <div className="md:col-span-2 space-y-1.5">
               <Label className="text-sm font-semibold">Note / Descrizione</Label>
               <Textarea
                 rows={4}
@@ -378,7 +378,7 @@ export function EventForm({
             </div>
 
             {/* Privacy */}
-            <div className="col-span-2 flex items-center gap-3 bg-muted/30 rounded-lg p-3">
+            <div className="md:col-span-2 flex items-center gap-3 bg-muted/30 rounded-lg p-3">
               <Checkbox
                 id="isPrivate"
                 checked={isPrivate}

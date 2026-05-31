@@ -49,7 +49,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
   const [filterTipo, setFilterTipo] = useState("");
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 12 } })
   );
 
   const isFiltered = !!(search || filterTemp || filterTipo);
@@ -206,7 +206,7 @@ export function KanbanBoard({ initialColumns }: KanbanBoardProps) {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex flex-col md:flex-row md:gap-4 md:overflow-x-auto md:pb-4">
           {filteredColumns.map((column) => (
             <KanbanColumn
               key={column.id}

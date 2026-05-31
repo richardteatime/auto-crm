@@ -382,7 +382,7 @@ export function FinanceDashboard() {
 
       {/* Revenues */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold flex items-center gap-2">
             <Banknote className="h-4 w-4 text-success" />
             Incassi
@@ -443,7 +443,7 @@ export function FinanceDashboard() {
             {filteredRevenues.map((r) => (
               <div
                 key={r.id}
-                className={`flex items-center gap-3 rounded-md border bg-card px-3 py-2.5 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-success/20" : "border-border"}`}
+                className={`flex flex-wrap items-center gap-2 md:gap-3 rounded-md border bg-card px-3 py-2.5 hover:bg-muted/30 transition-colors ${r.isExternal ? "border-success/20" : "border-border"}`}
               >
                 <div className={`shrink-0 p-2 rounded-md ${r.billingType === "una_tantum" ? "bg-success/10" : r.billingType === "annuale" ? "bg-success/10" : "bg-primary/10"}`}>
                   {r.billingType === "una_tantum"
@@ -500,7 +500,7 @@ export function FinanceDashboard() {
       {/* Category breakdown */}
       {/* Expenses */}
       <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">Spese e Investimenti</h2>
             <Button
               size="sm"
@@ -581,7 +581,7 @@ export function FinanceDashboard() {
                 return (
                   <div
                     key={exp.id}
-                    className={`flex items-center gap-3 rounded-md border bg-card px-3 py-2.5 hover:bg-muted/30 transition-colors ${cfg?.border ?? "border-border"}`}
+                    className={`flex flex-wrap items-center gap-2 md:gap-3 rounded-md border bg-card px-3 py-2.5 hover:bg-muted/30 transition-colors ${cfg?.border ?? "border-border"}`}
                   >
                     <div className={`shrink-0 p-2 rounded-md ${cfg?.bg ?? "bg-muted"}`}>
                       <Icon className={`h-4 w-4 ${cfg?.color ?? ""}`} />

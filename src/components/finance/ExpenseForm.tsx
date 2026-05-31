@@ -136,7 +136,7 @@ export function ExpenseForm({ open, onClose, initialData, onSaved }: ExpenseForm
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select value={type} onValueChange={(v) => v != null && setType(v)}>
@@ -171,7 +171,7 @@ export function ExpenseForm({ open, onClose, initialData, onSaved }: ExpenseForm
             {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Importo (EUR) *</Label>
               <Input type="number" step="0.01" min="0" {...register("amount")} placeholder="0.00" />

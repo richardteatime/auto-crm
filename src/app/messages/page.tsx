@@ -150,7 +150,7 @@ export default function MessagesPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Chat Team</h1>
           <p className="text-xs text-muted-foreground">

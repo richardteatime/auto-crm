@@ -271,7 +271,7 @@ export function ActivityForm({
           </div>
 
           {/* Date inizio / fine */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="act-start">
                 {type === "follow_up" ? "Data programmata" : "Data inizio"}

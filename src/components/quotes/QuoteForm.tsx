@@ -209,7 +209,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Stato</Label>
               <Select value={status} onValueChange={(v) => v && setStatus(v)}>
@@ -258,7 +258,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
             </div>
             {setupItem && (
               <div className="rounded-md border p-3 bg-muted/30">
-                <div className="grid grid-cols-4 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
                   <div className="col-span-1 font-medium text-muted-foreground">{setupItem.description}</div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Prezzo lordo</Label>

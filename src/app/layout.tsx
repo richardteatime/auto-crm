@@ -18,6 +18,12 @@ export const metadata: Metadata = {
     "CRM conversazionale con pipeline di vendita, classificazione automatica dei lead e follow-up intelligente. Costruito da SarconX.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

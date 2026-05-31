@@ -209,7 +209,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
             {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="deal-value">Valore (EUR)</Label>
               <Input id="deal-value" type="number" step="0.01" {...register("value")} placeholder="0.00" />
@@ -237,7 +237,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Fase</Label>
               <Select value={watch("stageId")} onValueChange={(v) => v && setValue("stageId", v)}>
@@ -265,7 +265,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
           {/* Tipo contratto */}
           <div className="space-y-2">
             <Label>Tipo Contratto</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setBillingType("una_tantum")}
@@ -332,7 +332,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
           {/* Pagamento */}
           <div className="space-y-2">
             <Label>Stato Pagamento</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setIsPaid(false)}

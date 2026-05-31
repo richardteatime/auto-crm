@@ -113,7 +113,7 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" {...register("email")} placeholder="email@esempio.com" />
@@ -129,7 +129,7 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
             <Input id="company" {...register("company")} placeholder="Nome dell'azienda" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="vatNumber">P.IVA</Label>
               <Input id="vatNumber" {...register("vatNumber")} placeholder="es. 02163050186" />
@@ -140,7 +140,7 @@ export function ContactForm({ open, onClose, initialData }: ContactFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Fonte</Label>
               <Select

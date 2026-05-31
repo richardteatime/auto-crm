@@ -152,7 +152,7 @@ export default function OpportunitaPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Opportunità</h1>
           <p className="text-xs text-muted-foreground">Analisi completa — aperte e trasformate in trattativa</p>
@@ -237,7 +237,8 @@ export default function OpportunitaPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-md border">
+          {/* Desktop table */}
+          <div className="hidden sm:block rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -337,6 +338,85 @@ export default function OpportunitaPage() {
                 })}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-3">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nessuna opportunità corrisponde ai filtri.</p>
+            ) : (
+              filtered.map((o) => {
+                const cfg = STATUS_CONFIG[o.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
+                const contactName = contactNames.get(o.contactId);
+                return (
+                  <div key={o.id} className="rounded-md border bg-card p-3 space-y-1.5">
+                    <p className="text-sm font-medium">{o.title}</p>
+                    {o.description && (
+                      <p className="text-xs text-muted-foreground">{o.description}</p>
+                    )}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs">
+                        {contactName ? (
+                          <button
+                            onClick={() => router.push(`/contacts/${o.contactId}`)}
+                            className="text-primary hover:underline cursor-pointer text-left"
+                          >
+                            {contactName}
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-primary shrink-0">
+                        {o.value != null ? formatCurrency(o.value) : "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", cfg.className)}>
+                        {cfg.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                      {o.status === "trasformata" && o.dealId && (
+                        <Button
+                          variant="ghost" size="sm"
+                          className="cursor-pointer h-7 text-xs gap-1 text-green-700 hover:text-green-700"
+                          onClick={() => router.push(`/deals/${o.dealId!}`)}
+                        >
+                          <ArrowRight className="h-3 w-3" />
+                          Trattativa
+                        </Button>
+                      )}
+                      {o.status === "aperta" && (
+                        <Button
+                          variant="ghost" size="sm"
+                          className="cursor-pointer h-7 text-xs gap-1"
+                          onClick={() => setConvertingOpp(o)}
+                        >
+                          <ArrowRight className="h-3 w-3" />
+                          Converti
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost" size="icon"
+                        className="cursor-pointer h-7 w-7"
+                        onClick={(e) => openEdit(o, e)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon"
+                        className="cursor-pointer h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeletingOpp(o)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
           <p className="text-xs text-muted-foreground text-center">
             {filtered.length} di {opps.length} opportunità

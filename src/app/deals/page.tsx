@@ -159,7 +159,7 @@ export default function DealsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Trattative</h1>
           <p className="text-xs text-muted-foreground">Opportunità di vendita attive</p>
@@ -309,7 +309,8 @@ export default function DealsPage() {
         />
       ) : (
         <>
-          <div className="rounded-md border">
+          {/* Desktop table */}
+          <div className="hidden sm:block rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -375,6 +376,55 @@ export default function DealsPage() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-3">
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nessuna trattativa corrisponde ai filtri applicati.</p>
+            ) : (
+              filtered.map((deal) => (
+                <div
+                  key={deal.id}
+                  className="rounded-md border bg-card p-3 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => router.push(`/deals/${deal.id}`)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium truncate">{deal.title}</p>
+                    {deal.billingType !== "una_tantum" && (
+                      <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0 rounded font-medium shrink-0 ${deal.billingType === "annuale" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
+                        <RefreshCw className="h-2.5 w-2.5" />
+                        {deal.recurringMonths ?? 12}m
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">{deal.contactName || "-"}</p>
+                    <p className="text-sm font-semibold text-primary shrink-0">
+                      {formatCurrency(deal.value)}{deal.billingType === "mensile" ? "/mo" : deal.billingType === "annuale" ? "/anno" : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" style={{ borderColor: deal.stageColor || undefined, color: deal.stageColor || undefined }}>
+                      {deal.stageName}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{deal.probability}%</span>
+                    <span className="text-xs text-muted-foreground">{formatDate(deal.expectedClose)}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                    <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8"
+                      onClick={(e) => openEdit(e, deal)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon"
+                      className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); setDeletingDeal(deal); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
           <p className="text-xs text-muted-foreground text-center">
             {filtered.length} di {deals.length} trattative

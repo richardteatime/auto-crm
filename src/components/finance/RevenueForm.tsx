@@ -135,7 +135,7 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
           </div>
 
           {billingType !== "una_tantum" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Mesi ricorrenza</Label>
                 <Input type="number" min={1} max={120} value={recurringMonths} onChange={(e) => setRecurringMonths(e.target.value)} />
@@ -147,7 +147,7 @@ export function RevenueForm({ open, onClose, initialData, onSaved }: RevenueForm
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Valore (€) *</Label>
               <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />

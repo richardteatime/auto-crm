@@ -55,6 +55,14 @@ export default function CalendarPage() {
   const [initialStart, setInitialStart] = useState<Date | null>(null);
   const [initialEnd, setInitialEnd] = useState<Date | null>(null);
   const [initialAllDay, setInitialAllDay] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   // Load current user
   useEffect(() => {
@@ -237,7 +245,7 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-primary" />
           <h1 className="text-xl font-semibold">Calendario</h1>
@@ -269,7 +277,7 @@ export default function CalendarPage() {
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
+              initialView={isMobile ? "listWeek" : "dayGridMonth"}
               headerToolbar={{
                 left: "prev,next today",
                 center: "title",

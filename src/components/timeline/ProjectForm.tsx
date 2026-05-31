@@ -142,7 +142,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
             <Textarea {...register("description")} rows={2} placeholder="Breve descrizione del progetto..." />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Stato</Label>
               <Select value={status} onValueChange={(v) => setValue("status", v as FormData["status"])}>
@@ -181,7 +181,7 @@ export function ProjectForm({ open, onClose, initialData }: ProjectFormProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Data inizio</Label>
               <Input type="date" {...register("startDate")} />

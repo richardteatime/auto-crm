@@ -133,7 +133,7 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Task</h1>
           <p className="text-xs text-muted-foreground">Cose da fare e follow-up</p>
@@ -207,7 +207,9 @@ export default function TasksPage() {
           onAction={() => { setNewTitle("Nuova task"); }}
         />
       ) : (
-        <div className="rounded-md border">
+        <>
+        {/* Desktop table */}
+        <div className="hidden sm:block rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -263,6 +265,52 @@ export default function TasksPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Nessuna task corrisponde ai filtri.</p>
+          ) : (
+            filtered.map((task) => (
+              <div
+                key={task.id}
+                className={cn(
+                  "rounded-md border bg-card p-3 space-y-1.5",
+                  task.done && "opacity-50"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    checked={task.done}
+                    onCheckedChange={() => toggleDone(task)}
+                    className="cursor-pointer mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-sm font-medium", task.done && "line-through text-muted-foreground")}>
+                      {task.title}
+                    </p>
+                    {task.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>Scad: {task.dueAt ? formatDate(task.dueAt) : "—"}</span>
+                  <span>Creata: {formatDate(task.createdAt)}</span>
+                </div>
+                <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                  <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8" onClick={() => openEdit(task)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleting(task)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        </>
       )}
 
       {/* Edit dialog */}

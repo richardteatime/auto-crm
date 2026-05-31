@@ -179,7 +179,8 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
         </div>
       )}
 
-      <div className="rounded-md border">
+      {/* Desktop table */}
+      <div className="hidden sm:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -225,6 +226,31 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="sm:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Nessun contatto corrisponde ai filtri applicati.
+          </p>
+        ) : (
+          filtered.map((contact) => (
+            <div
+              key={contact.id}
+              className="rounded-md border bg-card p-3 space-y-1.5 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => router.push(`/contacts/${contact.id}`)}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium truncate">{contact.name}</p>
+                <StatusBadge temperature={contact.temperature as Temperature} size="sm" />
+              </div>
+              <p className="text-xs text-muted-foreground">{contact.email || "Senza email"}</p>
+              {contact.company && <p className="text-xs text-muted-foreground">{contact.company}</p>}
+              <p className="text-xs text-muted-foreground">{formatDate(contact.createdAt)}</p>
+            </div>
+          ))
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground text-center">

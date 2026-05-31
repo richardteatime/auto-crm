@@ -102,8 +102,8 @@ function SortableCard({
       <Card className="cursor-pointer hover:shadow-sm transition-shadow">
         <CardContent className="p-3 space-y-2">
           <div className="flex items-start gap-2">
-            <div {...listeners} className="mt-0.5 text-muted-foreground cursor-grab">
-              <GripVertical className="h-4 w-4" />
+            <div {...listeners} className="mt-0.5 text-muted-foreground cursor-grab p-1 -ml-1">
+              <GripVertical className="h-4 w-4 md:h-5 md:w-5" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -142,7 +142,7 @@ function SortableCard({
 
 export function ActivityKanbanBoard({ activities, users, onUpdate, onEdit }: KanbanProps) {
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 12 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })

@@ -88,7 +88,7 @@ export default function TimelinePage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Timeline Progetti</h1>
           <p className="text-xs text-muted-foreground">Traccia lo stato di avanzamento dei tuoi progetti tecnici</p>

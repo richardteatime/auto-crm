@@ -19,8 +19,10 @@ import {
   Bot,
   CheckSquare,
   Inbox,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
 
@@ -73,9 +75,16 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { counts } = useNotifications();
 
   const isDashboardActive = pathname === "/";
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -134,6 +143,16 @@ export function MobileNav() {
           </div>
         ))}
       </nav>
+
+      <div className="px-3 py-3 border-t">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          Esci
+        </button>
+      </div>
     </div>
   );
 }

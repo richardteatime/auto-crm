@@ -210,7 +210,7 @@ export default function PreventiviPage() {
     return (
       <div className="space-y-6">
         <div className="h-8 w-48 bg-muted rounded animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-20 bg-muted rounded-md animate-pulse" />
           ))}
@@ -221,7 +221,7 @@ export default function PreventiviPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Preventivi</h1>
           <p className="text-xs text-muted-foreground">Analisi e monitoraggio di tutti i preventivi</p>
@@ -266,7 +266,7 @@ export default function PreventiviPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -411,94 +411,154 @@ export default function PreventiviPage() {
               Nessun preventivo in questa categoria.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Numero</TableHead>
-                  <TableHead>Titolo</TableHead>
-                  <TableHead className="hidden md:table-cell">Cliente</TableHead>
-                  <TableHead className="hidden lg:table-cell">Trattativa</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead className="text-right">Valore</TableHead>
-                  <TableHead className="hidden lg:table-cell">Valido fino</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((q) => {
-                  const cfg =
-                    STATUS_CFG[q.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.bozza;
-                  const overdue = isOverdue(q);
-                  return (
-                    <TableRow key={q.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {q.number}
-                      </TableCell>
-                      <TableCell className="font-medium">{q.title}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">
-                        <div>{q.contactName ?? "—"}</div>
-                        {q.contactCompany && (
-                          <div className="text-muted-foreground text-xs">{q.contactCompany}</div>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm">
-                        {q.dealTitle ? (
-                          <Link
-                            href={`/deals/${q.dealId}`}
-                            className="hover:text-primary hover:underline"
-                          >
-                            {q.dealTitle}
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge variant={cfg.variant}>{cfg.label}</Badge>
-                          {overdue && (
-                            <span className="text-xs text-destructive font-medium flex items-center gap-0.5">
-                              <Clock className="h-3 w-3" />
-                              scaduto
-                            </span>
+            <>
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Numero</TableHead>
+                    <TableHead>Titolo</TableHead>
+                    <TableHead className="hidden md:table-cell">Cliente</TableHead>
+                    <TableHead className="hidden lg:table-cell">Trattativa</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead className="text-right">Valore</TableHead>
+                    <TableHead className="hidden lg:table-cell">Valido fino</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((q) => {
+                    const cfg =
+                      STATUS_CFG[q.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.bozza;
+                    const overdue = isOverdue(q);
+                    return (
+                      <TableRow key={q.id}>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {q.number}
+                        </TableCell>
+                        <TableCell className="font-medium">{q.title}</TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">
+                          <div>{q.contactName ?? "—"}</div>
+                          {q.contactCompany && (
+                            <div className="text-muted-foreground text-xs">{q.contactCompany}</div>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-primary">
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-sm">
+                          {q.dealTitle ? (
+                            <Link
+                              href={`/deals/${q.dealId}`}
+                              className="hover:text-primary hover:underline"
+                            >
+                              {q.dealTitle}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                            {overdue && (
+                              <span className="text-xs text-destructive font-medium flex items-center gap-0.5">
+                                <Clock className="h-3 w-3" />
+                                scaduto
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-primary">
+                          {formatCurrency(calcTotal(q.items, q.vatRate))}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                          {formatDate(q.validUntil)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="cursor-pointer h-8 w-8"
+                              onClick={(e) => openEdit(e, q)}
+                              aria-label="Modifica preventivo"
+                              title="Modifica"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="cursor-pointer h-8 w-8"
+                              onClick={() => window.open(`/api/quotes/${q.id}/pdf?t=${Date.now()}`, "_blank")}
+                              aria-label="Scarica PDF"
+                              title="Scarica PDF"
+                            >
+                              <FileDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-3 p-3">
+              {visible.map((q) => {
+                const cfg = STATUS_CFG[q.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.bozza;
+                const overdue = isOverdue(q);
+                return (
+                  <div key={q.id} className="rounded-md border bg-card p-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{q.title}</p>
+                        <p className="text-xs font-mono text-muted-foreground">{q.number}</p>
+                      </div>
+                      <span className="text-sm font-semibold text-primary shrink-0">
                         {formatCurrency(calcTotal(q.items, q.vatRate))}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                        {formatDate(q.validUntil)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="cursor-pointer h-8 w-8"
-                            onClick={(e) => openEdit(e, q)}
-                            aria-label="Modifica preventivo"
-                            title="Modifica"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="cursor-pointer h-8 w-8"
-                            onClick={() => window.open(`/api/quotes/${q.id}/pdf?t=${Date.now()}`, "_blank")}
-                            aria-label="Scarica PDF"
-                            title="Scarica PDF"
-                          >
-                            <FileDown className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {q.contactName ?? "—"}
+                      {q.contactCompany && ` · ${q.contactCompany}`}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                      {overdue && (
+                        <span className="text-xs text-destructive font-medium flex items-center gap-0.5">
+                          <Clock className="h-3 w-3" /> scaduto
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground">{formatDate(q.validUntil)}</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="cursor-pointer h-8 w-8"
+                        onClick={(e) => openEdit(e, q)}
+                        aria-label="Modifica preventivo"
+                        title="Modifica"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="cursor-pointer h-8 w-8"
+                        onClick={() => window.open(`/api/quotes/${q.id}/pdf?t=${Date.now()}`, "_blank")}
+                        aria-label="Scarica PDF"
+                        title="Scarica PDF"
+                      >
+                        <FileDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

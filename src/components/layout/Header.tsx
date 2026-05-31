@@ -19,7 +19,7 @@ export function Header({ onOpenCommandPalette }: HeaderProps) {
         >
           <Menu className="h-4 w-4" />
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent side="left" className="w-[85vw] max-w-72 p-0">
           <MobileNav />
         </SheetContent>
       </Sheet>
