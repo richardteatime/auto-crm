@@ -64,6 +64,17 @@ export default function CalendarPage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Switch calendar view when mobile/desktop changes
+  useEffect(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      const target = isMobile ? "listWeek" : "dayGridMonth";
+      if (api.view.type !== target) {
+        api.changeView(target);
+      }
+    }
+  }, [isMobile]);
+
   // Load current user
   useEffect(() => {
     fetch("/api/auth/me")
@@ -279,15 +290,15 @@ export default function CalendarPage() {
               plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
               initialView={isMobile ? "listWeek" : "dayGridMonth"}
               headerToolbar={{
-                left: "prev,next today",
+                left: "prev,next",
                 center: "title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+                right: isMobile ? "today,listWeek" : "today,dayGridMonth,timeGridWeek,timeGridDay,listWeek",
               }}
               locale={itLocale}
               firstDay={1}
-              editable={true}
-              selectable={true}
-              selectMirror={true}
+              editable={!isMobile}
+              selectable={!isMobile}
+              selectMirror={!isMobile}
               dayMaxEvents={true}
               weekends={true}
               events={fcEvents}
