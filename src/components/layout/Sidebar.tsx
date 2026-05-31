@@ -111,7 +111,7 @@ export function Sidebar() {
   const isDashboardActive = pathname === "/";
 
   return (
-    <aside className="hidden md:flex md:w-56 md:flex-col bg-card border-r min-h-screen">
+    <aside className="hidden md:flex md:w-56 md:flex-col bg-card border-r sticky top-0 h-screen self-start overflow-hidden">
       <div className="flex h-14 items-center gap-2 px-4 border-b">
         <Briefcase className="h-5 w-5 text-primary" />
         <span className="text-sm font-semibold tracking-tight">SarconX</span>
