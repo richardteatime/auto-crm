@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SheetClose } from "@/components/ui/sheet";
 import {
   LayoutDashboard,
   Users,
@@ -94,18 +95,22 @@ export function MobileNav() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
-        <Link
-          href="/"
-          className={cn(
-            "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors",
-            isDashboardActive
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-          )}
+        <SheetClose
+          render={
+            <Link
+              href="/"
+              className={cn(
+                "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                isDashboardActive
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              )}
+            />
+          }
         >
           <LayoutDashboard className="h-4 w-4 shrink-0" />
           <span>Dashboard</span>
-        </Link>
+        </SheetClose>
 
         {navGroups.map((group) => (
           <div key={group.label}>
@@ -119,15 +124,19 @@ export function MobileNav() {
                   (item.href !== "/" && pathname.startsWith(item.href));
                 const badgeCount = item.badge ? counts[item.badge] : 0;
                 return (
-                  <Link
+                  <SheetClose
                     key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-secondary text-foreground"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    )}
+                    render={
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-secondary text-foreground"
+                            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        )}
+                      />
+                    }
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
@@ -136,7 +145,7 @@ export function MobileNav() {
                         {badgeCount > 99 ? "99+" : badgeCount}
                       </span>
                     )}
-                  </Link>
+                  </SheetClose>
                 );
               })}
             </div>
@@ -145,13 +154,17 @@ export function MobileNav() {
       </nav>
 
       <div className="px-3 py-3 border-t">
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+        <SheetClose
+          render={
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            />
+          }
         >
           <LogOut className="h-4 w-4 shrink-0" />
           Esci
-        </button>
+        </SheetClose>
       </div>
     </div>
   );
