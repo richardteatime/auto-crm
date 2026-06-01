@@ -15,6 +15,7 @@ const typeConfig = {
   project_assigned: { label: "Progetto", icon: GitBranch, color: "text-purple-600", bg: "bg-purple-600/10" },
   calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-success", bg: "bg-success/10" },
   chat_message: { label: "Chat", icon: MessageSquare, color: "text-warning", bg: "bg-warning/10" },
+  workflow: { label: "Workflow", icon: Bell, color: "text-blue-600", bg: "bg-blue-600/10" },
 };
 
 export default function NotificationsPage() {

@@ -666,14 +666,48 @@ auto-crm/
 | **MCP** | No | Claude Desktop/Web talks directly to your CRM |
 | **Web** | Yes (optional) | Web UI classifies leads automatically |
 
+## Capture & Conversion Platform (Fase 2)
+
+SarconX include una piattaforma di acquisizione pubblica collegata direttamente
+al CRM:
+
+| Area admin | URL pubblica | Funzione |
+|------------|--------------|----------|
+| `/landing-pages` | `/l/[slug]` | Landing SSR con builder a blocchi drag-and-drop, template, favicon, OG tags e preview desktop/tablet/mobile |
+| `/forms` | `/form/[id]` e `/embed/form.js` | Form builder, validazione, mapping CRM, embed script/iframe e redirect opzionale |
+| `/booking-links` | `/book/[slug]` | Slot reali, pool di userId assegnabili, buffer, limite giornaliero, appuntamenti ed email best-effort |
+| `/funnels` | `/f/[slug]` | Funnel multi-step con condizioni base, sessione, deal finale e drop-off per step |
+| `/analytics` | — | Metriche aggregate, trend a 14 giorni e top asset |
+
+### Setup e verifica
+
+```bash
+npm run setup         # provisiona collection, indici e template landing
+npm run dev -- --port 3001
+npm run e2e:capture   # E2E reali su Next dev + Appwrite configurato
+```
+
+Le pagine booking interpretano gli orari in UTC. Nel campo **Assegnato a**
+puoi inserire uno o più Appwrite userId separati da virgola. Per sicurezza,
+lo stesso booking link mantiene una singola prenotazione per slot anche se più
+utenti del pool risultano liberi.
+
+### Decisione builder
+
+Il piano valutava GrapesJS o Chai Builder. L'implementazione usa invece un
+builder tipizzato interno con `@dnd-kit`: riduce il rischio di integrazione con
+React 19 / Next.js 16, mantiene SSR fedele e copre i blocchi richiesti senza
+introdurre un runtime esterno pesante.
+
 ## Scripts
 
 ```bash
 npm run dev        # Development server
-npm run build      # Production build
+npm run build      # Production build (non eseguito nei gate automatici repository)
 npm run start      # Production server
 npm run setup      # Initialize Appwrite database
 npm run seed       # Load demo data
+npm run e2e:capture # Capture Platform real E2E
 npm run mcp        # MCP server for Claude Desktop
 npm run lint       # Check code
 ```

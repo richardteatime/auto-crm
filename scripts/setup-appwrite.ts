@@ -141,6 +141,8 @@ async function main() {
   await addAttr("contacts", dt("contacts", "updatedAt", true));
   await addIndex("contacts", "idx_temperature", "key", ["temperature"]);
   await addIndex("contacts", "idx_source", "key", ["source"]);
+  await addIndex("contacts", "idx_email", "key", ["email"]);
+  await addIndex("contacts", "idx_phone", "key", ["phone"]);
   await addIndex("contacts", "idx_createdAt", "key", ["createdAt"]);
 
   // === PIPELINE STAGES ===
@@ -505,9 +507,16 @@ async function main() {
   await addAttr("leads", str("leads", "assignedTo", 128, false));
   await addAttr("leads", int("leads", "leadScore", true, 0, 0, 100));
   await addAttr("leads", str("leads", "contactId", 128, false));
+  await addAttr("leads", str("leads", "landingPageId", 128, false));
+  await addAttr("leads", str("leads", "formId", 128, false));
+  await addAttr("leads", str("leads", "funnelId", 128, false));
+  await addAttr("leads", str("leads", "bookingLinkId", 128, false));
   await addAttr("leads", dt("leads", "createdAt", true));
   await addAttr("leads", dt("leads", "updatedAt", true));
   await addIndex("leads", "idx_pipelineStage", "key", ["pipelineStage"]);
+  await addIndex("leads", "idx_landingPageId", "key", ["landingPageId"]);
+  await addIndex("leads", "idx_formId", "key", ["formId"]);
+  await addIndex("leads", "idx_funnelId", "key", ["funnelId"]);
   await addIndex("leads", "idx_status", "key", ["status"]);
   await addIndex("leads", "idx_category", "key", ["category"]);
   await addIndex("leads", "idx_email", "key", ["email"]);
@@ -652,6 +661,280 @@ async function main() {
   } catch (e: unknown) {
     throw e;
   }
+
+  // =========================================================================
+  // CAPTURE & CONVERSION PLATFORM (FASE 2)
+  // Landing Pages · Forms · Booking · Funnels · Analytics
+  // =========================================================================
+
+  // === LANDING PAGES ===
+  await ensureCollection("landing_pages", "Landing Pages");
+  await addAttr("landing_pages", str("landing_pages", "name", 255, true));
+  await addAttr("landing_pages", str("landing_pages", "slug", 128, true));
+  await addAttr("landing_pages", enm("landing_pages", "status", ["draft", "published", "archived"], true, "draft"));
+  await addAttr("landing_pages", str("landing_pages", "templateId", 128, false));
+  await addAttr("landing_pages", text("landing_pages", "config", true, 65535));
+  await addAttr("landing_pages", str("landing_pages", "metaTitle", 255, false));
+  await addAttr("landing_pages", str("landing_pages", "metaDescription", 1000, false));
+  await addAttr("landing_pages", str("landing_pages", "faviconUrl", 2048, false));
+  await addAttr("landing_pages", str("landing_pages", "ogImageUrl", 2048, false));
+  await addAttr("landing_pages", int("landing_pages", "views", true, 0));
+  await addAttr("landing_pages", int("landing_pages", "submissions", true, 0));
+  await addAttr("landing_pages", str("landing_pages", "createdBy", 128, false));
+  await addAttr("landing_pages", dt("landing_pages", "createdAt", true));
+  await addAttr("landing_pages", dt("landing_pages", "updatedAt", true));
+  await addIndex("landing_pages", "idx_slug_unique", "unique", ["slug"]);
+  await addIndex("landing_pages", "idx_status", "key", ["status"]);
+  await addIndex("landing_pages", "idx_createdAt", "key", ["createdAt"]);
+
+  // === LANDING TEMPLATES ===
+  await ensureCollection("landing_templates", "Landing Templates");
+  await addAttr("landing_templates", str("landing_templates", "name", 255, true));
+  await addAttr("landing_templates", enm("landing_templates", "category", ["blank", "saas", "local_business", "event", "lead_gen"], true, "blank"));
+  await addAttr("landing_templates", text("landing_templates", "config", true, 65535));
+  await addAttr("landing_templates", str("landing_templates", "thumbnailUrl", 2048, false));
+  await addAttr("landing_templates", dt("landing_templates", "createdAt", true));
+  await addIndex("landing_templates", "idx_category", "key", ["category"]);
+
+  console.log("\n--- Seeding Landing Templates ---\n");
+  const landingTemplateCount = await db.listDocuments(DB_ID, "landing_templates", [Query.limit(1)]);
+  if (landingTemplateCount.total === 0) {
+    const createdAt = new Date().toISOString();
+    const defaultLandingTemplates = [
+      {
+        name: "Lead generation",
+        category: "lead_gen",
+        config: JSON.stringify({
+          blocks: [
+            { id: "tpl_lead_hero", type: "hero", heading: "Ottieni una consulenza gratuita", subheading: "Lasciaci i tuoi dati: ti ricontatteremo con una proposta su misura.", buttonText: "Richiedi informazioni", buttonUrl: "#form", align: "center", backgroundColor: "#0f172a", textColor: "#ffffff" },
+            { id: "tpl_lead_features", type: "features", heading: "Perché parlarne con noi", items: [{ title: "Rapido", description: "Risposta concreta in tempi brevi.", icon: "Zap" }, { title: "Su misura", description: "Analisi basata sulle tue esigenze.", icon: "Sparkles" }, { title: "Trasparente", description: "Nessun costo nascosto.", icon: "ShieldCheck" }] },
+            { id: "tpl_lead_form", type: "form", formId: null, heading: "Parliamo del tuo progetto" },
+            { id: "tpl_lead_footer", type: "footer", text: `© ${new Date().getFullYear()} La tua azienda. Tutti i diritti riservati.` },
+          ],
+          theme: { primaryColor: "#2563eb", fontFamily: "Inter, sans-serif", maxWidth: 1100 },
+        }),
+        thumbnailUrl: null,
+        createdAt,
+      },
+      {
+        name: "Attività locale",
+        category: "local_business",
+        config: JSON.stringify({
+          blocks: [
+            { id: "tpl_local_hero", type: "hero", heading: "Il servizio giusto, vicino a te", subheading: "Prenota un contatto e scopri come possiamo aiutarti.", buttonText: "Contattaci", buttonUrl: "#form", align: "center", backgroundColor: "#14532d", textColor: "#ffffff" },
+            { id: "tpl_local_testimonials", type: "testimonials", heading: "Cosa dicono i clienti", items: [{ quote: "Servizio professionale e risposta velocissima.", author: "Cliente verificato", role: "Cliente" }] },
+            { id: "tpl_local_form", type: "form", formId: null, heading: "Richiedi informazioni" },
+            { id: "tpl_local_footer", type: "footer", text: `© ${new Date().getFullYear()} La tua attività. Tutti i diritti riservati.` },
+          ],
+          theme: { primaryColor: "#16a34a", fontFamily: "Inter, sans-serif", maxWidth: 1100 },
+        }),
+        thumbnailUrl: null,
+        createdAt,
+      },
+      {
+        name: "Evento",
+        category: "event",
+        config: JSON.stringify({
+          blocks: [
+            { id: "tpl_event_hero", type: "hero", heading: "Partecipa al nostro prossimo evento", subheading: "Registrati ora per ricevere tutti i dettagli.", buttonText: "Registrati", buttonUrl: "#form", align: "center", backgroundColor: "#4c1d95", textColor: "#ffffff" },
+            { id: "tpl_event_text", type: "text", content: "Un appuntamento pratico pensato per darti strumenti, idee e contatti utili.", align: "center" },
+            { id: "tpl_event_form", type: "form", formId: null, heading: "Riserva il tuo posto" },
+            { id: "tpl_event_footer", type: "footer", text: `© ${new Date().getFullYear()} La tua azienda. Tutti i diritti riservati.` },
+          ],
+          theme: { primaryColor: "#7c3aed", fontFamily: "Inter, sans-serif", maxWidth: 1100 },
+        }),
+        thumbnailUrl: null,
+        createdAt,
+      },
+    ];
+    for (const template of defaultLandingTemplates) {
+      await db.createDocument(DB_ID, "landing_templates", ID.unique(), template);
+      console.log(`  Landing template "${template.name}" created`);
+    }
+  } else {
+    console.log("  Landing templates already exist, skipping seed");
+  }
+
+  // === FORMS ===
+  await ensureCollection("forms", "Forms");
+  await addAttr("forms", str("forms", "name", 255, true));
+  await addAttr("forms", str("forms", "description", 1000, false));
+  await addAttr("forms", text("forms", "fields", true, 65535));
+  await addAttr("forms", text("forms", "style", true, 16384));
+  await addAttr("forms", str("forms", "successMessage", 1000, false));
+  await addAttr("forms", str("forms", "redirectUrl", 2048, false));
+  await addAttr("forms", bool("forms", "embedEnabled", true, true));
+  await addAttr("forms", enm("forms", "status", ["draft", "active", "archived"], true, "draft"));
+  await addAttr("forms", int("forms", "views", true, 0));
+  await addAttr("forms", int("forms", "submissions", true, 0));
+  await addAttr("forms", str("forms", "createdBy", 128, false));
+  await addAttr("forms", dt("forms", "createdAt", true));
+  await addAttr("forms", dt("forms", "updatedAt", true));
+  await addIndex("forms", "idx_status", "key", ["status"]);
+  await addIndex("forms", "idx_createdAt", "key", ["createdAt"]);
+
+  // === FORM SUBMISSIONS ===
+  await ensureCollection("form_submissions", "Form Submissions");
+  await addAttr("form_submissions", str("form_submissions", "formId", 128, true));
+  await addAttr("form_submissions", str("form_submissions", "landingPageId", 128, false));
+  await addAttr("form_submissions", str("form_submissions", "funnelId", 128, false));
+  await addAttr("form_submissions", str("form_submissions", "contactId", 128, false));
+  await addAttr("form_submissions", text("form_submissions", "data", true, 65535));
+  await addAttr("form_submissions", str("form_submissions", "ipHash", 64, false));
+  await addAttr("form_submissions", str("form_submissions", "userAgent", 512, false));
+  await addAttr("form_submissions", str("form_submissions", "referrer", 2048, false));
+  await addAttr("form_submissions", dt("form_submissions", "createdAt", true));
+  await addIndex("form_submissions", "idx_formId", "key", ["formId"]);
+  await addIndex("form_submissions", "idx_contactId", "key", ["contactId"]);
+  await addIndex("form_submissions", "idx_createdAt", "key", ["createdAt"]);
+
+  // === BOOKING LINKS ===
+  await ensureCollection("booking_links", "Booking Links");
+  await addAttr("booking_links", str("booking_links", "name", 255, true));
+  await addAttr("booking_links", str("booking_links", "slug", 128, true));
+  await addAttr("booking_links", str("booking_links", "assignedTo", 255, true));
+  await addAttr("booking_links", int("booking_links", "durationMinutes", true, 30));
+  await addAttr("booking_links", text("booking_links", "availability", true, 16384));
+  await addAttr("booking_links", str("booking_links", "successMessage", 1000, false));
+  await addAttr("booking_links", str("booking_links", "redirectUrl", 2048, false));
+  await addAttr("booking_links", enm("booking_links", "status", ["active", "paused", "archived"], true, "active"));
+  await addAttr("booking_links", int("booking_links", "bookingsCount", true, 0));
+  await addAttr("booking_links", str("booking_links", "createdBy", 128, false));
+  await addAttr("booking_links", dt("booking_links", "createdAt", true));
+  await addAttr("booking_links", dt("booking_links", "updatedAt", true));
+  await addIndex("booking_links", "idx_slug_unique", "unique", ["slug"]);
+  await addIndex("booking_links", "idx_status", "key", ["status"]);
+  await addIndex("booking_links", "idx_createdAt", "key", ["createdAt"]);
+
+  // === BOOKING APPOINTMENTS ===
+  await ensureCollection("booking_appointments", "Booking Appointments");
+  await addAttr("booking_appointments", str("booking_appointments", "bookingLinkId", 128, true));
+  await addAttr("booking_appointments", str("booking_appointments", "calendarEventId", 128, false));
+  await addAttr("booking_appointments", str("booking_appointments", "contactId", 128, false));
+  await addAttr("booking_appointments", str("booking_appointments", "guestName", 255, true));
+  await addAttr("booking_appointments", email("booking_appointments", "guestEmail", true));
+  await addAttr("booking_appointments", str("booking_appointments", "guestPhone", 50, false));
+  await addAttr("booking_appointments", text("booking_appointments", "guestNotes", false));
+  await addAttr("booking_appointments", dt("booking_appointments", "startAt", true));
+  await addAttr("booking_appointments", dt("booking_appointments", "endAt", true));
+  await addAttr("booking_appointments", enm("booking_appointments", "status", ["confirmed", "pending", "cancelled", "completed"], true, "confirmed"));
+  await addAttr("booking_appointments", dt("booking_appointments", "createdAt", true));
+  await addIndex("booking_appointments", "idx_bookingLinkId", "key", ["bookingLinkId"]);
+  await addIndex("booking_appointments", "idx_startAt", "key", ["startAt"]);
+  await addIndex("booking_appointments", "idx_createdAt", "key", ["createdAt"]);
+
+  // === FUNNELS ===
+  await ensureCollection("funnels", "Funnels");
+  await addAttr("funnels", str("funnels", "name", 255, true));
+  await addAttr("funnels", str("funnels", "slug", 128, true));
+  await addAttr("funnels", text("funnels", "steps", true, 65535));
+  await addAttr("funnels", str("funnels", "thankYouPageId", 128, false));
+  await addAttr("funnels", enm("funnels", "status", ["draft", "active", "archived"], true, "draft"));
+  await addAttr("funnels", int("funnels", "views", true, 0));
+  await addAttr("funnels", int("funnels", "conversions", true, 0));
+  await addAttr("funnels", str("funnels", "createdBy", 128, false));
+  await addAttr("funnels", dt("funnels", "createdAt", true));
+  await addAttr("funnels", dt("funnels", "updatedAt", true));
+  await addIndex("funnels", "idx_slug_unique", "unique", ["slug"]);
+  await addIndex("funnels", "idx_status", "key", ["status"]);
+  await addIndex("funnels", "idx_createdAt", "key", ["createdAt"]);
+
+  // === FUNNEL SESSIONS ===
+  await ensureCollection("funnel_sessions", "Funnel Sessions");
+  await addAttr("funnel_sessions", str("funnel_sessions", "funnelId", 128, true));
+  await addAttr("funnel_sessions", str("funnel_sessions", "sessionId", 128, true));
+  await addAttr("funnel_sessions", str("funnel_sessions", "contactId", 128, false));
+  await addAttr("funnel_sessions", str("funnel_sessions", "currentStep", 128, false));
+  await addAttr("funnel_sessions", bool("funnel_sessions", "completed", true, false));
+  await addAttr("funnel_sessions", bool("funnel_sessions", "abandoned", true, false));
+  await addAttr("funnel_sessions", dt("funnel_sessions", "startedAt", true));
+  await addAttr("funnel_sessions", dt("funnel_sessions", "completedAt", false));
+  await addIndex("funnel_sessions", "idx_funnelId", "key", ["funnelId"]);
+  await addIndex("funnel_sessions", "idx_sessionId", "key", ["sessionId"]);
+
+  // === FUNNEL EVENTS ===
+  await ensureCollection("funnel_events", "Funnel Events");
+  await addAttr("funnel_events", str("funnel_events", "funnelId", 128, true));
+  await addAttr("funnel_events", str("funnel_events", "sessionId", 128, true));
+  await addAttr("funnel_events", str("funnel_events", "stepId", 128, true));
+  await addAttr("funnel_events", enm("funnel_events", "eventType", ["step_view", "step_submit", "step_skip", "funnel_complete", "funnel_abandon"], true, "step_view"));
+  await addAttr("funnel_events", text("funnel_events", "data", false));
+  await addAttr("funnel_events", dt("funnel_events", "createdAt", true));
+  await addIndex("funnel_events", "idx_funnelId", "key", ["funnelId"]);
+  await addIndex("funnel_events", "idx_createdAt", "key", ["createdAt"]);
+
+  // === ANALYTICS EVENTS ===
+  await ensureCollection("analytics_events", "Analytics Events");
+  await addAttr("analytics_events", enm("analytics_events", "eventType", ["page_view", "cta_click", "scroll_50", "scroll_90", "form_view", "form_start", "form_submit", "form_field_error", "booking_page_view", "slot_select", "booking_submit", "booking_confirm", "booking_complete", "funnel_start", "step_view", "step_submit", "funnel_complete", "funnel_abandon", "funnel_step"], true, "page_view"));
+  await addAttr("analytics_events", enm("analytics_events", "assetType", ["landing", "form", "booking", "funnel"], true, "landing"));
+  await addAttr("analytics_events", str("analytics_events", "assetId", 128, true));
+  await addAttr("analytics_events", str("analytics_events", "sessionId", 128, false));
+  await addAttr("analytics_events", str("analytics_events", "ipHash", 64, false));
+  await addAttr("analytics_events", str("analytics_events", "userAgent", 512, false));
+  await addAttr("analytics_events", str("analytics_events", "referrer", 2048, false));
+  await addAttr("analytics_events", dt("analytics_events", "createdAt", true));
+  await addIndex("analytics_events", "idx_assetType", "key", ["assetType"]);
+  await addIndex("analytics_events", "idx_assetId", "key", ["assetId"]);
+  await addIndex("analytics_events", "idx_createdAt", "key", ["createdAt"]);
+
+  // =========================================================================
+  // VISUAL WORKFLOW BUILDER (FASE 3)
+  // =========================================================================
+
+  // === WORKFLOWS ===
+  await ensureCollection("workflows", "Workflows");
+  await addAttr("workflows", str("workflows", "name", 255, true));
+  await addAttr("workflows", text("workflows", "description", false));
+  await addAttr("workflows", enm("workflows", "status", ["draft", "active", "paused", "archived"], true, "draft"));
+  await addAttr("workflows", str("workflows", "triggerType", 64, true));
+  await addAttr("workflows", text("workflows", "triggerConfig", true, 16384));
+  await addAttr("workflows", text("workflows", "nodes", true, 65535));
+  await addAttr("workflows", text("workflows", "edges", true, 65535));
+  await addAttr("workflows", str("workflows", "createdBy", 128, false));
+  await addAttr("workflows", dt("workflows", "createdAt", true));
+  await addAttr("workflows", dt("workflows", "updatedAt", true));
+  await addIndex("workflows", "idx_status", "key", ["status"]);
+  await addIndex("workflows", "idx_triggerType", "key", ["triggerType"]);
+  await addIndex("workflows", "idx_createdAt", "key", ["createdAt"]);
+
+  // === WORKFLOW RUNS ===
+  await ensureCollection("workflow_runs", "Workflow Runs");
+  await addAttr("workflow_runs", str("workflow_runs", "workflowId", 128, true));
+  await addAttr("workflow_runs", str("workflow_runs", "triggerType", 64, true));
+  await addAttr("workflow_runs", text("workflow_runs", "triggerPayload", true, 65535));
+  await addAttr("workflow_runs", enm("workflow_runs", "status", ["running", "scheduled", "completed", "failed", "cancelled"], true, "running"));
+  await addAttr("workflow_runs", dt("workflow_runs", "startedAt", true));
+  await addAttr("workflow_runs", dt("workflow_runs", "completedAt", false));
+  await addAttr("workflow_runs", text("workflow_runs", "error", false));
+  await addAttr("workflow_runs", dt("workflow_runs", "createdAt", true));
+  await addIndex("workflow_runs", "idx_workflowId", "key", ["workflowId"]);
+  await addIndex("workflow_runs", "idx_status", "key", ["status"]);
+  await addIndex("workflow_runs", "idx_createdAt", "key", ["createdAt"]);
+
+  // === WORKFLOW RUN LOGS ===
+  await ensureCollection("workflow_run_logs", "Workflow Run Logs");
+  await addAttr("workflow_run_logs", str("workflow_run_logs", "runId", 128, true));
+  await addAttr("workflow_run_logs", str("workflow_run_logs", "nodeId", 128, true));
+  await addAttr("workflow_run_logs", str("workflow_run_logs", "nodeType", 64, true));
+  await addAttr("workflow_run_logs", enm("workflow_run_logs", "status", ["ok", "skipped", "failed", "pending"], true, "pending"));
+  await addAttr("workflow_run_logs", text("workflow_run_logs", "input", false, 65535));
+  await addAttr("workflow_run_logs", text("workflow_run_logs", "output", false, 65535));
+  await addAttr("workflow_run_logs", text("workflow_run_logs", "error", false));
+  await addAttr("workflow_run_logs", dt("workflow_run_logs", "executedAt", true));
+  await addIndex("workflow_run_logs", "idx_runId", "key", ["runId"]);
+  await addIndex("workflow_run_logs", "idx_executedAt", "key", ["executedAt"]);
+
+  // === WORKFLOW SCHEDULED ===
+  await ensureCollection("workflow_scheduled", "Workflow Scheduled");
+  await addAttr("workflow_scheduled", str("workflow_scheduled", "workflowId", 128, true));
+  await addAttr("workflow_scheduled", str("workflow_scheduled", "runId", 128, true));
+  await addAttr("workflow_scheduled", str("workflow_scheduled", "nodeId", 128, true));
+  await addAttr("workflow_scheduled", dt("workflow_scheduled", "executeAt", true));
+  await addAttr("workflow_scheduled", text("workflow_scheduled", "payload", true, 65535));
+  await addAttr("workflow_scheduled", enm("workflow_scheduled", "status", ["pending", "processing", "completed", "cancelled"], true, "pending"));
+  await addAttr("workflow_scheduled", dt("workflow_scheduled", "createdAt", true));
+  await addIndex("workflow_scheduled", "idx_status_executeAt", "key", ["status", "executeAt"]);
+  await addIndex("workflow_scheduled", "idx_workflowId", "key", ["workflowId"]);
 
   // === STORAGE BUCKET ===
   console.log("\n--- Creating Storage Bucket ---\n");

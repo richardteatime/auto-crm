@@ -36,6 +36,22 @@ export const COLLECTIONS = {
   automationRuns: "automation_runs",
   callTasks: "call_tasks",
   leadQuotes: "lead_quotes",
+  // Capture & Conversion Platform (FASE 2)
+  landingPages: "landing_pages",
+  landingTemplates: "landing_templates",
+  forms: "forms",
+  formSubmissions: "form_submissions",
+  bookingLinks: "booking_links",
+  bookingAppointments: "booking_appointments",
+  funnels: "funnels",
+  funnelSessions: "funnel_sessions",
+  funnelEvents: "funnel_events",
+  analyticsEvents: "analytics_events",
+  // Visual Workflow Builder (FASE 3)
+  workflows: "workflows",
+  workflowRuns: "workflow_runs",
+  workflowRunLogs: "workflow_run_logs",
+  workflowScheduled: "workflow_scheduled",
 } as const;
 
 // ---------------------------------------------------------------------------

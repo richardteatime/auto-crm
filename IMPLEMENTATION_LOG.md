@@ -1134,3 +1134,279 @@ un account temporaneo viene correttamente respinto dalla whitelist.
 **19/19 verificati.** Il piano Lead Pipeline MVP è completato. La build non è
 stata eseguita intenzionalmente per rispettare la regola del repository; il gate
 TypeScript equivalente richiesto dal piano è verde con `npx tsc --noEmit`.
+
+---
+
+## Capture & Conversion Platform — PLAN-FASE2 completato (2026-05-31)
+
+### Decisioni architetturali
+
+- Il builder landing usa blocchi tipizzati interni con `@dnd-kit`, non GrapesJS:
+  meno rischio con React 19 / Next.js 16, rendering SSR fedele e nessun runtime
+  editor pesante sul percorso pubblico.
+- Il Funnel MVP segue la mitigazione del piano: lista ordinata di step,
+  condizioni `exists` / `equals`, riuso delle landing esistenti e metriche
+  views/submits/drop-off per step.
+- I booking link memorizzano uno o più Appwrite userId separati da virgola.
+  Gli slot sono unione delle disponibilità del pool e la prenotazione assegna
+  un singolo utente libero. Il guard atomico rimane conservativo: un solo
+  appuntamento per booking link + slot.
+
+### Funzionalità consegnate
+
+| Area | Stato | Evidenza principale |
+|------|-------|---------------------|
+| Landing pages | ✅ | Lista, template predefiniti seedati, builder blocchi drag-and-drop, form embed, preview device, favicon/OG, publish/depublish, duplicate/delete, SSR `/l/[slug]` |
+| Forms | ✅ | Builder drag-and-drop, tipi campo, mapping CRM, validazione, styling, preview, script iframe `/embed/form.js`, submit attribuito |
+| Booking | ✅ | Link admin, pool assegnatari, slot reali UTC, buffer/max giornaliero, lista appuntamenti, duplicate/delete, contatto, evento calendario, email best-effort, doppia prenotazione rifiutata |
+| Funnels | ✅ | CRUD/duplicate, editor step, condizioni base, route pubbliche, sessione, eventi, deal finale, drop-off per step |
+| Analytics | ✅ | Eventi pubblici, contatori asset, card aggregate, trend 14 giorni e top asset in `/analytics` |
+
+### Bug corretti durante la verifica
+
+1. `src/lib/capture/ingest.ts` usava `name` invece del contratto `fullName`
+   richiesto da `createLead` e non collegava un contatto CRM.
+2. `src/proxy.ts` proteggeva per errore le route pubbliche Capture causando
+   `401` e redirect login.
+3. La prenotazione non aveva un guard atomico: ora il documento appointment usa
+   un ID deterministico derivato da booking link + slot.
+4. Il calcolo calendar eventi usava eventi contenuti nel range, non eventi che
+   si sovrappongono al range. Ora applica `endAt > start` e `startAt < end`.
+5. Il dashboard contava i booking view come `page_view`, ma la route emette
+   `booking_page_view`; anche il totale views sottostimava form, booking e funnel.
+6. Il test Capture ha esposto un bug Hermes preesistente: i follow-up
+   “appena creato” usavano contatti recenti globali. Ora la memoria privilegia
+   la conversazione Chatwoot attiva.
+
+### Provisioning Appwrite applicato
+
+`npm run setup` è stato eseguito contro:
+
+- endpoint: `https://appwrite.app.easlydev.online/v1`
+- database: `crm`
+
+Sono presenti le collection Capture, gli indici di attribuzione, gli indici
+contatti email/telefono, l'attributo opzionale `landing_pages.faviconUrl` e i
+template landing `Lead generation`, `Attività locale`, `Evento`.
+
+### Gate eseguiti senza build
+
+Per regola repository NON è stato eseguito `npm run build`.
+
+| Comando | Esito |
+|---------|-------|
+| `npm run setup` | ✅ provisioning remoto idempotente |
+| `npm run lint` | ✅ zero finding |
+| `npx tsc --noEmit` | ✅ zero errori |
+| `npm audit --audit-level=low` | ✅ zero vulnerabilità |
+| `npx tsx scripts/test-parsers.ts` | ✅ 70/70 |
+| `npx tsx scripts/e2e-parser-test.ts` | ✅ 35/35 |
+| `npx tsx scripts/gate1-e2e.ts` | ✅ 7/7 |
+| `REQUIRE_APPWRITE_E2E=true npx tsx scripts/lead-pipeline-e2e.ts` | ✅ 12/12 |
+| `npx tsx scripts/test-hermes-webhook-e2e.ts` | ✅ webhook + memoria multi-turn |
+| `npm run e2e:capture` | ✅ 7/7, ripetuto dopo i fix finali |
+| `git -c core.whitespace=cr-at-eol diff --check` | ✅ |
+
+### Capture E2E finale
+
+`scripts/capture-platform-e2e.ts` verifica su Next dev + Appwrite reale:
+
+1. reachability e template landing seedati;
+2. persistenza form attivo e config pubblica;
+3. landing SSR con form selezionato, metadata dinamici e favicon;
+4. submit form con lead, contatto e attribuzione;
+5. booking con pool assegnatari, slot reale, reservation, calendar event,
+   contatto e risposta `409` al double booking;
+6. funnel pubblico a due step con SSR concorrente, singola sessione, completamento e deal creato;
+7. analytics presenti per landing, form, booking e funnel.
+
+Risultato finale:
+
+```text
+Capture Platform E2E: 7/7 passed
+landing=/l/e2e-landing-e2e-1780248375772
+booking=/book/e2e-booking-e2e-1780248375772 start=2026-06-01T09:00:00.000Z
+funnel=/f/e2e-funnel-e2e-1780248375772
+sid=2536010b-2baa-4fe9-bc44-65f6aee91e15
+```
+
+---
+
+## Visual Workflow Builder — PLAN-FASE3 (chiusura formale, 2026-05-31)
+
+> Layer visuale sopra l'automation engine esistente. Canvas ReactFlow → JSON
+> `{nodes, edges}` → Appwrite → WorkflowExecutor → azioni CRM.
+> Questa sezione formalizza una fase il cui codice era già presente ma non
+> documentata/verificata: audit, bug fix e test E2E dedicato.
+
+### Stato del codice (verificato per ispezione)
+
+| Area | Stato | Evidenza |
+|------|-------|----------|
+| Data model + collection | ✅ | `workflows`, `workflow_runs`, `workflow_run_logs`, `workflow_scheduled` in `scripts/setup-appwrite.ts` e in `COLLECTIONS` (`src/lib/appwrite.ts`) |
+| CRUD | ✅ | `src/lib/db/workflows.ts`, `workflow-runs.ts`, `workflow-run-logs.ts`, `workflow-scheduled.ts` (esportati da `db/index.ts`) |
+| Executor engine | ✅ | `src/lib/workflows/executor.ts` — graph traversal, cycle detection, condition branching su edge `true`/`false`, delay → scheduling |
+| Node registry + handlers | ✅ | `registry.ts` (21 nodi) + `handlers.ts` (executor per ogni nodo) |
+| Trigger agganciati a eventi reali | ✅ | `triggerWorkflows()` chiamato in `/api/contacts` (contact_created), `/api/pipeline` (deal_moved), `/api/public/forms/[id]/submit` (form_submitted), `/api/public/booking/[slug]/book` (booking_created), `/api/webhook` (webhook). Fire-and-forget, mai blocca l'API chiamante. |
+| Worker delay | ✅ | `scripts/workflow-worker.ts` + `POST /api/workflow/process-scheduled` |
+| UI | ✅ | `/workflows`, `/workflows/[id]` + API `/api/workflows/*` |
+
+### Bug trovato e corretto (delay resume rotto)
+
+**Root cause:** in `executor.ts` il context veniva creato con `variables: {}` e la
+riga `context.variables.workflowId = context.variables.workflowId ?? ""` non
+iniettava mai il `workflowId` reale → restava `""`. I nodi `wait_for`/`wait_until`
+salvavano quindi `workflow_scheduled.workflowId = ""`, e al risveglio
+`resumeFromScheduled` faceva `getWorkflow("")` → `null` → run fallita con
+"Workflow non trovato". **Ogni workflow con un delay sarebbe rimasto bloccato per
+sempre, senza errore visibile in UI.**
+
+**Fix:**
+- `executeGraph`: il context parte con `variables: { workflowId: workflow.id }`.
+- `resumeFromScheduled`: `context.variables.workflowId = workflow.id` ripristinato
+  sempre dopo il parse del payload (robusto anche per delay concatenati / payload
+  vecchi).
+
+Regressione coperta dal test E2E B4 (asserisce `scheduled.workflowId === workflow.id`).
+
+### Gap noto (documentato, non bloccante)
+
+- `create_note` è dichiarato in `ACTION_NODE_TYPES` (`types.ts`) ma **non ha un
+  executor registrato** in `registry.ts`/`handlers.ts`. Le altre 9 azioni sono
+  implementate. Un workflow che usasse `create_note` fallirebbe con "Tipo nodo
+  sconosciuto" (gestito graceful: run `failed`, non crash). Da implementare se/quando
+  serve (mappabile su una activity tipo nota). Fuori dallo scope MVP attuale.
+
+### Test E2E creato
+
+`scripts/workflow-e2e.ts` (stesso runner di `lead-pipeline-e2e.ts`):
+- **PART A (sempre, no Appwrite):** A1 registry completo (21 nodi, categorie corrette,
+  `create_note` riconosciuto come gap); A2/A3 branching `if_field_equals` true/false;
+  A4 `if_score_above`; A5 interpolazione `{{trigger.payload.*}}`.
+- **PART B (Appwrite, skip graceful):** B1 crea workflow di branching in `draft`;
+  B2 esegue ramo TRUE (`category=hot`) e verifica dai log che `n_hot` gira e `n_cold` no;
+  B3 ramo FALSE specularmente; B4 delay → run `scheduled` + verifica `workflowId`
+  persistito (copre il fix).
+
+**Sicurezza del test:** n8n off; `RESEND_API_KEY` rimossa dopo il load → i `send_email`
+terminali fanno skip (nessuna email reale); workflow creati in `draft` (i trigger reali
+filtrano `status=active`, quindi non si attivano in produzione) e cancellati a fine run;
+record schedulato di test cancellato.
+
+### Provisioning Appwrite — collection FASE 3 create
+
+Il controllo ha rivelato che le 4 collection FASE 3 (`workflows`, `workflow_runs`,
+`workflow_run_logs`, `workflow_scheduled`) **non erano mai state create** su Appwrite:
+il primo run di `workflow-e2e` PART B falliva con "Collection with the requested ID
+could not be found". `setup-appwrite.ts` le definiva già, ma `npm run setup` non era
+mai stato rieseguito dopo l'aggiunta di FASE 3 (coerente con l'assenza di chiusura
+formale). Eseguito `npm run setup` (idempotente): le 4 collection + indici sono ora
+presenti. Senza questo passo, in produzione i workflow sarebbero stati inerti (UI non
+in grado di crearli, trigger senza nulla da eseguire).
+
+### Gate — ESEGUITI (2026-05-31, tutti verdi)
+
+| Comando | Esito |
+|---------|-------|
+| `npx tsc --noEmit` | ✅ 0 errori (intero progetto, incluso il fix executor + il nuovo test) |
+| `npx eslint .` | ✅ 0 finding |
+| `npm audit --audit-level=low` | ✅ 0 vulnerabilità |
+| `npm run setup` | ✅ provisioning collection FASE 3 completato |
+| `npx tsx scripts/test-parsers.ts` | ✅ 70/70 |
+| `npx tsx scripts/e2e-parser-test.ts` | ✅ 35/35 |
+| `npx tsx scripts/gate1-e2e.ts` | ✅ 7/7 |
+| `lead-pipeline-e2e.ts` (REQUIRE_APPWRITE_E2E) | ✅ 12/12 su Appwrite reale |
+| `workflow-e2e.ts` (REQUIRE_APPWRITE_E2E) | ✅ **9/9 su Appwrite reale** (B4 conferma il fix delay sul DB) |
+
+NB: i comandi con env var sono stati eseguiti manualmente in PowerShell
+(`$env:REQUIRE_APPWRITE_E2E='true'; …`) perché il classifier Bash di Auto Mode era in
+outage temporaneo (modello classificatore Anthropic non disponibile). Nessun impatto sul
+codice — solo sintassi shell diversa da bash.
+
+### Definition of Done PLAN-FASE3 — 11/12 (README opzionale)
+
+| # | Voce | Stato |
+|---|------|-------|
+| 1 | `tsc --noEmit` | ✅ 0 errori |
+| 2 | ESLint | ✅ 0 finding |
+| 3 | Editor crea/salva/carica workflow | ✅ + test B1 |
+| 4 | ≥4 tipi di nodo (trigger/action/condition/delay) | ✅ 21 nodi (test A1) |
+| 5 | Trigger esegue end-to-end + log | ✅ test B2/B3 |
+| 6 | `send_email` invia via Resend | ✅ (skip se non configurato) |
+| 7 | Condition dirige il branch corretto | ✅ test A2/A3/B2/B3 |
+| 8 | Delay salva in scheduled + worker riprende | ✅ + **fix** + test B4 |
+| 9 | `/workflows/[id]/runs` con timeline | ✅ codice presente |
+| 10 | Non rompe il CRM esistente | ✅ trigger fire-and-forget |
+| 11 | README aggiornato | ⏳ opzionale (sezione Workflow Builder, se richiesta) |
+| 12 | `IMPLEMENTATION_LOG.md` aggiornato | ✅ questa sezione |
+
+**FASE 3 chiusa e verificata end-to-end su Appwrite reale.** Bug delay-resume corretto e
+coperto da regressione. Unico residuo opzionale: la sezione README.
+
+---
+
+## FASE 2.1 — Landing blocks avanzati (2026-06-01)
+
+Completato `PLAN-LANDING-BLOCKS.md`: il builder landing mantiene la stessa
+architettura tipizzata e aggiunge 5 blocchi conversion-oriented, senza ecommerce:
+
+| Blocco | Implementazione |
+|--------|-----------------|
+| `logos` | Fascia trust SSR con immagini grayscale e fallback testuale |
+| `faq` | Accordion SSR con `<details>/<summary>` nativi |
+| `reviews` | Rating aggregato, stelle e card recensione con avatar opzionale |
+| `offer` | Box offerta lead-capture con CTA `data-sx-cta` verso `#form` |
+| `comparison` | Tabella comparativa SSR, boolean check/x, colonna evidenziata e scroll mobile |
+
+### Qualità editor
+
+- Aggiunto `assertNever()` e attivato nei tre switch richiesti: renderer,
+  preview canvas e property form.
+- Aggiunti default sensati per tutti i blocchi.
+- L'editor `comparison` mantiene automaticamente allineati i valori delle righe
+  quando si aggiungono o rimuovono colonne, limita le colonne a 5 e corregge
+  l'indice della colonna evidenziata.
+- Nessuna dipendenza npm aggiunta e nessuna modifica allo schema Appwrite.
+
+### Bug trovato e corretto — CTA `#form` senza target
+
+La verifica browser ha rilevato che Hero, CTA e Offer generavano link
+`href="#form"`, ma il renderer pubblico non esponeva alcun `id="form"`.
+Il click non poteva quindi scorrere al modulo.
+
+**Fix:** il primo blocco form renderizzato riceve un solo anchor `id="form"`.
+Questo evita anche ID duplicati se l'editor contiene più blocchi form.
+La regressione è coperta da `scripts/capture-platform-e2e.ts`.
+
+### Bug trovato e corretto — trigger menu con `<button>` annidato
+
+Il golden path autenticato dell'editor ha rivelato che `DropdownMenuTrigger`
+avvolgeva un componente `Button`, generando HTML invalido con un `<button>`
+dentro un altro `<button>`. Il menu "Blocco" diventava ambiguo per browser e
+accessibilità.
+
+**Fix:** i trigger del toolbar e dell'empty state usano la composizione Base UI
+corretta: `render={<Button ... />}`. Non è stato usato `asChild`, perché il
+componente locale è basato su `@base-ui/react/menu`, non su Radix.
+
+### Gate — ESEGUITI senza build
+
+| Comando | Esito |
+|---------|-------|
+| `npx tsc --noEmit` | ✅ 0 errori |
+| `npm run lint` | ✅ 0 finding |
+| `git -c core.whitespace=cr-at-eol diff --check` | ✅ pulito |
+| `npm run e2e:capture` | ✅ 7/7 su Appwrite reale e dev server locale |
+
+Golden path browser autenticato verificato end-to-end:
+- creazione landing dall'area admin con utente QA temporaneo;
+- aggiunta dei 5 blocchi avanzati e del form;
+- duplica/elimina e drag di riordino;
+- salva, pubblica e apertura della route pubblica;
+- 2 FAQ native, apertura `<details>` funzionante;
+- un solo target `#form`;
+- click Offer CTA → URL con hash `#form`;
+- tabella dentro contenitore `overflow-x-auto`;
+- zero errori console.
+
+Landing e utente QA temporanei eliminati dopo la verifica.

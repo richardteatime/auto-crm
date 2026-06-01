@@ -9,6 +9,7 @@
     "lint": "eslint",
     "setup": "npx tsx scripts/setup-appwrite.ts",
     "seed": "npx tsx scripts/seed.ts",
+    "e2e:capture": "npx tsx scripts/capture-platform-e2e.ts",
     "mcp": "npx tsx mcp-server/crm-server.ts"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@fullcalendar/react": "^6.1.20",
     "@fullcalendar/timegrid": "^6.1.20",
     "@hookform/resolvers": "^5.2.2",
+    "@xyflow/react": "^12.10.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

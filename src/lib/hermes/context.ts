@@ -34,6 +34,12 @@ interface ActivityDoc {
   $createdAt: string;
 }
 
+interface ChatwootMessageDoc {
+  messageText?: string | null;
+  direction?: string | null;
+  $createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Fetchers
 // ---------------------------------------------------------------------------
@@ -72,6 +78,23 @@ async function fetchPendingActivities(limit = 5): Promise<ActivityDoc[]> {
       Query.limit(limit),
     ]);
     return res.documents as unknown as ActivityDoc[];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchConversationMessages(
+  conversationId: number | undefined,
+  limit = 5,
+): Promise<ChatwootMessageDoc[]> {
+  if (conversationId === undefined) return [];
+  try {
+    const res = await databases.listDocuments(DB_ID, COLLECTIONS.chatwootMessages, [
+      Query.equal("conversationId", String(conversationId)),
+      Query.orderDesc("$createdAt"),
+      Query.limit(limit),
+    ]);
+    return (res.documents as unknown as ChatwootMessageDoc[]).reverse();
   } catch {
     return [];
   }
@@ -130,6 +153,13 @@ function formatActivities(activities: ActivityDoc[]): string {
     .join("\n");
 }
 
+function formatConversation(messages: ChatwootMessageDoc[]): string {
+  if (messages.length === 0) return "Nessun messaggio precedente disponibile.";
+  return messages
+    .map((message) => `- ${message.direction ?? "inbound"}: ${message.messageText ?? ""}`)
+    .join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -144,20 +174,30 @@ function formatActivities(activities: ActivityDoc[]): string {
  */
 export async function buildHermesContextPrompt(
   userMessage: string,
+  conversationId?: number,
 ): Promise<string> {
-  const [contacts, deals, activities] = await Promise.all([
+  const [contacts, deals, activities, conversation] = await Promise.all([
     fetchRecentContacts(),
     fetchRecentDeals(),
     fetchPendingActivities(),
+    fetchConversationMessages(conversationId),
   ]);
 
   // If the DB is unreachable, just return the raw message (graceful fallback)
-  if (contacts.length === 0 && deals.length === 0 && activities.length === 0) {
+  if (
+    contacts.length === 0 &&
+    deals.length === 0 &&
+    activities.length === 0 &&
+    conversation.length === 0
+  ) {
     return userMessage;
   }
 
   const contextParts = [
     "=== CONTESTO CRM (dati piu recenti) ===",
+    "",
+    "MESSAGGI RECENTI DELLA CONVERSAZIONE CORRENTE:",
+    formatConversation(conversation),
     "",
     "CONTATTI RECENTI (ultimi 5 aggiornati):",
     formatContacts(contacts),
@@ -170,6 +210,7 @@ export async function buildHermesContextPrompt(
     "",
     "=== ISTRUZIONI ===",
     "Usa i dati sopra per rispondere alla richiesta del founder.",
+    "Per riferimenti come 'appena creato', privilegia prima i MESSAGGI DELLA CONVERSAZIONE CORRENTE, poi i CONTATTI RECENTI.",
     "Se la richiesta si riferisce a 'il contatto che abbiamo appena creato' o simili, usa i CONTATTI RECENTI.",
     "Se la richiesta chiede follow-up o attivita, usa ATTIVITA IN SOSPESO.",
     "Non ripetere questo contesto nella risposta finale.",

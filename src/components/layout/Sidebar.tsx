@@ -20,6 +20,12 @@ import {
   Bot,
   CheckSquare,
   Inbox,
+  LayoutTemplate,
+  FileInput,
+  CalendarClock,
+  GitFork,
+  BarChart3,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -49,6 +55,16 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
+    label: "Capture",
+    items: [
+      { href: "/landing-pages", label: "Landing Page", icon: LayoutTemplate },
+      { href: "/forms", label: "Form", icon: FileInput },
+      { href: "/booking-links", label: "Prenotazioni", icon: CalendarClock },
+      { href: "/funnels", label: "Funnel", icon: GitFork },
+      { href: "/analytics", label: "Analytics", icon: BarChart3 },
+    ],
+  },
+  {
     label: "Operativo",
     items: [
       { href: "/activities", label: "Attività", icon: Activity, badge: "activities" as const },
@@ -70,6 +86,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: "/notifications", label: "Notifiche", icon: Bell, badge: "total" as const },
       { href: "/messages", label: "Chat Team", icon: MessageSquare, badge: "chat" as const },
       { href: "/orchestrator", label: "Orchestrator", icon: Bot },
+      { href: "/workflows", label: "Workflow", icon: Workflow },
       { href: "/settings", label: "Impostazioni", icon: Settings },
     ],
   },

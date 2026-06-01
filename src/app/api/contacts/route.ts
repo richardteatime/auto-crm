@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { listContacts, createContact } from "@/lib/db";
 import { isValidEmail } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth";
+import { triggerWorkflows } from "@/lib/workflows/trigger";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -62,6 +63,15 @@ export async function POST(request: NextRequest) {
       source: source || "otro",
       temperature: temperature || "cold",
       notes: notes || null,
+    });
+
+    triggerWorkflows("contact_created", {
+      contactId: result.id,
+      name: result.name,
+      email: result.email,
+      phone: result.phone,
+      company: result.company,
+      source: result.source,
     });
 
     return NextResponse.json(result, { status: 201 });

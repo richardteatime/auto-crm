@@ -10,6 +10,12 @@ const PUBLIC_PATHS = [
   "/api/orchestrator/callback/deploy",
   "/api/auth",
   "/api/health",
+  "/api/public",
+  "/embed",
+  "/l",
+  "/form",
+  "/book",
+  "/f",
   "/login",
   "/register",
 ];

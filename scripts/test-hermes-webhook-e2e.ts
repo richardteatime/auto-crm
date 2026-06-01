@@ -25,6 +25,10 @@ process.env.ADMIN_WHATSAPP_NUMBERS = "+3912345678901";
 process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
 
 const capturedMessages: Array<{ conversationId: number; content: string }> = [];
+const marker = Date.now();
+const contactName = `Test-Memory-${marker}`;
+const contactEmail = `memory-${marker}@test.com`;
+const conversationId = 800000 + (marker % 100000);
 
 function startMockChatwoot(): Promise<Server> {
   return new Promise((resolve) => {
@@ -109,8 +113,8 @@ async function main() {
   const t1Start = Date.now();
   const r1 = await sendWebhook(
     POST,
-    "Crea un contatto di test E2E chiamato Test-Memory con email memory@test.com",
-    8889,
+    `Crea un contatto di test E2E chiamato ${contactName} con email ${contactEmail}`,
+    conversationId,
   );
   const d1 = await r1.json();
   console.log("[e2e] Turn 1 response:", JSON.stringify(d1, null, 2));
@@ -123,7 +127,7 @@ async function main() {
   const r2 = await sendWebhook(
     POST,
     "Qual è l'email del contatto che abbiamo appena creato?",
-    8889,
+    conversationId,
   );
   const d2 = await r2.json();
   console.log("[e2e] Turn 2 response:", JSON.stringify(d2, null, 2));
@@ -132,8 +136,8 @@ async function main() {
   // ── Verify ───────────────────────────────────────────────────────────────
   await new Promise((r) => setTimeout(r, 2000));
 
-  const msgsForConv = capturedMessages.filter((m) => m.conversationId === 8889);
-  console.log("[e2e] Captured messages for conv 8889:", msgsForConv.length);
+  const msgsForConv = capturedMessages.filter((m) => m.conversationId === conversationId);
+  console.log(`[e2e] Captured messages for conv ${conversationId}:`, msgsForConv.length);
   for (const m of msgsForConv) {
     console.log(`  - ${m.content.slice(0, 150)}...`);
   }
@@ -148,12 +152,12 @@ async function main() {
   const turn1Reply = msgsForConv[0]?.content || "";
   const turn2Reply = msgsForConv[1]?.content || "";
 
-  if (!turn1Reply.toLowerCase().includes("test-memory")) {
+  if (!turn1Reply.toLowerCase().includes(contactName.toLowerCase())) {
     console.error("❌ FAILED: Turn 1 reply does not mention contact name");
     failed = true;
   }
 
-  if (!turn2Reply.toLowerCase().includes("memory@test.com")) {
+  if (!turn2Reply.toLowerCase().includes(contactEmail.toLowerCase())) {
     console.error("❌ FAILED: Turn 2 reply does not remember the email (conversation memory broken)");
     failed = true;
   }

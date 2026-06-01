@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createContact } from "@/lib/db/contacts";
 import { createActivity } from "@/lib/db/activities";
 import { getSetting } from "@/lib/db/settings";
+import { triggerWorkflows } from "@/lib/workflows/trigger";
 
 // Simple in-memory rate limiter: max 30 requests per IP per minute
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -153,6 +154,23 @@ export async function POST(request: NextRequest) {
       type: "note",
       description: `Lead ricevuto via webhook${fields.company ? ` (${fields.company})` : ""}`,
       contactId: contact.id,
+    });
+
+    triggerWorkflows("webhook", {
+      contactId: contact.id,
+      name: contact.name,
+      email: contact.email,
+      source: "webhook",
+      rawPayload: payload,
+    });
+
+    triggerWorkflows("contact_created", {
+      contactId: contact.id,
+      name: contact.name,
+      email: contact.email,
+      phone: contact.phone,
+      company: contact.company,
+      source: contact.source,
     });
 
     return NextResponse.json(

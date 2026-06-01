@@ -60,10 +60,10 @@ export async function listCalendarEvents(options?: {
   const queries: string[] = [Query.limit(1000), Query.orderDesc("startAt")];
 
   if (options?.startAfter) {
-    queries.push(Query.greaterThan("startAt", toIso(options.startAfter) ?? new Date().toISOString()));
+    queries.push(Query.greaterThan("endAt", toIso(options.startAfter) ?? new Date().toISOString()));
   }
   if (options?.endBefore) {
-    queries.push(Query.lessThan("endAt", toIso(options.endBefore) ?? new Date().toISOString()));
+    queries.push(Query.lessThan("startAt", toIso(options.endBefore) ?? new Date().toISOString()));
   }
   if (options?.assignedTo) {
     queries.push(Query.search("assignedTo", options.assignedTo));

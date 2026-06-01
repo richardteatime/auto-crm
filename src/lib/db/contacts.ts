@@ -55,6 +55,28 @@ export async function getContact(id: string): Promise<Contact | null> {
   }
 }
 
+export async function findContactByEmailOrPhone(criteria: {
+  email?: string | null;
+  phone?: string | null;
+}): Promise<Contact | null> {
+  const checks: string[][] = [];
+  if (criteria.email) checks.push([Query.equal("email", criteria.email)]);
+  if (criteria.phone) checks.push([Query.equal("phone", criteria.phone)]);
+
+  for (const queries of checks) {
+    try {
+      const res = await databases.listDocuments(DB_ID, COLLECTIONS.contacts, [
+        ...queries,
+        Query.limit(1),
+      ]);
+      if (res.documents.length > 0) return fromDoc<Contact>(res.documents[0]);
+    } catch {
+      // Keep trying the remaining identity keys.
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // createContact
 // ---------------------------------------------------------------------------

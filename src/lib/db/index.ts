@@ -2,6 +2,7 @@
 export {
   listContacts,
   getContact,
+  findContactByEmailOrPhone,
   createContact,
   updateContact,
   deleteContact,
@@ -219,3 +220,136 @@ export {
   createLeadQuote,
   updateLeadQuote,
 } from "./lead-quotes";
+
+// ===========================================================================
+// Capture & Conversion Platform (FASE 2)
+// ===========================================================================
+
+// Landing Pages
+export {
+  listLandingPages,
+  getLandingPage,
+  getLandingPageBySlug,
+  createLandingPage,
+  updateLandingPage,
+  deleteLandingPage,
+  landingSlugExists,
+  incrementLandingCounter,
+} from "./landing-pages";
+export type { CreateLandingPageInput } from "./landing-pages";
+
+// Landing Templates
+export {
+  listLandingTemplates,
+  getLandingTemplate,
+  createLandingTemplate,
+} from "./landing-templates";
+
+// Forms
+export {
+  listForms,
+  getForm,
+  createForm,
+  updateForm,
+  deleteForm,
+  incrementFormCounter,
+} from "./forms";
+
+// Form Submissions
+export {
+  listFormSubmissions,
+  createFormSubmission,
+} from "./form-submissions";
+
+// Booking Links
+export {
+  listBookingLinks,
+  getBookingLink,
+  getBookingLinkBySlug,
+  createBookingLink,
+  updateBookingLink,
+  deleteBookingLink,
+  bookingSlugExists,
+  incrementBookingCount,
+} from "./booking-links";
+
+// Booking Appointments
+export {
+  listBookingAppointments,
+  listAppointmentsInRange,
+  createBookingAppointment,
+  updateBookingAppointment,
+} from "./booking-appointments";
+
+// Funnels
+export {
+  listFunnels,
+  getFunnel,
+  getFunnelBySlug,
+  createFunnel,
+  updateFunnel,
+  deleteFunnel,
+  funnelSlugExists,
+  incrementFunnelCounter,
+} from "./funnels";
+
+// Funnel Sessions
+export {
+  getFunnelSession,
+  listFunnelSessions,
+  createFunnelSession,
+  updateFunnelSession,
+  getOrCreateFunnelSession,
+} from "./funnel-sessions";
+
+// Funnel Events
+export {
+  listFunnelEvents,
+  createFunnelEvent,
+} from "./funnel-events";
+
+// Analytics Events
+export {
+  createAnalyticsEvent,
+  listAnalyticsEvents,
+} from "./analytics-events";
+
+// ===========================================================================
+// Visual Workflow Builder (FASE 3)
+// ===========================================================================
+
+// Workflows
+export {
+  listWorkflows,
+  getWorkflow,
+  createWorkflow,
+  updateWorkflow,
+  deleteWorkflow,
+  listActiveWorkflowsByTrigger,
+} from "./workflows";
+
+// Workflow Runs
+export {
+  listWorkflowRuns,
+  getWorkflowRun,
+  createWorkflowRun,
+  updateWorkflowRun,
+  deleteWorkflowRun,
+} from "./workflow-runs";
+
+// Workflow Run Logs
+export {
+  listWorkflowRunLogs,
+  getWorkflowRunLog,
+  createWorkflowRunLog,
+  updateWorkflowRunLog,
+} from "./workflow-run-logs";
+
+// Workflow Scheduled
+export {
+  listWorkflowScheduled,
+  getWorkflowScheduled,
+  createWorkflowScheduled,
+  updateWorkflowScheduled,
+  deleteWorkflowScheduled,
+} from "./workflow-scheduled";

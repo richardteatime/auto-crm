@@ -42,6 +42,10 @@ export interface CreateLeadInput {
   assignedTo?: string | null;
   leadScore?: number;
   contactId?: string | null;
+  landingPageId?: string | null;
+  formId?: string | null;
+  funnelId?: string | null;
+  bookingLinkId?: string | null;
 }
 
 export async function listLeads(filters?: {
@@ -106,6 +110,10 @@ export async function createLead(data: CreateLeadInput): Promise<Lead> {
       assignedTo: data.assignedTo ?? null,
       leadScore: data.leadScore ?? 0,
       contactId: data.contactId ?? null,
+      landingPageId: data.landingPageId ?? null,
+      formId: data.formId ?? null,
+      funnelId: data.funnelId ?? null,
+      bookingLinkId: data.bookingLinkId ?? null,
       createdAt: now,
       updatedAt: now,
     },
@@ -137,6 +145,10 @@ export async function updateLead(
     assignedTo: string | null;
     leadScore: number;
     contactId: string | null;
+    landingPageId: string | null;
+    formId: string | null;
+    funnelId: string | null;
+    bookingLinkId: string | null;
   }>,
 ): Promise<Lead> {
   const cleanData = Object.fromEntries(

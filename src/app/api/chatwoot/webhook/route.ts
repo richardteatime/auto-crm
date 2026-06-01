@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
     try {
       const promptWithContext = await buildHermesContextPrompt(
         normalized.messageText,
+        normalized.conversationId,
       );
       const result = await callHermes(
         promptWithContext,

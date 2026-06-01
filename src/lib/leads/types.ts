@@ -74,6 +74,11 @@ export interface Lead {
   assignedTo: string | null;
   leadScore: number;
   contactId: string | null;
+  // Attribution — where the lead originated (Capture & Conversion Platform).
+  landingPageId: string | null;
+  formId: string | null;
+  funnelId: string | null;
+  bookingLinkId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

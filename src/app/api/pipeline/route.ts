@@ -8,6 +8,7 @@ import {
   getStages,
 } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { triggerWorkflows } from "@/lib/workflows/trigger";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -46,8 +47,18 @@ export async function PUT(request: NextRequest) {
         );
       }
 
+      const previousStageId = existing.stageId;
       const result = await updateDeal(body.dealId, {
         stageId: body.stageId,
+      });
+
+      triggerWorkflows("deal_moved", {
+        dealId: body.dealId,
+        stageId: body.stageId,
+        previousStageId,
+        contactId: existing.contactId,
+        title: existing.title,
+        value: existing.value,
       });
 
       return NextResponse.json(result);

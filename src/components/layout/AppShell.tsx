@@ -10,15 +10,26 @@ import { CommandPalette } from "@/components/shared/CommandPalette";
 
 const AUTH_ROUTES = ["/login", "/register"];
 
+// Public capture surfaces render full-bleed, with no dashboard chrome.
+const STANDALONE_PREFIXES = ["/l/", "/form/", "/book/", "/f/"];
+
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
 }
 
+function isStandaloneRoute(pathname: string): boolean {
+  return STANDALONE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
+
+  if (isStandaloneRoute(pathname)) {
+    return <div className="w-full min-h-screen">{children}</div>;
+  }
 
   if (isAuthRoute(pathname)) {
     return (
