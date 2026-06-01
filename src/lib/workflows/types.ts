@@ -48,7 +48,10 @@ export interface FlowEdge {
   target: string;
   label?: string; // e.g. "true" / "false" for conditions
   type?: "smoothstep" | "default";
+  sourceHandle?: string; // ReactFlow handle id (e.g. "true"/"false")
+  targetHandle?: string;
 }
+
 
 // ===========================================================================
 // Appwrite entities
@@ -258,6 +261,21 @@ export const DELAY_NODE_TYPES: DelayNodeType[] = ["wait_for", "wait_until"];
 export const DELAY_LABELS: Record<DelayNodeType, string> = {
   wait_for: "Attendi per",
   wait_until: "Attendi fino a",
+};
+
+export function getNodeCategory(nodeType: string): NodeCategory | undefined {
+  if (TRIGGER_NODE_TYPES.includes(nodeType as TriggerNodeType)) return "trigger";
+  if (ACTION_NODE_TYPES.includes(nodeType as ActionNodeType)) return "action";
+  if (CONDITION_NODE_TYPES.includes(nodeType as ConditionNodeType)) return "condition";
+  if (DELAY_NODE_TYPES.includes(nodeType as DelayNodeType)) return "delay";
+  return undefined;
+}
+
+export const NODE_TYPE_LABELS: Record<string, string> = {
+  ...TRIGGER_LABELS,
+  ...ACTION_LABELS,
+  ...CONDITION_LABELS,
+  ...DELAY_LABELS,
 };
 
 // ===========================================================================

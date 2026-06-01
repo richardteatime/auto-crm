@@ -47,12 +47,15 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const triggerNode = nodes.find((n) => n.type === "trigger");
+      const triggerType = triggerNode?.data.nodeType ?? workflow.triggerType;
       const res = await fetch(`/api/workflows/${workflow.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nodes: JSON.stringify(nodes),
           edges: JSON.stringify(edges),
+          triggerType,
         }),
       });
       if (!res.ok) throw new Error();
@@ -133,14 +136,33 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
       {tab === "editor" ? (
         <div className="flex flex-1 overflow-hidden">
           <NodeSidebar />
-          <ReactFlowProvider>
-            <WorkflowCanvas
-              initialNodes={nodes}
-              initialEdges={edges}
-              onChange={handleChange}
-              onNodeSelect={setSelectedNode}
-            />
-          </ReactFlowProvider>
+          <div className="relative flex-1 h-full">
+            <ReactFlowProvider>
+              <WorkflowCanvas
+                initialNodes={nodes}
+                initialEdges={edges}
+                onChange={handleChange}
+                onNodeSelect={setSelectedNode}
+              />
+            </ReactFlowProvider>
+            {nodes.length === 0 && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+                <div className="max-w-md space-y-3 rounded-xl border bg-card/95 p-6 text-center shadow-lg backdrop-blur">
+                  <h3 className="text-base font-semibold">Costruisci il tuo primo workflow</h3>
+                  <p className="text-sm text-muted-foreground">Un&apos;automazione segue sempre questo schema:</p>
+                  <ol className="space-y-1.5 text-left text-sm">
+                    <li><span className="font-semibold">1. Trigger</span> — il «quando»: cosa avvia il workflow (es. arriva un lead).</li>
+                    <li><span className="font-semibold">2. Condizione</span> <span className="text-muted-foreground">(opz.)</span> — il «se»: un bivio in base ai dati.</li>
+                    <li><span className="font-semibold">3. Azione</span> — il «cosa fare»: invia email, crea task, sposta in pipeline…</li>
+                    <li><span className="font-semibold">4. Attesa</span> <span className="text-muted-foreground">(opz.)</span> — una pausa prima del passo dopo.</li>
+                  </ol>
+                  <p className="border-t pt-3 text-xs text-muted-foreground">
+                    Trascina un nodo dalla barra a sinistra fin qui, collega i nodi trascinando dai pallini, poi premi <span className="font-semibold">Salva</span> e <span className="font-semibold">Attiva</span>.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
           <NodePropertiesPanel
             node={selectedNode}
             onChange={(node) => {

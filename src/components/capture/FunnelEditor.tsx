@@ -90,7 +90,7 @@ export function FunnelEditor({ funnel, landingPages, events }: { funnel: Funnel;
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center gap-2">
       <Button variant="ghost" size="icon" onClick={() => router.push("/funnels")}><ArrowLeft className="h-4 w-4" /></Button>
-      <div className="flex-1"><h1 className="font-semibold">{name}</h1><p className="text-xs text-muted-foreground">{steps.length} step Â· {STATUS_LABELS[status]}</p></div>
+      <div className="flex-1"><h1 className="font-semibold">{name}</h1><p className="text-xs text-muted-foreground">{steps.length} step · {STATUS_LABELS[status]}</p></div>
       {status === "active" && <a href={`${origin}/f/${funnel.slug}`} target="_blank" rel="noopener noreferrer"><Button variant="outline" size="sm"><ExternalLink className="mr-1 h-4 w-4" />Apri</Button></a>}
       <Button variant="outline" size="sm" disabled={!dirty || saving} onClick={() => persist()}><Save className="mr-1 h-4 w-4" />Salva</Button>
       <Button size="sm" disabled={saving} onClick={() => persist(status === "active" ? "draft" : "active")}><Play className="mr-1 h-4 w-4" />{status === "active" ? "Metti in bozza" : "Attiva"}</Button>
@@ -138,6 +138,16 @@ export function FunnelEditor({ funnel, landingPages, events }: { funnel: Funnel;
           </details>
         </div>;
         })}
+        {steps.length === 0 && (
+          <div className="rounded-lg border border-dashed bg-muted/30 p-5">
+            <p className="text-sm font-semibold">Cos&apos;è un funnel?</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              È una sequenza di landing page collegate. Ogni «step» mostra una pagina e, dopo il form, porta lo
+              visitatore allo step successivo — fino alla pagina di ringraziamento. Aggiungi il primo step qui sotto
+              e scegli quale landing mostrare; poi imposta lo «step successivo» per costruire il percorso.
+            </p>
+          </div>
+        )}
         <Button variant="outline" className={cn("w-full", steps.length === 0 && "border-dashed")} onClick={add}><Plus className="mr-2 h-4 w-4" />Aggiungi step</Button>
       </div>
       <aside className="space-y-3 rounded-lg border p-4">

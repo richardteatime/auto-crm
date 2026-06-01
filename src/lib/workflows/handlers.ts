@@ -124,7 +124,7 @@ export const updateContactExecutor: NodeExecutor = async ({ config, context }) =
 
 export const createDealExecutor: NodeExecutor = async ({ config, context }) => {
   const title = interpolateString(String(config.title ?? ""), context);
-  const value = typeof config.value === "number" ? config.value : 0;
+  const value = Number(config.value ?? 0);
   const stageId = String(config.stageId ?? "");
   const contactId = String(config.contactId ?? context.contactId ?? "");
 
@@ -154,9 +154,9 @@ export const updateDealExecutor: NodeExecutor = async ({ config, context }) => {
   try {
     const updates: Record<string, unknown> = {};
     if (config.title) updates.title = interpolateString(String(config.title), context);
-    if (config.value !== undefined) updates.value = config.value;
+    if (config.value !== undefined) updates.value = Number(config.value);
     if (config.stageId) updates.stageId = config.stageId;
-    if (config.probability !== undefined) updates.probability = config.probability;
+    if (config.probability !== undefined) updates.probability = Number(config.probability);
 
     const updated = await updateDeal(dealId, updates);
     return ok({ dealId: updated.id });
@@ -268,7 +268,10 @@ export const ifFieldEqualsExecutor: NodeExecutor = async ({ config, context }) =
   const field = String(config.field ?? "");
   const compareValue = interpolateString(String(config.compareValue ?? ""), context);
 
-  const payload = context.trigger.payload as Record<string, unknown>;
+  const payload =
+    context.trigger.payload && typeof context.trigger.payload === "object" && !Array.isArray(context.trigger.payload)
+      ? (context.trigger.payload as Record<string, unknown>)
+      : {};
   const actualValue = field.startsWith("{{")
     ? interpolateString(field, context)
     : (context.variables[field] ?? payload[field]);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, ExternalLink, GitBranch, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Copy, ExternalLink, GitBranch, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -86,6 +86,21 @@ export default function FunnelsPage() {
         <Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" />Nuovo funnel</Button>
       </div>
 
+      <div className="rounded-lg border bg-card p-4">
+        <p className="mb-3 text-xs font-medium text-muted-foreground">Come funziona un funnel</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {["Opt-in", "Offerta", "Grazie"].map((label, i, arr) => (
+            <Fragment key={label}>
+              <span className="rounded-md border bg-muted/50 px-2.5 py-1 font-medium">{`Step ${i + 1}: ${label}`}</span>
+              {i < arr.length - 1 && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+            </Fragment>
+          ))}
+        </div>
+        <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
+          Un funnel concatena più landing page in un unico percorso. Il visitatore avanza da uno step al successivo; ogni step traccia <span className="font-medium text-foreground">visite</span> e <span className="font-medium text-foreground">conversioni</span>, così vedi dove le persone si fermano. Le condizioni possono indirizzare a step diversi in base ai dati inseriti.
+        </p>
+      </div>
+
       {loading ? (
         <div className="h-24 animate-pulse rounded-md bg-muted" />
       ) : funnels.length === 0 ? (
@@ -117,12 +132,12 @@ export default function FunnelsPage() {
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent className="sm:max-w-sm"><DialogHeader><DialogTitle>Nuovo funnel</DialogTitle></DialogHeader>
           <Input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="Es. Consulenza commerciale" />
-          <Button onClick={create} disabled={!newName.trim() || busy}>{busy ? "Creazioneâ€¦" : "Crea"}</Button>
+          <Button onClick={create} disabled={!newName.trim() || busy}>{busy ? "Creazione…" : "Crea"}</Button>
         </DialogContent>
       </Dialog>
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <DialogContent className="sm:max-w-sm"><DialogHeader><DialogTitle>Eliminare il funnel?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">L&apos;azione Ã¨ irreversibile.</p>
+          <p className="text-sm text-muted-foreground">L&apos;azione è irreversibile.</p>
           <Button variant="destructive" onClick={confirmDelete}>Elimina</Button>
         </DialogContent>
       </Dialog>

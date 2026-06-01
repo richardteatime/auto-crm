@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Plus, Workflow as WorkflowIcon, Pencil, Trash2 } from "lucide-react";
+import { Plus, Workflow as WorkflowIcon, Pencil, Trash2, Zap, GitBranch, Play, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { WORKFLOW_STATUS_LABELS } from "@/lib/workflows/types";
+import { WORKFLOW_STATUS_LABELS, NODE_CATEGORY_COLORS } from "@/lib/workflows/types";
 import type { Workflow } from "@/lib/workflows/types";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -21,6 +21,13 @@ const STATUS_STYLES: Record<string, string> = {
   paused: "bg-amber-100 text-amber-700",
   archived: "bg-gray-100 text-gray-600",
 };
+
+const WORKFLOW_STEPS = [
+  { icon: Zap, color: NODE_CATEGORY_COLORS.trigger, title: "1. Trigger", desc: "L'evento che avvia tutto: un lead che arriva, un deal che si sposta…" },
+  { icon: GitBranch, color: NODE_CATEGORY_COLORS.condition, title: "2. Condizione", desc: "Un bivio opzionale: prosegui solo se i dati rispettano una regola." },
+  { icon: Play, color: NODE_CATEGORY_COLORS.action, title: "3. Azione", desc: "Cosa fa il CRM: invia email, crea task, sposta in pipeline…" },
+  { icon: Clock, color: NODE_CATEGORY_COLORS.delay, title: "4. Attesa", desc: "Una pausa opzionale prima del passo successivo." },
+];
 
 export default function WorkflowsPage() {
   const router = useRouter();
@@ -89,6 +96,30 @@ export default function WorkflowsPage() {
           <Plus className="h-4 w-4 mr-2" />
           Nuovo workflow
         </Button>
+      </div>
+
+      <div className="rounded-lg border bg-card p-4">
+        <p className="mb-3 text-xs font-medium text-muted-foreground">Come funziona un workflow</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {WORKFLOW_STEPS.map((s) => (
+            <div key={s.title} className="flex gap-2.5">
+              <span
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+                style={{ backgroundColor: `${s.color}1a`, color: s.color }}
+              >
+                <s.icon className="h-4 w-4" />
+              </span>
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold">{s.title}</p>
+                <p className="text-[11px] leading-snug text-muted-foreground">{s.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 border-t pt-3 text-[11px] text-muted-foreground">
+          In pratica: <span className="font-medium text-foreground">quando</span> succede il trigger,
+          <span className="font-medium text-foreground"> se</span> la condizione è vera, <span className="font-medium text-foreground">allora</span> esegui le azioni.
+        </p>
       </div>
 
       {loading ? (

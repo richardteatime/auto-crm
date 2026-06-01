@@ -318,6 +318,11 @@ export interface FormStyle {
   theme: "light" | "dark";
   primaryColor: string;
   borderRadius: number;
+  // Branding (FASE 2.1) — opzionali per retrocompatibilità coi form salvati
+  logoUrl?: string; // URL logo mostrato in cima al form ("" = nessuno)
+  backgroundColor?: string; // sfondo del form ("" = default tema)
+  buttonText?: string; // testo del pulsante di invio (default "Invia")
+  fontFamily?: string; // famiglia font CSS ("" = eredita)
 }
 
 export type FormStatus = "draft" | "active" | "archived";

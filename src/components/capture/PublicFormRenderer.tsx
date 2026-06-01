@@ -93,11 +93,17 @@ export function PublicFormRenderer({
 
   if (done) {
     return (
-      <div
-        className="rounded-xl border p-6 text-center text-sm"
-        style={{ ...fieldStyle, borderRadius: Math.max(radius, 12) }}
-      >
-        {successMessage}
+      <div style={{ fontFamily: style.fontFamily || undefined }}>
+        {style.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={style.logoUrl} alt="" style={{ maxHeight: 48, marginBottom: 12 }} />
+        ) : null}
+        <div
+          className="rounded-xl border p-6 text-center text-sm"
+          style={{ ...fieldStyle, borderRadius: Math.max(radius, 12) }}
+        >
+          {successMessage}
+        </div>
       </div>
     );
   }
@@ -106,8 +112,18 @@ export function PublicFormRenderer({
     <form
       onSubmit={submit}
       className="space-y-4"
-      style={{ ["--tw-ring-color" as string]: style.primaryColor }}
+      style={{
+        ["--tw-ring-color" as string]: style.primaryColor,
+        fontFamily: style.fontFamily || undefined,
+        background: style.backgroundColor || undefined,
+        borderRadius: style.backgroundColor ? Math.max(radius, 12) : undefined,
+        padding: style.backgroundColor ? 20 : undefined,
+      }}
     >
+      {style.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={style.logoUrl} alt="" style={{ maxHeight: 48, marginBottom: 4 }} />
+      ) : null}
       {fields.map((f) => (
         <div key={f.id} className="space-y-1.5">
           {f.type !== "checkbox" && (
@@ -192,7 +208,7 @@ export function PublicFormRenderer({
         className="w-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
         style={{ background: style.primaryColor, borderRadius: radius }}
       >
-        {submitting ? "Invio…" : "Invia"}
+        {submitting ? "Invio…" : (style.buttonText?.trim() || "Invia")}
       </button>
     </form>
   );

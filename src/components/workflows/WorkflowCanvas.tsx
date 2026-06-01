@@ -22,6 +22,7 @@ import { ActionNode } from "./nodes/ActionNode";
 import { ConditionNode } from "./nodes/ConditionNode";
 import { DelayNode } from "./nodes/DelayNode";
 import type { FlowNode, FlowEdge } from "@/lib/workflows/types";
+import { getNodeCategory, NODE_TYPE_LABELS } from "@/lib/workflows/types";
 
 const nodeTypes = {
   trigger: TriggerNode,
@@ -63,7 +64,10 @@ export function WorkflowCanvas({ initialNodes = [], initialEdges = [], onChange,
   const onConnect = useCallback(
     (params: Connection) => {
       setEdges((eds) => {
-        const newEdges = addEdge(params, eds);
+        const sourceNode = (nodes as unknown as FlowNode[]).find((n) => n.id === params.source);
+        const isCondition = sourceNode?.type === "condition";
+        const label = isCondition ? (params.sourceHandle || undefined) : undefined;
+        const newEdges = addEdge({ ...params, label } as Connection, eds);
         setTimeout(() => onChange?.(nodes as unknown as FlowNode[], newEdges as unknown as FlowEdge[]), 0);
         return newEdges;
       });
@@ -88,11 +92,13 @@ export function WorkflowCanvas({ initialNodes = [], initialEdges = [], onChange,
         y: event.clientY - reactFlowBounds.top,
       });
 
+      const category = getNodeCategory(type);
+      if (!category) return;
       const newNode: FlowNode = {
-        id: `${type}_${Date.now()}`,
-        type: type as FlowNode["type"],
+        id: `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        type: category,
         position,
-        data: { nodeType: type, label: type, config: {} },
+        data: { nodeType: type, label: NODE_TYPE_LABELS[type] ?? type, config: {} },
       };
 
       setNodes((nds) => [...nds, newNode as unknown as Node]);

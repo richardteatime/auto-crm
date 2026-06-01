@@ -36,7 +36,15 @@ const STATUS_STYLES: Record<FormStatus, string> = {
 const STATUS_LABELS: Record<FormStatus, string> = {
   draft: "Bozza", active: "Attivo", archived: "Archiviato",
 };
-const DEFAULT_STYLE: FormStyle = { theme: "light", primaryColor: "#2563eb", borderRadius: 8 };
+const DEFAULT_STYLE: FormStyle = { theme: "light", primaryColor: "#2563eb", borderRadius: 8, logoUrl: "", backgroundColor: "", buttonText: "Invia", fontFamily: "" };
+
+const FONT_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "Predefinito" },
+  { value: "Inter, system-ui, sans-serif", label: "Inter (sans)" },
+  { value: "Georgia, 'Times New Roman', serif", label: "Georgia (serif)" },
+  { value: "'Courier New', monospace", label: "Monospace" },
+  { value: "'Trebuchet MS', sans-serif", label: "Trebuchet" },
+];
 
 function parseFields(raw: string): FormField[] {
   try {
@@ -357,6 +365,33 @@ export function FormBuilder({ form }: { form: CrmForm }) {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Raggio bordi (px)</label>
                   <Input type="number" value={style.borderRadius} onChange={(e) => { setStyle((s) => ({ ...s, borderRadius: Number(e.target.value) || 0 })); touch(); }} />
+                </div>
+                <div className="h-px bg-border" />
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Brand</p>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Logo (URL)</label>
+                  <Input value={style.logoUrl ?? ""} placeholder="https://..." onChange={(e) => { setStyle((s) => ({ ...s, logoUrl: e.target.value })); touch(); }} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Colore sfondo</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={style.backgroundColor || "#ffffff"} onChange={(e) => { setStyle((s) => ({ ...s, backgroundColor: e.target.value })); touch(); }} className="h-8 w-10 cursor-pointer rounded border bg-transparent p-0.5" />
+                    <Input value={style.backgroundColor ?? ""} placeholder="(default tema)" onChange={(e) => { setStyle((s) => ({ ...s, backgroundColor: e.target.value })); touch(); }} className="h-8 font-mono text-xs" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Testo pulsante</label>
+                  <Input value={style.buttonText ?? ""} placeholder="Invia" onChange={(e) => { setStyle((s) => ({ ...s, buttonText: e.target.value })); touch(); }} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Font</label>
+                  <select
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    value={style.fontFamily ?? ""}
+                    onChange={(e) => { setStyle((s) => ({ ...s, fontFamily: e.target.value })); touch(); }}
+                  >
+                    {FONT_OPTIONS.map((o) => <option key={o.label} value={o.value}>{o.label}</option>)}
+                  </select>
                 </div>
               </div>
             )}

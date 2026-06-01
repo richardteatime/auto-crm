@@ -197,7 +197,15 @@ export function defaultFormFields(): FormField[] {
 }
 
 export function defaultFormStyle(): FormStyle {
-  return { theme: "light", primaryColor: "#2563eb", borderRadius: 8 };
+  return {
+    theme: "light",
+    primaryColor: "#2563eb",
+    borderRadius: 8,
+    logoUrl: "",
+    backgroundColor: "",
+    buttonText: "Invia",
+    fontFamily: "",
+  };
 }
 
 function defaultDay(enabled: boolean): DayAvailability {
