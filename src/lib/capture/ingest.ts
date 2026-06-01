@@ -21,6 +21,7 @@ import {
 import { track, hashIp } from "@/lib/capture/analytics";
 import type { Lead } from "@/lib/leads/types";
 import { normalizeContactSource } from "@/lib/db/contact-source";
+import { computeLeadScore } from "@/lib/leads/scoring";
 
 export interface IngestLeadInput {
   name?: string | null;
@@ -154,7 +155,7 @@ export async function ingestLead(
 
   if (existing) {
     // Fill in only the gaps — never overwrite known data on an existing lead.
-    const patch: Record<string, string> = {};
+    const patch: Record<string, unknown> = {};
     if (!existing.email && email) patch.email = email;
     if (!existing.phone && phone) patch.phone = phone;
     if (!existing.company && company) patch.company = company;
@@ -165,10 +166,27 @@ export async function ingestLead(
     if (!existing.bookingLinkId && bookingLinkId) patch.bookingLinkId = bookingLinkId;
     if (!existing.contactId) patch.contactId = contactId;
 
+    // Ricalcola score con i dati aggiornati
+    patch.leadScore = computeLeadScore({
+      email: existing.email || email,
+      phone: existing.phone || phone,
+      message: existing.message || message,
+      budget: trimOrNull(input.budget),
+      category: existing.category ?? "unknown",
+    });
+
     lead = Object.keys(patch).length
       ? await updateLead(existing.id, patch)
       : existing;
   } else {
+    const leadScore = computeLeadScore({
+      email,
+      phone,
+      message,
+      budget: trimOrNull(input.budget),
+      category: "unknown",
+    });
+
     lead = await createLead({
       fullName,
       firstName: trimOrNull(input.firstName),
@@ -181,6 +199,7 @@ export async function ingestLead(
       source,
       status: "new",
       pipelineStage: "prospect",
+      leadScore,
       contactId,
       landingPageId,
       formId,
