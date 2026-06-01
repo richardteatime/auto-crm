@@ -69,7 +69,7 @@ function FieldPreview({ field }: { field: FormField }) {
         </span>
       </div>
       {field.type === "textarea" ? (
-        <div className={cn(box, "h-16")} />
+        <div className={cn(box, "h-16 px-3 py-2 text-sm text-muted-foreground")}>{field.placeholder}</div>
       ) : field.type === "checkbox" ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-4 w-4 rounded border" /> {field.label}</div>
       ) : field.type === "radio" ? (
@@ -78,8 +78,10 @@ function FieldPreview({ field }: { field: FormField }) {
             <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground"><span className="h-3 w-3 rounded-full border" /> {o}</div>
           ))}
         </div>
+      ) : field.type === "select" ? (
+        <div className={cn(box, "flex h-9 items-center px-3 text-sm text-muted-foreground")}>{field.placeholder || "Seleziona..."}</div>
       ) : (
-        <div className={cn(box, "h-9")} />
+        <div className={cn(box, "flex h-9 items-center px-3 text-sm text-muted-foreground")}>{field.placeholder}</div>
       )}
     </div>
   );
