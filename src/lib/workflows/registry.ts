@@ -11,6 +11,7 @@ import {
   movePipelineStageExecutor,
   httpRequestExecutor,
   ifFieldEqualsExecutor,
+  ifFieldExistsExecutor,
   ifScoreAboveExecutor,
   ifHasTagExecutor,
   ifStageIsExecutor,
@@ -237,6 +238,21 @@ registerNode({
     { id: "false", label: "Falso" },
   ],
   executor: ifFieldEqualsExecutor,
+});
+
+registerNode({
+  type: "if_field_exists",
+  category: "condition",
+  label: "Se campo compilato",
+  description: "Verifica se un campo è stato compilato (non vuoto)",
+  icon: "GitBranch",
+  color: "#eab308",
+  inputs: [{ id: "in", label: "Ingresso" }],
+  outputs: [
+    { id: "true", label: "Vero" },
+    { id: "false", label: "Falso" },
+  ],
+  executor: ifFieldExistsExecutor,
 });
 
 registerNode({

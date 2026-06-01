@@ -232,12 +232,14 @@ export const ACTION_LABELS: Record<ActionNodeType, string> = {
 
 export type ConditionNodeType =
   | "if_field_equals"
+  | "if_field_exists"
   | "if_score_above"
   | "if_has_tag"
   | "if_stage_is";
 
 export const CONDITION_NODE_TYPES: ConditionNodeType[] = [
   "if_field_equals",
+  "if_field_exists",
   "if_score_above",
   "if_has_tag",
   "if_stage_is",
@@ -245,6 +247,7 @@ export const CONDITION_NODE_TYPES: ConditionNodeType[] = [
 
 export const CONDITION_LABELS: Record<ConditionNodeType, string> = {
   if_field_equals: "Se campo = valore",
+  if_field_exists: "Se campo compilato",
   if_score_above: "Se score > X",
   if_has_tag: "Se ha tag",
   if_stage_is: "Se stage è",

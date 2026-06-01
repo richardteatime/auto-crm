@@ -284,6 +284,25 @@ export const ifFieldEqualsExecutor: NodeExecutor = async ({ config, context }) =
   };
 };
 
+export const ifFieldExistsExecutor: NodeExecutor = async ({ config, context }) => {
+  const field = String(config.field ?? "");
+
+  const payload =
+    context.trigger.payload && typeof context.trigger.payload === "object" && !Array.isArray(context.trigger.payload)
+      ? (context.trigger.payload as Record<string, unknown>)
+      : {};
+  const actualValue = field.startsWith("{{")
+    ? interpolateString(field, context)
+    : (context.variables[field] ?? payload[field]);
+
+  const isTrue = actualValue !== undefined && actualValue !== null && String(actualValue).trim() !== "";
+  return {
+    status: "ok",
+    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
+    output: { result: isTrue },
+  };
+};
+
 export const ifScoreAboveExecutor: NodeExecutor = async ({ config, context }) => {
   const score = Number(context.variables.score ?? 0);
   const threshold = Number(config.threshold ?? 0);

@@ -131,6 +131,9 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
     { key: "field", label: "Campo da controllare", type: "text", placeholder: "es. email" },
     { key: "compareValue", label: "È uguale a", type: "text", placeholder: "valore atteso" },
   ],
+  if_field_exists: [
+    { key: "field", label: "Campo da controllare", type: "text", placeholder: "es. email" },
+  ],
   if_score_above: [{ key: "threshold", label: "Score maggiore di", type: "number" }],
   if_has_tag: [{ key: "tag", label: "Ha il tag", type: "text" }],
   if_stage_is: [{ key: "stage", label: "Lo stage è", type: "text" }],
