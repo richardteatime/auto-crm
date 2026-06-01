@@ -2,6 +2,7 @@ import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
 import { ID, type Models } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { Contact, ContactWithDeals, Deal, Activity } from "@/types";
+import { normalizeContactSource } from "./contact-source";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -104,7 +105,7 @@ export async function createContact(data: {
       company: data.company ?? null,
       vatNumber: data.vatNumber ?? null,
       address: data.address ?? null,
-      source: data.source ?? "otro",
+      source: normalizeContactSource(data.source),
       temperature: data.temperature ?? "cold",
       notes: data.notes ?? null,
       createdAt: now,
@@ -136,6 +137,10 @@ export async function updateContact(
   const cleanData = Object.fromEntries(
     Object.entries(data).filter(([, v]) => v !== undefined),
   ) as Record<string, unknown>;
+
+  if (typeof cleanData.source === "string") {
+    cleanData.source = normalizeContactSource(cleanData.source);
+  }
 
   const doc = await databases.updateDocument(
     DB_ID,

@@ -20,6 +20,7 @@ import {
 } from "@/lib/db";
 import { track, hashIp } from "@/lib/capture/analytics";
 import type { Lead } from "@/lib/leads/types";
+import { normalizeContactSource } from "@/lib/db/contact-source";
 
 export interface IngestLeadInput {
   name?: string | null;
@@ -84,13 +85,6 @@ function resolveSource(input: IngestLeadInput): string {
   return "form";
 }
 
-function contactSource(source: string): string {
-  if (source === "booking") return "evento";
-  if (source === "form") return "formulario";
-  if (source === "landing" || source === "funnel") return "website";
-  return "otro";
-}
-
 async function ensureCaptureContact(input: {
   name: string;
   email: string | null;
@@ -121,7 +115,7 @@ async function ensureCaptureContact(input: {
     email: input.email,
     phone: input.phone,
     company: input.company,
-    source: contactSource(input.source),
+    source: normalizeContactSource(input.source),
     notes: input.message,
   });
   return created.id;

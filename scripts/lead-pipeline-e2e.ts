@@ -152,6 +152,7 @@ async function main() {
     "@/lib/leads/scoring"
   );
   const { buildQuoteDraft } = await import("@/lib/leads/quotes");
+  const { normalizeContactSource } = await import("@/lib/db/contact-source");
 
   const { parsed, strategy } = await parseLeadEmail({
     subject: "Nuova richiesta dal form",
@@ -210,6 +211,17 @@ async function main() {
       (draft.generatedText ?? "").includes("approvazione manuale"),
       "generatedText DEVE contenere l'avviso di approvazione manuale (regola sicurezza)",
     );
+  });
+
+  await test("A5 — Fonte contatto normalizzata per lead storici e Capture", async () => {
+    eq(normalizeContactSource("email"), "email", "source email");
+    eq(normalizeContactSource("form"), "formulario", "source form");
+    eq(normalizeContactSource("booking"), "evento", "source booking");
+    eq(normalizeContactSource("landing"), "website", "source landing");
+    eq(normalizeContactSource("funnel"), "website", "source funnel");
+    eq(normalizeContactSource("e2e-test"), "otro", "source tecnica sconosciuta");
+    eq(normalizeContactSource("lead"), "otro", "fallback storico non ammesso");
+    eq(normalizeContactSource(null), "otro", "source assente");
   });
 
   // -------------------------------------------------------------------------
