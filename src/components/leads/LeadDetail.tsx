@@ -150,6 +150,29 @@ export function LeadDetail({
     if (ok) toast.success("Bozza preventivo generata");
   }
 
+  async function convertToQuote() {
+    setBusy("convert");
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/convert-to-quote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Conversione fallita");
+        return;
+      }
+      toast.success("Preventivo creato — apertura PDF…");
+      if (data.pdfUrl) window.open(data.pdfUrl as string, "_blank");
+      router.refresh();
+    } catch {
+      toast.error("Errore di rete");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const company = lead.company ?? lead.businessName;
 
   return (
@@ -313,18 +336,27 @@ export function LeadDetail({
             <FileText className="h-4 w-4" />
             Bozza preventivo
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => generateQuote(Boolean(latestQuote))}
-            disabled={busy === "quote"}
-          >
-            {busy === "quote"
-              ? "Generazione..."
-              : latestQuote
-                ? "Rigenera bozza"
-                : "Genera preventivo"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={convertToQuote}
+              disabled={busy === "convert"}
+            >
+              {busy === "convert" ? "Creazione..." : "Trasforma in preventivo"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateQuote(Boolean(latestQuote))}
+              disabled={busy === "quote"}
+            >
+              {busy === "quote"
+                ? "Generazione..."
+                : latestQuote
+                  ? "Rigenera bozza"
+                  : "Genera preventivo"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {latestQuote ? (
@@ -341,6 +373,10 @@ export function LeadDetail({
               </pre>
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded p-2">
                 Bozza interna — non inviata al cliente senza approvazione manuale.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Premi <strong>Trasforma in preventivo</strong> per generare il documento
+                PDF ufficiale (collegato a una trattativa), con lo stesso layout dei Preventivi.
               </p>
             </div>
           ) : (
