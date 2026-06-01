@@ -6,12 +6,14 @@ import {
   Controls,
   Background,
   MiniMap,
-  useNodesState,
-  useEdgesState,
   addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
   type Connection,
   type Edge,
   type Node,
+  type NodeChange,
+  type EdgeChange,
   type ReactFlowInstance,
   type NodeMouseHandler,
 } from "@xyflow/react";
@@ -31,48 +33,55 @@ const nodeTypes = {
   delay: DelayNode,
 };
 
+// Controlled canvas: il parent (WorkflowEditor) è l'unica fonte di verità per
+// nodi/archi. Ogni modifica (drag, drop, connessione, eliminazione) viene
+// applicata e ribaltata al parent, così pannello proprietà e salvataggio
+// lavorano sempre sugli stessi dati.
 interface WorkflowCanvasProps {
-  initialNodes?: FlowNode[];
-  initialEdges?: FlowEdge[];
-  onChange?: (nodes: FlowNode[], edges: FlowEdge[]) => void;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  onNodesChange: (nodes: FlowNode[]) => void;
+  onEdgesChange: (edges: FlowEdge[]) => void;
   onNodeSelect?: (node: FlowNode | null) => void;
   readOnly?: boolean;
 }
 
-export function WorkflowCanvas({ initialNodes = [], initialEdges = [], onChange, onNodeSelect, readOnly }: WorkflowCanvasProps) {
+export function WorkflowCanvas({
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  onNodeSelect,
+  readOnly,
+}: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChangeRaw] = useNodesState(initialNodes as unknown as Node[]);
-  const [edges, setEdges, onEdgesChangeRaw] = useEdgesState(initialEdges as unknown as Edge[]);
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
-  const onNodesChange = useCallback(
-    (changes: Parameters<typeof onNodesChangeRaw>[0]) => {
-      onNodesChangeRaw(changes);
-      setTimeout(() => onChange?.(nodes as unknown as FlowNode[], edges as unknown as FlowEdge[]), 0);
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const next = applyNodeChanges(changes, nodes as unknown as Node[]);
+      onNodesChange(next as unknown as FlowNode[]);
     },
-    [onNodesChangeRaw, onChange, nodes, edges],
+    [nodes, onNodesChange],
   );
 
-  const onEdgesChange = useCallback(
-    (changes: Parameters<typeof onEdgesChangeRaw>[0]) => {
-      onEdgesChangeRaw(changes);
-      setTimeout(() => onChange?.(nodes as unknown as FlowNode[], edges as unknown as FlowEdge[]), 0);
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const next = applyEdgeChanges(changes, edges as unknown as Edge[]);
+      onEdgesChange(next as unknown as FlowEdge[]);
     },
-    [onEdgesChangeRaw, onChange, nodes, edges],
+    [edges, onEdgesChange],
   );
 
   const onConnect = useCallback(
     (params: Connection) => {
-      setEdges((eds) => {
-        const sourceNode = (nodes as unknown as FlowNode[]).find((n) => n.id === params.source);
-        const isCondition = sourceNode?.type === "condition";
-        const label = isCondition ? (params.sourceHandle || undefined) : undefined;
-        const newEdges = addEdge({ ...params, label } as Connection, eds);
-        setTimeout(() => onChange?.(nodes as unknown as FlowNode[], newEdges as unknown as FlowEdge[]), 0);
-        return newEdges;
-      });
+      const sourceNode = nodes.find((n) => n.id === params.source);
+      const isCondition = sourceNode?.type === "condition";
+      const label = isCondition ? (params.sourceHandle === "true" ? "Sì" : "No") : undefined;
+      const next = addEdge({ ...params, label } as Connection, edges as unknown as Edge[]);
+      onEdgesChange(next as unknown as FlowEdge[]);
     },
-    [setEdges, onChange, nodes],
+    [nodes, edges, onEdgesChange],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -86,10 +95,10 @@ export function WorkflowCanvas({ initialNodes = [], initialEdges = [], onChange,
       const type = event.dataTransfer.getData("application/reactflow");
       if (!type || !reactFlowInstance.current || !reactFlowWrapper.current) return;
 
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const bounds = reactFlowWrapper.current.getBoundingClientRect();
       const position = reactFlowInstance.current.screenToFlowPosition({
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
       });
 
       const category = getNodeCategory(type);
@@ -100,10 +109,9 @@ export function WorkflowCanvas({ initialNodes = [], initialEdges = [], onChange,
         position,
         data: { nodeType: type, label: NODE_TYPE_LABELS[type] ?? type, config: {} },
       };
-
-      setNodes((nds) => [...nds, newNode as unknown as Node]);
+      onNodesChange([...nodes, newNode]);
     },
-    [setNodes],
+    [nodes, onNodesChange],
   );
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
@@ -124,11 +132,11 @@ export function WorkflowCanvas({ initialNodes = [], initialEdges = [], onChange,
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        nodes={nodes as unknown as Node[]}
+        edges={edges as unknown as Edge[]}
+        onNodesChange={readOnly ? undefined : handleNodesChange}
+        onEdgesChange={readOnly ? undefined : handleEdgesChange}
+        onConnect={readOnly ? undefined : onConnect}
         onInit={onInit}
         onDrop={readOnly ? undefined : onDrop}
         onDragOver={readOnly ? undefined : onDragOver}

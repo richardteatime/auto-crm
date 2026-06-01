@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReactFlowProvider } from "@xyflow/react";
 import { toast } from "sonner";
@@ -38,11 +38,6 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
   const [selectedNode, setSelectedNode] = useState<FlowNode | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-
-  const handleChange = useCallback((newNodes: FlowNode[], newEdges: FlowEdge[]) => {
-    setNodes(newNodes);
-    setEdges(newEdges);
-  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -139,9 +134,10 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
           <div className="relative flex-1 h-full">
             <ReactFlowProvider>
               <WorkflowCanvas
-                initialNodes={nodes}
-                initialEdges={edges}
-                onChange={handleChange}
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={setNodes}
+                onEdgesChange={setEdges}
                 onNodeSelect={setSelectedNode}
               />
             </ReactFlowProvider>
