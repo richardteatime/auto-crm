@@ -47,7 +47,7 @@ export function LandingBlockPreview({
       return (
         <section className="px-8 py-12">
           {block.heading && <h2 className="text-2xl font-bold text-center mb-8">{block.heading}</h2>}
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 @md:grid-cols-2 @xl:grid-cols-3">
             {block.items.map((item, i) => (
               <div key={i} className="space-y-2">
                 <div
@@ -68,7 +68,7 @@ export function LandingBlockPreview({
       return (
         <section className="px-8 py-12 bg-gray-50">
           {block.heading && <h2 className="text-2xl font-bold text-center mb-8">{block.heading}</h2>}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 @md:grid-cols-2 @xl:grid-cols-3">
             {block.items.map((item, i) => (
               <figure key={i} className="rounded-xl border bg-white p-5 space-y-2">
                 <blockquote className="text-sm text-gray-700">&ldquo;{item.quote}&rdquo;</blockquote>
@@ -107,12 +107,15 @@ export function LandingBlockPreview({
       return (
         <section className="px-8 py-12">
           {block.heading && <h2 className="text-xl font-bold text-center mb-5">{block.heading}</h2>}
-          <div className="mx-auto max-w-sm space-y-3 rounded-xl border bg-white p-5">
-            <div className="h-9 rounded-md border bg-gray-50" />
-            <div className="h-9 rounded-md border bg-gray-50" />
-            <div className="h-9 rounded-md border bg-gray-50" />
+          <div className="mx-auto max-w-sm space-y-3 rounded-xl border bg-white p-5 shadow-sm">
+            {["Nome", "Email", "Telefono"].map((label) => (
+              <div key={label} className="space-y-1">
+                <span className="block text-xs font-medium text-gray-500">{label}</span>
+                <div className="h-9 rounded-md border border-gray-200 bg-gray-50" />
+              </div>
+            ))}
             <div
-              className="h-10 rounded-md text-white text-sm font-semibold flex items-center justify-center"
+              className="mt-1 h-10 rounded-md text-white text-sm font-semibold flex items-center justify-center"
               style={{ background: primaryColor }}
             >
               Invia
@@ -208,7 +211,7 @@ export function LandingBlockPreview({
             <strong className="text-sm text-gray-900">{block.averageRating.toFixed(1)}</strong>
             <span>{block.ratingCountLabel}</span>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-3 grid-cols-1 @md:grid-cols-2 @xl:grid-cols-3">
             {block.items.map((item, i) => (
               <figure key={i} className="rounded-lg border bg-white p-4">
                 <span className="inline-flex gap-0.5 text-amber-400">

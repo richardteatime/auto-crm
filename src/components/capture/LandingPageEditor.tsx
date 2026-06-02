@@ -313,7 +313,7 @@ export function LandingPageEditor({ page }: { page: LandingPage }) {
           ) : (
             <div
               className={cn(
-                "mx-auto overflow-hidden rounded-lg border bg-white transition-[max-width]",
+                "@container mx-auto overflow-hidden rounded-lg border bg-white transition-[max-width]",
                 device === "tablet" && "max-w-[768px]",
                 device === "mobile" && "max-w-[390px]",
               )}
