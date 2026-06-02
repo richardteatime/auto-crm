@@ -12,9 +12,10 @@ import {
 interface NodePropertiesPanelProps {
   node: FlowNode | null;
   onChange?: (node: FlowNode) => void;
+  onDelete?: (nodeId: string) => void;
 }
 
-export function NodePropertiesPanel({ node, onChange }: NodePropertiesPanelProps) {
+export function NodePropertiesPanel({ node, onChange, onDelete }: NodePropertiesPanelProps) {
   if (!node) {
     return (
       <aside className="w-72 border-l bg-card flex flex-col h-full">
@@ -169,6 +170,15 @@ export function NodePropertiesPanel({ node, onChange }: NodePropertiesPanelProps
             </div>
           </div>
         </details>
+
+        {onDelete && (
+          <button
+            onClick={() => onDelete(node.id)}
+            className="w-full rounded-md border border-red-200 bg-red-50 px-2 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+          >
+            Elimina questo nodo
+          </button>
+        )}
       </div>
     </aside>
   );

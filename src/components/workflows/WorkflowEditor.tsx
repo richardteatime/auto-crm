@@ -165,6 +165,11 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
               setNodes((prev) => prev.map((n) => (n.id === node.id ? node : n)));
               setSelectedNode(node);
             }}
+            onDelete={(nodeId) => {
+              setNodes((prev) => prev.filter((n) => n.id !== nodeId));
+              setEdges((prev) => prev.filter((e) => e.source !== nodeId && e.target !== nodeId));
+              setSelectedNode(null);
+            }}
           />
         </div>
       ) : (

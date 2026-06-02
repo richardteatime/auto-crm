@@ -129,6 +129,19 @@ export function WorkflowCanvas({
     onNodeSelect?.(null);
   }, [onNodeSelect]);
 
+  // Click su una connessione → chiede conferma ed elimina (affordance visibile,
+  // oltre al tasto Canc/Backspace sull'elemento selezionato).
+  const onEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      if (typeof window !== "undefined" && window.confirm("Eliminare questa connessione?")) {
+        onEdgesChange(
+          (edges as unknown as Edge[]).filter((e) => e.id !== edge.id) as unknown as FlowEdge[],
+        );
+      }
+    },
+    [edges, onEdgesChange],
+  );
+
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
       <ReactFlow
@@ -142,6 +155,8 @@ export function WorkflowCanvas({
         onDragOver={readOnly ? undefined : onDragOver}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
+        onEdgeClick={readOnly ? undefined : onEdgeClick}
+        deleteKeyCode={["Backspace", "Delete"]}
         nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
