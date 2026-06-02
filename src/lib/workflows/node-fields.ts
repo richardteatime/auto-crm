@@ -50,6 +50,7 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
   deal_moved: [],
   form_submitted: [],
   booking_created: [],
+  call_outcome_recorded: [],
   schedule: [],
   webhook: [],
 
@@ -110,6 +111,48 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
     { key: "dealId", label: "ID Deal", type: "text", hint: "Vuoto = usa il deal del contesto" },
     { key: "stageId", label: "ID Stage di destinazione", type: "text" },
   ],
+
+  // --- Azioni sul LEAD (pipeline call) — agiscono sul lead che ha avviato il workflow ---
+  create_lead_call_task: [
+    {
+      key: "assignee",
+      label: "Assegna la chiamata a",
+      type: "select",
+      options: [
+        { value: "setter", label: "Cugina (setter — call a freddo)" },
+        { value: "closer", label: "Leo (closer — chiusura)" },
+      ],
+      hint: "Crea un task chiamata per il lead, assegnato alla persona scelta.",
+    },
+    { key: "notes", label: "Note", type: "textarea", placeholder: "{{trigger.payload.message}}" },
+  ],
+  set_lead_status: [
+    {
+      key: "status",
+      label: "Nuovo stato del lead",
+      type: "select",
+      options: [
+        { value: "to_call", label: "Da chiamare" },
+        { value: "working", label: "In lavorazione" },
+        { value: "qualified", label: "Qualificato" },
+        { value: "won", label: "Vinto" },
+        { value: "lost", label: "Perso" },
+      ],
+    },
+  ],
+  move_lead_stage: [
+    {
+      key: "stage",
+      label: "Fase pipeline lead",
+      type: "select",
+      options: [
+        { value: "prospect", label: "Prospect" },
+        { value: "opportunity", label: "Opportunity" },
+        { value: "contacted", label: "Contacted" },
+        { value: "proposal", label: "Proposal" },
+      ],
+    },
+  ],
   http_request: [
     {
       key: "method",
@@ -133,6 +176,15 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
   ],
   if_field_exists: [
     { key: "field", label: "Campo da controllare", type: "text", placeholder: "es. email" },
+  ],
+  if_field_in: [
+    { key: "field", label: "Campo da controllare", type: "text", placeholder: "es. outcome" },
+    {
+      key: "values",
+      label: "Valori ammessi (separati da virgola)",
+      type: "text",
+      placeholder: "qualified, interested, needs_quote",
+    },
   ],
   if_score_above: [{ key: "threshold", label: "Score maggiore di", type: "number" }],
   if_has_tag: [{ key: "tag", label: "Ha il tag", type: "text" }],

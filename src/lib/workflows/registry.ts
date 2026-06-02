@@ -9,9 +9,13 @@ import {
   sendEmailExecutor,
   sendInternalMessageExecutor,
   movePipelineStageExecutor,
+  createLeadCallTaskExecutor,
+  setLeadStatusExecutor,
+  moveLeadStageExecutor,
   httpRequestExecutor,
   ifFieldEqualsExecutor,
   ifFieldExistsExecutor,
+  ifFieldInExecutor,
   ifScoreAboveExecutor,
   ifHasTagExecutor,
   ifStageIsExecutor,
@@ -79,6 +83,18 @@ registerNode({
   label: "Prenotazione Creata",
   description: "Si attiva quando viene creata una prenotazione",
   icon: "CalendarPlus",
+  color: "#22c55e",
+  inputs: [],
+  outputs: [{ id: "out", label: "Successo" }],
+  executor: triggerExecutor,
+});
+
+registerNode({
+  type: "call_outcome_recorded",
+  category: "trigger",
+  label: "Esito Chiamata Registrato",
+  description: "Si attiva quando viene registrato l'esito di una chiamata (call task)",
+  icon: "PhoneOutgoing",
   color: "#22c55e",
   inputs: [],
   outputs: [{ id: "out", label: "Successo" }],
@@ -210,6 +226,42 @@ registerNode({
 });
 
 registerNode({
+  type: "create_lead_call_task",
+  category: "action",
+  label: "Crea Call Task (lead)",
+  description: "Crea un task chiamata per il lead, assegnato alla setter (Cugina) o al closer (Leo)",
+  icon: "PhoneCall",
+  color: "#3b82f6",
+  inputs: [{ id: "in", label: "Ingresso" }],
+  outputs: [{ id: "out", label: "Successo" }],
+  executor: createLeadCallTaskExecutor,
+});
+
+registerNode({
+  type: "set_lead_status",
+  category: "action",
+  label: "Cambia Stato Lead",
+  description: "Imposta lo stato del lead (da chiamare, qualificato, vinto, perso…)",
+  icon: "Flag",
+  color: "#3b82f6",
+  inputs: [{ id: "in", label: "Ingresso" }],
+  outputs: [{ id: "out", label: "Successo" }],
+  executor: setLeadStatusExecutor,
+});
+
+registerNode({
+  type: "move_lead_stage",
+  category: "action",
+  label: "Sposta Fase Lead",
+  description: "Sposta il lead in un'altra fase della pipeline (prospect, opportunity…)",
+  icon: "Workflow",
+  color: "#3b82f6",
+  inputs: [{ id: "in", label: "Ingresso" }],
+  outputs: [{ id: "out", label: "Successo" }],
+  executor: moveLeadStageExecutor,
+});
+
+registerNode({
   type: "http_request",
   category: "integration",
   label: "HTTP Request",
@@ -253,6 +305,21 @@ registerNode({
     { id: "false", label: "Falso" },
   ],
   executor: ifFieldExistsExecutor,
+});
+
+registerNode({
+  type: "if_field_in",
+  category: "condition",
+  label: "Se campo è uno tra",
+  description: "Verifica se un campo è uguale a uno dei valori elencati (separati da virgola)",
+  icon: "GitBranch",
+  color: "#eab308",
+  inputs: [{ id: "in", label: "Ingresso" }],
+  outputs: [
+    { id: "true", label: "Vero" },
+    { id: "false", label: "Falso" },
+  ],
+  executor: ifFieldInExecutor,
 });
 
 registerNode({

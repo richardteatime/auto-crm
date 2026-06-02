@@ -8,6 +8,7 @@ import {
 } from "@/lib/db";
 import { fireTrigger, leoIdentity } from "@/lib/leads/automation";
 import { CALL_OUTCOMES, type CallOutcome } from "@/lib/leads/types";
+import { triggerWorkflows } from "@/lib/workflows/trigger";
 
 // POST /api/leads/[id]/call-outcome  { outcome, notes? }
 // Leo records the result of a call. Persists the outcome on the call task and
@@ -72,6 +73,19 @@ export async function POST(
 
     // Reload to reflect any stage/status changes made by the routing.
     const updatedLead = await getLead(id);
+
+    // Bridge into the visual Workflow builder: the post-call routing can be
+    // seen and edited as a workflow (trigger "Esito Chiamata Registrato").
+    triggerWorkflows("call_outcome_recorded", {
+      leadId: id,
+      outcome,
+      assignedTo: completed.assignedTo,
+      assigneeName: completed.assigneeName,
+      callTaskId: completed.id,
+      name: updatedLead?.fullName ?? lead.fullName,
+      email: updatedLead?.email ?? lead.email,
+      phone: updatedLead?.phone ?? lead.phone,
+    });
 
     return NextResponse.json({
       success: true,

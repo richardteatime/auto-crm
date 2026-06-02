@@ -163,6 +163,7 @@ export type TriggerNodeType =
   | "deal_moved"
   | "form_submitted"
   | "booking_created"
+  | "call_outcome_recorded"
   | "schedule"
   | "webhook";
 
@@ -171,6 +172,7 @@ export const TRIGGER_NODE_TYPES: TriggerNodeType[] = [
   "deal_moved",
   "form_submitted",
   "booking_created",
+  "call_outcome_recorded",
   "schedule",
   "webhook",
 ];
@@ -180,6 +182,7 @@ export const TRIGGER_LABELS: Record<TriggerNodeType, string> = {
   deal_moved: "Deal Spostato",
   form_submitted: "Form Inviato",
   booking_created: "Prenotazione Creata",
+  call_outcome_recorded: "Esito Chiamata Registrato",
   schedule: "Schedule (Timer)",
   webhook: "Webhook Inbound",
 };
@@ -197,6 +200,9 @@ export type ActionNodeType =
   | "send_email"
   | "send_internal_message"
   | "move_pipeline_stage"
+  | "create_lead_call_task"
+  | "set_lead_status"
+  | "move_lead_stage"
   | "http_request";
 
 export const ACTION_NODE_TYPES: ActionNodeType[] = [
@@ -208,6 +214,9 @@ export const ACTION_NODE_TYPES: ActionNodeType[] = [
   "send_email",
   "send_internal_message",
   "move_pipeline_stage",
+  "create_lead_call_task",
+  "set_lead_status",
+  "move_lead_stage",
   "http_request",
 ];
 
@@ -220,6 +229,9 @@ export const ACTION_LABELS: Record<ActionNodeType, string> = {
   send_email: "Invia Email",
   send_internal_message: "Invia Messaggio Interno",
   move_pipeline_stage: "Sposta in Pipeline",
+  create_lead_call_task: "Crea Call Task (lead)",
+  set_lead_status: "Cambia Stato Lead",
+  move_lead_stage: "Sposta Fase Lead",
   http_request: "HTTP Request",
 };
 
@@ -230,6 +242,7 @@ export const ACTION_LABELS: Record<ActionNodeType, string> = {
 export type ConditionNodeType =
   | "if_field_equals"
   | "if_field_exists"
+  | "if_field_in"
   | "if_score_above"
   | "if_has_tag"
   | "if_stage_is";
@@ -237,6 +250,7 @@ export type ConditionNodeType =
 export const CONDITION_NODE_TYPES: ConditionNodeType[] = [
   "if_field_equals",
   "if_field_exists",
+  "if_field_in",
   "if_score_above",
   "if_has_tag",
   "if_stage_is",
@@ -245,6 +259,7 @@ export const CONDITION_NODE_TYPES: ConditionNodeType[] = [
 export const CONDITION_LABELS: Record<ConditionNodeType, string> = {
   if_field_equals: "Se campo = valore",
   if_field_exists: "Se campo compilato",
+  if_field_in: "Se campo è uno tra",
   if_score_above: "Se score > X",
   if_has_tag: "Se ha tag",
   if_stage_is: "Se stage è",

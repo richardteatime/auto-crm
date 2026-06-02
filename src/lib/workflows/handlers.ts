@@ -7,8 +7,13 @@ import {
   createTask,
   createNotification,
   getStages,
+  createCallTask,
+  getOpenCallTaskForLead,
+  getLead,
+  updateLead,
 } from "@/lib/db";
 import { sendEmail, isEmailConfigured } from "@/lib/leads/automation/adapters/email";
+import type { LeadStatus, LeadPipelineStage } from "@/lib/leads/types";
 import type {
   NodeExecutor,
   ExecutionContext,
@@ -261,6 +266,87 @@ export const httpRequestExecutor: NodeExecutor = async ({ config, context }) => 
 };
 
 // ---------------------------------------------------------------------------
+// Lead actions (funnel a 2 call) — agiscono sul lead che ha avviato il workflow
+// ---------------------------------------------------------------------------
+
+const SETTER = {
+  id: process.env.CUGINA_USER_ID || "cugina",
+  name: process.env.CUGINA_NAME || "Cugina di Rick",
+};
+const CLOSER = {
+  id: process.env.LEO_USER_ID || "leo",
+  name: process.env.LEO_NAME || "Leo",
+};
+
+// The lead id always travels in the trigger payload (form_submitted,
+// call_outcome_recorded, …). Fall back to context fields for safety.
+function resolveLeadId(context: ExecutionContext): string {
+  const p = context.trigger?.payload;
+  const fromPayload =
+    p && typeof p === "object" && !Array.isArray(p)
+      ? (p as Record<string, unknown>).leadId
+      : undefined;
+  return String(context.leadId ?? context.variables.leadId ?? fromPayload ?? "");
+}
+
+export const createLeadCallTaskExecutor: NodeExecutor = async ({ config, context }) => {
+  const leadId = resolveLeadId(context);
+  if (!leadId) return fail("LeadId mancante nel contesto");
+  const who = String(config.assignee ?? "setter") === "closer" ? CLOSER : SETTER;
+  try {
+    const existing = await getOpenCallTaskForLead(leadId);
+    if (existing) return skip(`Call task già aperta (${existing.id})`);
+    const lead = await getLead(leadId);
+    const notes =
+      interpolateString(String(config.notes ?? ""), context) || lead?.message || null;
+    const task = await createCallTask({
+      leadId,
+      assignedTo: who.id,
+      assigneeName: who.name,
+      status: "pending",
+      notes,
+    });
+    return ok({ callTaskId: task.id, assignedTo: who.id });
+  } catch (e) {
+    return fail(String(e));
+  }
+};
+
+export const setLeadStatusExecutor: NodeExecutor = async ({ config, context }) => {
+  const leadId = resolveLeadId(context);
+  if (!leadId) return fail("LeadId mancante nel contesto");
+  const status = String(config.status ?? "");
+  if (!status) return fail("Stato mancante");
+  try {
+    await updateLead(leadId, { status: status as LeadStatus });
+    return ok({ status });
+  } catch (e) {
+    return fail(String(e));
+  }
+};
+
+export const moveLeadStageExecutor: NodeExecutor = async ({ config, context }) => {
+  const leadId = resolveLeadId(context);
+  if (!leadId) return fail("LeadId mancante nel contesto");
+  const stage = String(config.stage ?? "");
+  if (!stage) return fail("Fase mancante");
+  try {
+    // Dynamic import: pipeline → automation → engine → … avoids a static cycle.
+    const { moveLeadStage } = await import("@/lib/leads/pipeline");
+    const res = await moveLeadStage({
+      leadId,
+      toStage: stage as LeadPipelineStage,
+      reason: "workflow",
+      triggeredBy: "workflow",
+    });
+    if (!res.ok) return fail(`Spostamento fase fallito: ${res.error ?? "?"}`);
+    return ok({ stage });
+  } catch (e) {
+    return fail(String(e));
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Condition executors
 // ---------------------------------------------------------------------------
 
@@ -296,6 +382,29 @@ export const ifFieldExistsExecutor: NodeExecutor = async ({ config, context }) =
     : (context.variables[field] ?? payload[field]);
 
   const isTrue = actualValue !== undefined && actualValue !== null && String(actualValue).trim() !== "";
+  return {
+    status: "ok",
+    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
+    output: { result: isTrue },
+  };
+};
+
+export const ifFieldInExecutor: NodeExecutor = async ({ config, context }) => {
+  const field = String(config.field ?? "");
+  const values = String(config.values ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+  const payload =
+    context.trigger.payload && typeof context.trigger.payload === "object" && !Array.isArray(context.trigger.payload)
+      ? (context.trigger.payload as Record<string, unknown>)
+      : {};
+  const actualValue = field.startsWith("{{")
+    ? interpolateString(field, context)
+    : (context.variables[field] ?? payload[field]);
+
+  const isTrue = values.includes(String(actualValue));
   return {
     status: "ok",
     nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),

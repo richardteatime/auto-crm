@@ -76,10 +76,20 @@ async function createLeoCallTask(
 // Idempotent: create one open call task for the SETTER (Cugina), set the lead
 // "to_call", and notify her by email. This is the FIRST (cold) call of the
 // two-call funnel; qualified leads are later escalated to Leo.
+// Canali coperti dal workflow visibile "Form → call a freddo (Cugina)".
+// Per questi NON creiamo la call task qui (la crea il workflow form_submitted):
+// così il primo tratto del funnel è tutto nel builder. Per gli altri canali
+// (es. email inbound, che nel builder non hanno un trigger) restiamo come rete
+// di sicurezza in codice.
+const WORKFLOW_LEAD_CHANNELS = new Set(["form", "landing", "funnel"]);
+
 async function createSetterCallTask(
   ctx: AutomationContext,
   actionName: string,
 ) {
+  if (WORKFLOW_LEAD_CHANNELS.has(ctx.lead.source)) {
+    return skip(actionName, `lead da '${ctx.lead.source}': call task gestita dal workflow`);
+  }
   const existing = await getOpenCallTaskForLead(ctx.lead.id);
   if (existing) return skip(actionName, "open call task already exists");
 
