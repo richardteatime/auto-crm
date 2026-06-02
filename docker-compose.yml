@@ -15,7 +15,13 @@ services:
       - DIGEST_FROM=${DIGEST_FROM:-onboarding@resend.dev}
       - DIGEST_EMAIL=${DIGEST_EMAIL:-}
       - LEO_EMAIL=${LEO_EMAIL:-}
+      - LEO_NAME=${LEO_NAME:-Leo}
       - LEAD_NOTIFY_EMAIL=${LEAD_NOTIFY_EMAIL:-}
+      # Funnel a 2 call — setter "Cugina di Rick" + slug booking del closer
+      - CUGINA_NAME=${CUGINA_NAME:-Cugina di Rick}
+      - CUGINA_USER_ID=${CUGINA_USER_ID:-cugina}
+      - CUGINA_EMAIL=${CUGINA_EMAIL:-}
+      - LEO_BOOKING_SLUG=${LEO_BOOKING_SLUG:-call-leo}
       # AI provider (OpenRouter) — opzionale
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}

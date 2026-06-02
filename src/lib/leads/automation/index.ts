@@ -27,11 +27,13 @@ export {
   executeAction,
   leadSummaryHtml,
   leoIdentity,
+  setterIdentity,
 } from "./actions";
 export {
   isEmailConfigured,
   sendEmail,
   sendToLeo,
+  sendToSetter,
   sendToFounder,
   sendToInternalTeam,
 } from "./adapters/email";

@@ -29,6 +29,11 @@ export default async function LeadDetailPage({ params }: PageProps) {
     listLeadQuotes(id).catch(() => []),
   ]);
 
+  // Two-call funnel identities (env-overridable, resolved server-side).
+  const setterId = process.env.CUGINA_USER_ID || "cugina";
+  const setterName = process.env.CUGINA_NAME || "Cugina di Rick";
+  const closerName = process.env.LEO_NAME || "Leo";
+
   return (
     <LeadDetail
       lead={lead}
@@ -36,6 +41,9 @@ export default async function LeadDetailPage({ params }: PageProps) {
       runs={runs}
       callTasks={callTasks}
       quotes={quotes}
+      setterId={setterId}
+      setterName={setterName}
+      closerName={closerName}
     />
   );
 }

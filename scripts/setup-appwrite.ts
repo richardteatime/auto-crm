@@ -607,14 +607,14 @@ async function main() {
           name: "New lead automation",
           enabled: true,
           triggerType: "lead_created",
-          actions: JSON.stringify(["classify_lead_category", "create_or_update_contact", "set_pipeline_stage_prospect", "create_leo_call_task", "notify_internal_team"]),
+          actions: JSON.stringify(["classify_lead_category", "create_or_update_contact", "set_pipeline_stage_prospect", "create_setter_call_task", "notify_internal_team"]),
         },
         {
           name: "Prospect automation",
           enabled: true,
           triggerType: "stage_changed_to_prospect",
           pipelineStage: "prospect",
-          actions: JSON.stringify(["create_call_task_for_leo", "send_internal_email_to_leo"]),
+          actions: JSON.stringify(["create_call_task_for_setter", "notify_internal_team"]),
         },
         {
           name: "Opportunity automation",

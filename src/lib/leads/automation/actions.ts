@@ -3,6 +3,7 @@ import { scoreBandLabel } from "../scoring";
 import { buildQuoteDraft, type QuoteDraft } from "../quotes";
 import {
   createCallTask,
+  getCallTask,
   getOpenCallTaskForLead,
   updateLead,
   createLeadQuote,
@@ -11,6 +12,7 @@ import {
 import {
   sendToInternalTeam,
   sendToLeo,
+  sendToSetter,
   sendToFounder,
   sendEmail,
 } from "./adapters/email";
@@ -28,6 +30,13 @@ const ACK_EMAIL_ENABLED = process.env.ENABLE_LEAD_ACK_EMAIL === "true";
 export const leoIdentity = {
   id: process.env.LEO_USER_ID || "leo",
   name: process.env.LEO_NAME || "Leo",
+};
+
+// "Cugina di Rick" — the setter who runs the cold discovery call (call 1),
+// before escalating qualified leads to Leo (the closer). Env-overridable.
+export const setterIdentity = {
+  id: process.env.CUGINA_USER_ID || "cugina",
+  name: process.env.CUGINA_NAME || "Cugina di Rick",
 };
 
 // Idempotent: create one open call task for Leo, set the lead "to_call",
@@ -64,6 +73,38 @@ async function createLeoCallTask(
   return ok(actionName, `taskId=${task.id}`);
 }
 
+// Idempotent: create one open call task for the SETTER (Cugina), set the lead
+// "to_call", and notify her by email. This is the FIRST (cold) call of the
+// two-call funnel; qualified leads are later escalated to Leo.
+async function createSetterCallTask(
+  ctx: AutomationContext,
+  actionName: string,
+) {
+  const existing = await getOpenCallTaskForLead(ctx.lead.id);
+  if (existing) return skip(actionName, "open call task already exists");
+
+  const task = await createCallTask({
+    leadId: ctx.lead.id,
+    assignedTo: setterIdentity.id,
+    assigneeName: setterIdentity.name,
+    status: "pending",
+    notes: ctx.lead.message ?? null,
+  });
+
+  try {
+    await updateLead(ctx.lead.id, { status: "to_call" });
+  } catch {
+    // non-blocking
+  }
+
+  await sendToSetter(
+    `Nuova chiamata a freddo: ${ctx.lead.fullName}`,
+    `<p>Hai un nuovo lead da contattare per la call conoscitiva (scrematura a freddo).</p>${leadSummaryHtml(ctx.lead)}`,
+  );
+
+  return ok(actionName, `taskId=${task.id}`);
+}
+
 // Day 6 — post-call routing. Outcome groups per PLAN's rules table.
 const PROPOSAL_OUTCOMES = new Set(["qualified", "interested", "needs_quote"]);
 const FOLLOWUP_OUTCOMES = new Set(["no_answer", "call_later"]);
@@ -79,6 +120,74 @@ async function routeLeadByOutcome(ctx: AutomationContext) {
 
   const { moveLeadStage } = await import("../pipeline");
 
+  // Who ran the call? The setter (Cugina, call 1) escalates qualified leads to
+  // Leo; the closer (Leo, call 2) advances them to proposal. We read the
+  // assignee from the completed call task passed by the call-outcome endpoint.
+  const callTaskId =
+    typeof ctx.payload.callTaskId === "string" ? ctx.payload.callTaskId : null;
+  const task = callTaskId ? await getCallTask(callTaskId) : null;
+  const bySetter = task?.assignedTo === setterIdentity.id;
+
+  // -------------------------------------------------------------------------
+  // CALL 1 — routing dopo la chiamata della setter (Cugina)
+  // -------------------------------------------------------------------------
+  if (bySetter) {
+    if (PROPOSAL_OUTCOMES.has(outcome)) {
+      // Qualificato → passa a Leo per la call di chiusura.
+      await updateLead(ctx.lead.id, { status: "qualified" });
+      await moveLeadStage({
+        leadId: ctx.lead.id,
+        toStage: "opportunity",
+        reason: `setter call: ${outcome}`,
+        triggeredBy: "automation",
+      });
+      const open = await getOpenCallTaskForLead(ctx.lead.id);
+      if (!open) {
+        await createCallTask({
+          leadId: ctx.lead.id,
+          assignedTo: leoIdentity.id,
+          assigneeName: leoIdentity.name,
+          status: "pending",
+          notes: `Call di chiusura — lead scremato da ${setterIdentity.name}`,
+        });
+      }
+      await sendToLeo(
+        `Lead caldo da chiudere: ${ctx.lead.fullName}`,
+        `<p>${setterIdentity.name} ha qualificato un lead: pronto per la call di chiusura.</p>${leadSummaryHtml(ctx.lead)}`,
+      );
+      return ok("route_lead_by_outcome", `setter → Leo (${outcome})`);
+    }
+
+    if (FOLLOWUP_OUTCOMES.has(outcome)) {
+      await updateLead(ctx.lead.id, { status: "working" });
+      await createCallTask({
+        leadId: ctx.lead.id,
+        assignedTo: setterIdentity.id,
+        assigneeName: setterIdentity.name,
+        status: "scheduled",
+        scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        notes: `Follow-up (setter) dopo esito "${outcome}"`,
+      });
+      return ok("route_lead_by_outcome", `setter follow-up (${outcome})`);
+    }
+
+    if (LOST_OUTCOMES.has(outcome)) {
+      await updateLead(ctx.lead.id, { status: "lost" });
+      await moveLeadStage({
+        leadId: ctx.lead.id,
+        toStage: "contacted",
+        reason: `setter call: ${outcome}`,
+        triggeredBy: "automation",
+      });
+      return ok("route_lead_by_outcome", `setter lost (${outcome})`);
+    }
+
+    return skip("route_lead_by_outcome", `setter outcome non gestito: ${outcome}`);
+  }
+
+  // -------------------------------------------------------------------------
+  // CALL 2 — routing dopo la chiamata del closer (Leo) — comportamento storico
+  // -------------------------------------------------------------------------
   if (PROPOSAL_OUTCOMES.has(outcome)) {
     await updateLead(ctx.lead.id, { status: "qualified" });
     await moveLeadStage({
@@ -177,6 +286,13 @@ const ACTION_HANDLERS: Record<string, ActionHandler> = {
     createLeoCallTask(ctx, "create_leo_call_task"),
   create_call_task_for_leo: (ctx: AutomationContext) =>
     createLeoCallTask(ctx, "create_call_task_for_leo"),
+
+  // Two-call funnel — the FIRST (cold) call goes to the setter "Cugina di Rick".
+  // Both names map to the same idempotent handler.
+  create_setter_call_task: (ctx: AutomationContext) =>
+    createSetterCallTask(ctx, "create_setter_call_task"),
+  create_call_task_for_setter: (ctx: AutomationContext) =>
+    createSetterCallTask(ctx, "create_call_task_for_setter"),
 
   // Day 6 — post-call. The outcome is already persisted on the call task by
   // the call-outcome endpoint; save_call_outcome confirms it, and

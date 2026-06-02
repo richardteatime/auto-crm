@@ -11,6 +11,8 @@ const FROM = process.env.LEAD_FROM_EMAIL || process.env.DIGEST_FROM || "SarconX 
 const NOTIFY_EMAIL = process.env.LEAD_NOTIFY_EMAIL || process.env.DIGEST_EMAIL || "";
 const LEO_EMAIL = process.env.LEO_EMAIL || NOTIFY_EMAIL;
 const FOUNDER_EMAIL = process.env.FOUNDER_EMAIL || NOTIFY_EMAIL;
+// Setter ("Cugina di Rick") — first-call cold caller. Falls back to the team inbox.
+const SETTER_EMAIL = process.env.CUGINA_EMAIL || process.env.SETTER_EMAIL || NOTIFY_EMAIL || LEO_EMAIL;
 
 export function isEmailConfigured(): boolean {
   return !!RESEND_API_KEY;
@@ -76,6 +78,10 @@ export function sendToFounder(subject: string, html: string): Promise<SendEmailR
   return sendEmail({ to: FOUNDER_EMAIL, subject, html });
 }
 
+export function sendToSetter(subject: string, html: string): Promise<SendEmailResult> {
+  return sendEmail({ to: SETTER_EMAIL, subject, html });
+}
+
 export function sendToInternalTeam(subject: string, html: string): Promise<SendEmailResult> {
   return sendEmail({ to: NOTIFY_EMAIL, subject, html });
 }
@@ -84,4 +90,5 @@ export const internalRecipients = {
   team: NOTIFY_EMAIL,
   leo: LEO_EMAIL,
   founder: FOUNDER_EMAIL,
+  setter: SETTER_EMAIL,
 };

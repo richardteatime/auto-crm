@@ -45,6 +45,10 @@ interface LeadDetailProps {
   runs: AutomationRun[];
   callTasks: CallTask[];
   quotes: LeadQuote[];
+  // Two-call funnel identities (from env, resolved server-side).
+  setterId: string;
+  setterName: string;
+  closerName: string;
 }
 
 function parseJsonArray(raw: string | null): string[] {
@@ -81,6 +85,9 @@ export function LeadDetail({
   runs,
   callTasks,
   quotes,
+  setterId,
+  setterName,
+  closerName,
 }: LeadDetailProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -97,6 +104,11 @@ export function LeadDetail({
     callTasks.find((t) => t.status === "pending" || t.status === "scheduled") ??
     callTasks[0] ??
     null;
+
+  // Which call are we on? The setter (Cugina) runs call 1; once the lead is
+  // escalated, the open task belongs to the closer (Leo) → call 2.
+  const isSetterCall = !openTask || openTask.assignedTo === setterId;
+  const isClosingCall = !isSetterCall;
 
   async function call(
     label: string,
@@ -141,6 +153,37 @@ export function LeadDetail({
       toast.success("Esito chiamata registrato");
       setCallNotes("");
     }
+  }
+
+  // Cugina passes a qualified lead to Leo and opens his calendar pre-filled.
+  async function escalateToLeo() {
+    setBusy("escalate");
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/escalate-to-leo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? "Passaggio fallito");
+        return;
+      }
+      toast.success(`Passato a ${closerName} — apertura calendario…`);
+      if (data.bookingUrl) window.open(data.bookingUrl as string, "_blank");
+      router.refresh();
+    } catch {
+      toast.error("Errore di rete");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function setStatus(status: "won" | "lost", label: string) {
+    const ok = await call(`status-${status}`, `/api/leads/${lead.id}/set-status`, {
+      status,
+    });
+    if (ok) toast.success(label);
   }
 
   async function generateQuote(regenerate: boolean) {
@@ -268,12 +311,14 @@ export function LeadDetail({
         </Card>
       </div>
 
-      {/* Call task + outcome */}
+      {/* Call task + outcome — context-aware: Call 1 (Cugina) vs Call 2 (Leo) */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <PhoneCall className="h-4 w-4" />
-            Chiamata Leo
+            {isClosingCall
+              ? `Call 2 — ${closerName} (chiusura)`
+              : `Call 1 — ${setterName} (scrematura a freddo)`}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -294,11 +339,34 @@ export function LeadDetail({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Nessuna call task. Verrà creata automaticamente all&apos;arrivo del
-              lead.
+              Nessuna call task aperta. Ne viene creata una automaticamente
+              all&apos;arrivo del lead.
             </p>
           )}
 
+          {/* Azione principale della setter: passa a Leo e prenota la chiusura */}
+          {!isClosingCall && (
+            <div className="space-y-2 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
+              <p className="text-sm font-medium text-indigo-900">
+                Lead qualificato? Passa la palla a {closerName}.
+              </p>
+              <p className="text-xs text-indigo-700/80">
+                Crea la call di chiusura e apre il calendario di {closerName} già
+                compilato col cliente: scegli lo slot e confermi.
+              </p>
+              <Button
+                onClick={escalateToLeo}
+                disabled={busy === "escalate"}
+                className="bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                {busy === "escalate"
+                  ? "Passaggio…"
+                  : `Passa a ${closerName} → prenota call`}
+              </Button>
+            </div>
+          )}
+
+          {/* Esito chiamata (per entrambe le call) + chiusura rapida */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
             <select
               value={outcome}
@@ -319,12 +387,31 @@ export function LeadDetail({
               rows={2}
             />
           </div>
-          <Button onClick={recordOutcome} disabled={busy === "outcome"}>
-            {busy === "outcome" ? "Salvataggio..." : "Registra esito"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={recordOutcome} disabled={busy === "outcome"}>
+              {busy === "outcome" ? "Salvataggio..." : "Registra esito"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setStatus("won", "Lead segnato come Vinto")}
+              disabled={busy === "status-won"}
+              className="border-green-300 text-green-700 hover:bg-green-50"
+            >
+              {busy === "status-won" ? "..." : "Segna Vinto"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setStatus("lost", "Lead segnato come Perso")}
+              disabled={busy === "status-lost"}
+              className="border-red-200 text-red-600 hover:bg-red-50"
+            >
+              {busy === "status-lost" ? "..." : "Segna Perso"}
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">
-            L&apos;esito attiva il routing automatico: qualified/interested/needs_quote
-            → proposal, no_answer/call_later → follow-up, not_interested → perso.
+            {isClosingCall
+              ? `Esito di ${closerName}: qualified/interested/needs_quote → preventivo, no_answer/call_later → follow-up, non interessato → perso.`
+              : `Esito di ${setterName}: qualified/interested/needs_quote → passa a ${closerName}, no_answer/call_later → follow-up, non interessato → perso. In alternativa usa “Passa a ${closerName}” per prenotare subito la call di chiusura.`}
           </p>
         </CardContent>
       </Card>

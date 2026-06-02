@@ -89,6 +89,19 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
     loadSlots(date);
   }, [date, loadSlots]);
 
+  // Pre-fill guest details from the URL (e.g. when Cugina opens Leo's booking
+  // link from a lead: /book/<slug>?name=&email=&phone=). Runs once on mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search);
+    const n = q.get("name");
+    const e = q.get("email");
+    const p = q.get("phone");
+    if (n) setName(n);
+    if (e) setEmail(e);
+    if (p) setPhone(p);
+  }, []);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
