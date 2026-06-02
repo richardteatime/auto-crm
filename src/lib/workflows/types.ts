@@ -196,7 +196,6 @@ export type ActionNodeType =
   | "create_task"
   | "send_email"
   | "send_internal_message"
-  | "create_note"
   | "move_pipeline_stage"
   | "http_request";
 
@@ -208,7 +207,6 @@ export const ACTION_NODE_TYPES: ActionNodeType[] = [
   "create_task",
   "send_email",
   "send_internal_message",
-  "create_note",
   "move_pipeline_stage",
   "http_request",
 ];
@@ -221,7 +219,6 @@ export const ACTION_LABELS: Record<ActionNodeType, string> = {
   create_task: "Crea Task",
   send_email: "Invia Email",
   send_internal_message: "Invia Messaggio Interno",
-  create_note: "Crea Nota",
   move_pipeline_stage: "Sposta in Pipeline",
   http_request: "HTTP Request",
 };

@@ -113,6 +113,11 @@ export async function POST(
       leadId: lead.id,
       contactId: lead.contactId,
       duplicate,
+      name: mapped.name ?? null,
+      email: mapped.email ?? null,
+      phone: mapped.phone ?? null,
+      company: mapped.company ?? null,
+      message: mapped.message ?? null,
     });
 
     return NextResponse.json(

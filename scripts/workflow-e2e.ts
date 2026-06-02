@@ -116,9 +116,9 @@ async function main() {
       assert(def !== undefined, `delay '${t}' non registrato`);
       eq(def!.category, "delay", `categoria di '${t}'`);
     }
-    // Azioni effettivamente implementate (9). NB: `create_note` è dichiarato in
-    // ACTION_NODE_TYPES ma NON ha un executor registrato — gap noto, documentato
-    // in IMPLEMENTATION_LOG.md (fuori MVP). Non lo si pretende qui.
+    // Azioni effettivamente implementate (9). Le azioni non implementate NON
+    // devono essere esposte nell'editor: un nodo configurabile ma ineseguibile
+    // sarebbe un bug di prodotto, non una feature incompleta innocua.
     const implementedActions = [
       "create_contact",
       "update_contact",
@@ -141,7 +141,11 @@ async function main() {
     );
     assert(
       registry.getNodeDefinition("create_note") === undefined,
-      "create_note dovrebbe risultare non implementato (gap noto)",
+      "create_note non implementato non deve avere un executor",
+    );
+    assert(
+      !(types.ACTION_NODE_TYPES as readonly string[]).includes("create_note"),
+      "create_note non implementato non deve essere esposto nell'editor",
     );
   });
 

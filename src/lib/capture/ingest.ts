@@ -19,9 +19,14 @@ import {
   incrementLandingCounter,
 } from "@/lib/db";
 import { track, hashIp } from "@/lib/capture/analytics";
-import type { Lead } from "@/lib/leads/types";
+import type { Lead, LeadCategory } from "@/lib/leads/types";
 import { normalizeContactSource } from "@/lib/db/contact-source";
 import { computeLeadScore } from "@/lib/leads/scoring";
+import { fireTrigger } from "@/lib/leads/automation";
+import {
+  categoryFromProjectType,
+  classifyCategoryByKeywords,
+} from "@/lib/leads/categories";
 
 export interface IngestLeadInput {
   name?: string | null;
@@ -31,6 +36,8 @@ export interface IngestLeadInput {
   phone?: string | null;
   company?: string | null;
   website?: string | null;
+  projectType?: string | null;
+  category?: LeadCategory | null;
   message?: string | null;
   budget?: string | null;
   source?: string | null;
@@ -86,6 +93,40 @@ function resolveSource(input: IngestLeadInput): string {
   return "form";
 }
 
+function resolveCategory(
+  input: IngestLeadInput,
+  message: string | null,
+  company: string | null,
+): LeadCategory {
+  if (input.category && input.category !== "unknown") return input.category;
+  return (
+    categoryFromProjectType(trimOrNull(input.projectType)) ??
+    classifyCategoryByKeywords(input.projectType, message, company)
+  );
+}
+
+function mergeCaptureCustomFields(
+  current: string | null | undefined,
+  input: IngestLeadInput,
+): Record<string, string> | null {
+  let merged: Record<string, string> = {};
+  if (current) {
+    try {
+      const parsed = JSON.parse(current) as Record<string, unknown>;
+      merged = Object.fromEntries(
+        Object.entries(parsed)
+          .filter(([, value]) => typeof value === "string" || typeof value === "number")
+          .map(([key, value]) => [key, String(value)]),
+      );
+    } catch {
+      merged = {};
+    }
+  }
+  const budget = trimOrNull(input.budget);
+  if (budget && !merged.budget) merged.budget = budget;
+  return Object.keys(merged).length ? merged : null;
+}
+
 async function ensureCaptureContact(input: {
   name: string;
   email: string | null;
@@ -130,7 +171,9 @@ export async function ingestLead(
   const phone = trimOrNull(input.phone);
   const company = trimOrNull(input.company);
   const website = trimOrNull(input.website);
+  const projectType = trimOrNull(input.projectType);
   const message = trimOrNull(input.message);
+  const category = resolveCategory(input, message, company);
   const source = resolveSource(input);
   const fullName = buildFullName(input);
 
@@ -160,19 +203,25 @@ export async function ingestLead(
     if (!existing.phone && phone) patch.phone = phone;
     if (!existing.company && company) patch.company = company;
     if (!existing.website && website) patch.website = website;
+    if (!existing.projectType && projectType) patch.projectType = projectType;
+    if (existing.category === "unknown" && category !== "unknown") patch.category = category;
     if (!existing.landingPageId && landingPageId) patch.landingPageId = landingPageId;
     if (!existing.formId && formId) patch.formId = formId;
     if (!existing.funnelId && funnelId) patch.funnelId = funnelId;
     if (!existing.bookingLinkId && bookingLinkId) patch.bookingLinkId = bookingLinkId;
     if (!existing.contactId) patch.contactId = contactId;
+    const customFields = mergeCaptureCustomFields(existing.customFields, input);
+    if (customFields && JSON.stringify(customFields) !== existing.customFields) {
+      patch.customFields = customFields;
+    }
 
     // Ricalcola score con i dati aggiornati
     patch.leadScore = computeLeadScore({
       email: existing.email || email,
       phone: existing.phone || phone,
       message: existing.message || message,
-      budget: trimOrNull(input.budget),
-      category: existing.category ?? "unknown",
+      budget: customFields?.budget ?? trimOrNull(input.budget),
+      category: existing.category === "unknown" ? category : existing.category,
     });
 
     lead = Object.keys(patch).length
@@ -184,7 +233,7 @@ export async function ingestLead(
       phone,
       message,
       budget: trimOrNull(input.budget),
-      category: "unknown",
+      category,
     });
 
     lead = await createLead({
@@ -195,7 +244,10 @@ export async function ingestLead(
       phone,
       company,
       website,
+      projectType,
+      category,
       message,
+      customFields: mergeCaptureCustomFields(null, input),
       source,
       status: "new",
       pipelineStage: "prospect",
@@ -206,6 +258,12 @@ export async function ingestLead(
       funnelId,
       bookingLinkId,
     });
+
+    // Public Capture must enter the same automation pipeline as email intake.
+    // Await the internal engine so serverless runtimes cannot terminate before
+    // the Leo call task and audit run are persisted. Automation failures are
+    // isolated by the engine and must never lose the captured lead.
+    await fireTrigger("lead_created", { leadId: lead.id });
   }
 
   // Everything below is best-effort; a failure here must not lose the lead.
@@ -245,6 +303,7 @@ function collectKnownFields(input: IngestLeadInput): Record<string, unknown> {
     "phone",
     "company",
     "website",
+    "projectType",
     "message",
     "budget",
   ] as const) {

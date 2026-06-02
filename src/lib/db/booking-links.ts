@@ -72,7 +72,7 @@ export async function createBookingLink(data: {
     assignedTo: data.assignedTo,
     durationMinutes: data.durationMinutes ?? 30,
     availability: data.availability ?? JSON.stringify(defaultAvailability()),
-    successMessage: data.successMessage ?? "Prenotazione confermata! Ti abbiamo inviato una email.",
+    successMessage: data.successMessage ?? "Prenotazione confermata! Ti ricontatteremo a breve.",
     redirectUrl: null,
     status: "active",
     bookingsCount: 0,
