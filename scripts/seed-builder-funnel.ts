@@ -6,16 +6,15 @@
  *      Form → crea call task Cugina → stato "da chiamare" → email Cugina → notifica team
  *
  *   B) "2) Esito call → instradamento (Cugina/Leo)"  trigger call_outcome_recorded
- *      Ha chiamato Cugina? → qualificato? → passa a Leo (task + stage opportunity + email)
+ *      Ha chiamato Cugina? → qualificato? → passa a Leo (task + fase Opportunità + email)
  *                                          → non interessato? → perso ; altro → follow-up
- *      (No = Leo) → qualificato? → preventivo (stage proposal) ; altro → follow-up
+ *      (No = Leo) → qualificato? → preventivo (fase Proposta) ; altro → follow-up
  *
- * Disattiva il routing in codice (regola call_completed → solo save_call_outcome):
- * adesso a instradare è il Workflow B, a vista.
+ * I confronti usano ETICHETTE ITALIANE (corrispondono al menù "Registra esito"):
+ * il bridge passa `outcomeLabel` (es. "Qualificato") e `assigneeName` (es.
+ * "Cugina di Rick"), così nel builder è tutto leggibile e coerente con gli esiti.
  *
- * NB: il builder non ha un trigger "lead creato" generico, quindi per i lead da
- * canali diversi dal form (es. email) la regola lead_created mantiene
- * create_setter_call_task come rete di sicurezza (in codice è già "channel-aware").
+ * Disattiva il routing in codice (regola call_completed → solo save_call_outcome).
  *
  * Idempotente. Uso (da auto-crm):  npx tsx scripts/seed-builder-funnel.ts
  */
@@ -29,14 +28,16 @@ const PROJECT = process.env.APPWRITE_PROJECT_ID || "";
 const API_KEY = process.env.APPWRITE_API_KEY || "";
 const DB_ID = process.env.APPWRITE_DATABASE_ID || "crm";
 
-const SETTER_ID = process.env.CUGINA_USER_ID || "cugina";
+const SETTER_NAME = process.env.CUGINA_NAME || "Cugina di Rick";
 const LEO_ID = process.env.LEO_USER_ID || "leo";
 const CUGINA_EMAIL = process.env.CUGINA_EMAIL || process.env.LEAD_NOTIFY_EMAIL || "";
 const LEO_EMAIL = process.env.LEO_EMAIL || process.env.LEAD_NOTIFY_EMAIL || "";
 const LEO_BOOKING_SLUG = process.env.LEO_BOOKING_SLUG || "call-leo";
 
-const OUT_POS = "qualified,interested,needs_quote"; // esiti che fanno avanzare
-const OUT_NEG = "not_qualified,not_interested,wrong_number"; // esiti "perso"
+// Esiti chiamata = ETICHETTE italiane (= menù "Registra esito"). Il bridge passa
+// outcomeLabel; qui confrontiamo le etichette, non i codici interni.
+const OUT_POS = "Qualificato,Interessato,Vuole preventivo"; // fanno avanzare
+const OUT_NEG = "Non qualificato,Non interessato,Numero errato"; // "perso"
 
 interface WfDef {
   triggerType: string;
@@ -122,24 +123,24 @@ function buildWorkflowB(): WfDef {
     name: "2) Esito call → instradamento (Cugina/Leo)",
     description:
       "Quando si registra l'esito di una chiamata: se l'ha fatta Cugina e ha qualificato → passa a Leo " +
-      "(call di chiusura + fase Opportunity); se l'ha fatta Leo e ha qualificato → preventivo (fase Proposal). " +
-      "Esiti negativi → perso; gli altri → follow-up.",
+      "(call di chiusura + fase Opportunità); se l'ha fatta Leo e ha qualificato → preventivo (fase Proposta). " +
+      "Esiti negativi → perso; gli altri → follow-up. I confronti usano le etichette italiane degli esiti.",
     nodes: [
       { id: "b_trigger", type: "trigger", position: { x: 420, y: 0 }, data: { nodeType: "call_outcome_recorded", label: "Esito chiamata", config: {} } },
-      { id: "b_isSetter", type: "condition", position: { x: 420, y: 130 }, data: { nodeType: "if_field_equals", label: "Ha chiamato Cugina?", config: { field: "assignedTo", compareValue: SETTER_ID } } },
+      { id: "b_isSetter", type: "condition", position: { x: 420, y: 130 }, data: { nodeType: "if_field_equals", label: "Ha chiamato Cugina?", config: { field: "assigneeName", compareValue: SETTER_NAME } } },
       // --- ramo Cugina (setter) ---
-      { id: "b_setterQual", type: "condition", position: { x: 150, y: 270 }, data: { nodeType: "if_field_in", label: "Qualificato?", config: { field: "outcome", values: OUT_POS } } },
+      { id: "b_setterQual", type: "condition", position: { x: 150, y: 270 }, data: { nodeType: "if_field_in", label: "Qualificato?", config: { field: "outcomeLabel", values: OUT_POS } } },
       { id: "b_setQ", type: "action", position: { x: 20, y: 410 }, data: { nodeType: "set_lead_status", label: "Stato: Qualificato", config: { status: "qualified" } } },
-      { id: "b_moveOpp", type: "action", position: { x: 20, y: 520 }, data: { nodeType: "move_lead_stage", label: "Fase: Opportunity", config: { stage: "opportunity" } } },
+      { id: "b_moveOpp", type: "action", position: { x: 20, y: 520 }, data: { nodeType: "move_lead_stage", label: "Fase: Opportunità", config: { stage: "opportunity" } } },
       { id: "b_leoTask", type: "action", position: { x: 20, y: 630 }, data: { nodeType: "create_lead_call_task", label: "Crea call task: Leo", config: { assignee: "closer", notes: "Call di chiusura — lead scremato da Cugina" } } },
       { id: "b_emailLeo", type: "action", position: { x: 20, y: 740 }, data: { nodeType: "send_email", label: "Email a Leo", config: { to: LEO_EMAIL, subject: "Lead caldo da chiudere: {{trigger.payload.name}}", body: "<p>Cugina ha qualificato un lead, pronto per la call di chiusura:</p><ul><li>Nome: {{trigger.payload.name}}</li><li>Email: {{trigger.payload.email}}</li><li>Telefono: {{trigger.payload.phone}}</li></ul>" } } },
-      { id: "b_setterLost", type: "condition", position: { x: 300, y: 410 }, data: { nodeType: "if_field_in", label: "Non interessato?", config: { field: "outcome", values: OUT_NEG } } },
+      { id: "b_setterLost", type: "condition", position: { x: 300, y: 410 }, data: { nodeType: "if_field_in", label: "Non interessato?", config: { field: "outcomeLabel", values: OUT_NEG } } },
       { id: "b_lost", type: "action", position: { x: 250, y: 560 }, data: { nodeType: "set_lead_status", label: "Stato: Perso", config: { status: "lost" } } },
       { id: "b_working1", type: "action", position: { x: 410, y: 560 }, data: { nodeType: "set_lead_status", label: "Stato: In lavorazione", config: { status: "working" } } },
       // --- ramo Leo (closer) ---
-      { id: "b_closerQual", type: "condition", position: { x: 690, y: 270 }, data: { nodeType: "if_field_in", label: "Qualificato?", config: { field: "outcome", values: OUT_POS } } },
+      { id: "b_closerQual", type: "condition", position: { x: 690, y: 270 }, data: { nodeType: "if_field_in", label: "Qualificato?", config: { field: "outcomeLabel", values: OUT_POS } } },
       { id: "b_setQ2", type: "action", position: { x: 630, y: 410 }, data: { nodeType: "set_lead_status", label: "Stato: Qualificato", config: { status: "qualified" } } },
-      { id: "b_moveProp", type: "action", position: { x: 630, y: 520 }, data: { nodeType: "move_lead_stage", label: "Fase: Proposal", config: { stage: "proposal" } } },
+      { id: "b_moveProp", type: "action", position: { x: 630, y: 520 }, data: { nodeType: "move_lead_stage", label: "Fase: Proposta", config: { stage: "proposal" } } },
       { id: "b_working2", type: "action", position: { x: 810, y: 410 }, data: { nodeType: "set_lead_status", label: "Stato: In lavorazione", config: { status: "working" } } },
     ],
     edges: [
@@ -165,17 +166,14 @@ async function main() {
   const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT).setKey(API_KEY);
   const db = new Databases(client);
 
-  console.log(`Setter id=${SETTER_ID} email=${CUGINA_EMAIL || "(vuota)"} · Closer id=${LEO_ID} email=${LEO_EMAIL || "(vuota)"}\n`);
+  console.log(`Setter=${SETTER_NAME} email=${CUGINA_EMAIL || "(vuota)"} · Closer id=${LEO_ID} email=${LEO_EMAIL || "(vuota)"}\n`);
 
   console.log("Workflow (visibili e modificabili nel CRM):");
   await upsertWorkflow(db, buildWorkflowA());
   await upsertWorkflow(db, buildWorkflowB());
 
   console.log("\nRegole automazione (il routing ora è nel Workflow B):");
-  // Il routing per esito ora lo fa il Workflow B → la regola call_completed
-  // resta solo a confermare l'esito (no route_lead_by_outcome).
   await setRuleActions(db, "call_completed", ["save_call_outcome"]);
-  // Rete di sicurezza per canali senza workflow (es. email inbound).
   await setRuleActions(db, "lead_created", [
     "classify_lead_category",
     "create_or_update_contact",
@@ -188,7 +186,7 @@ async function main() {
   console.log("\nBooking closer:");
   console.log(bl.total ? `  ✓ /book/${LEO_BOOKING_SLUG} presente` : `  ⚠ /book/${LEO_BOOKING_SLUG} mancante → npx tsx scripts/seed-call-funnel.ts`);
 
-  console.log("\nFatto. Funnel a 2 call interamente nel workflow builder (A: form, B: esito).");
+  console.log("\nFatto. Funnel a 2 call nel builder, confronti in italiano (etichette esito).");
 }
 
 main().catch((e) => {

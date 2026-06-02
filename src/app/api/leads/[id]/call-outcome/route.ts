@@ -7,7 +7,7 @@ import {
   updateCallTask,
 } from "@/lib/db";
 import { fireTrigger, leoIdentity } from "@/lib/leads/automation";
-import { CALL_OUTCOMES, type CallOutcome } from "@/lib/leads/types";
+import { CALL_OUTCOMES, OUTCOME_LABELS, type CallOutcome } from "@/lib/leads/types";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
 
 // POST /api/leads/[id]/call-outcome  { outcome, notes? }
@@ -79,6 +79,7 @@ export async function POST(
     triggerWorkflows("call_outcome_recorded", {
       leadId: id,
       outcome,
+      outcomeLabel: OUTCOME_LABELS[outcome as CallOutcome] ?? outcome,
       assignedTo: completed.assignedTo,
       assigneeName: completed.assigneeName,
       callTaskId: completed.id,

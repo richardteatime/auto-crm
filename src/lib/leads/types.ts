@@ -255,10 +255,10 @@ export interface ParsedLead {
 // ---------------------------------------------------------------------------
 
 export const STAGE_LABELS: Record<LeadPipelineStage, string> = {
-  prospect: "Prospect",
-  opportunity: "Opportunity",
-  contacted: "Contacted",
-  proposal: "Proposal",
+  prospect: "Potenziale",
+  opportunity: "Opportunità",
+  contacted: "Contattato",
+  proposal: "Proposta",
 };
 
 export const STAGE_COLORS: Record<LeadPipelineStage, string> = {
