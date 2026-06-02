@@ -233,7 +233,17 @@ export class WorkflowExecutor {
         currentNodeId = result.nextNodeId;
       } else if (def.category === "condition" && outgoing.length > 0) {
         const conditionResult = result.output?.result === true ? "true" : "false";
-        const match: FlowEdge = outgoing.find((e: FlowEdge) => e.label === conditionResult) ?? outgoing[0];
+        // Match the branch by the source handle id ("true"/"false"); fall back to
+        // the edge label (also supports the "Sì"/"No" display labels), then the
+        // first edge. Keeps routing correct regardless of how the edge is labelled.
+        const branchOf = (e: FlowEdge): string | undefined => {
+          const v = e.sourceHandle ?? e.label;
+          if (v === "true" || v === "Sì" || v === "si") return "true";
+          if (v === "false" || v === "No" || v === "no") return "false";
+          return undefined;
+        };
+        const match: FlowEdge =
+          outgoing.find((e: FlowEdge) => branchOf(e) === conditionResult) ?? outgoing[0];
         currentNodeId = match.target;
       } else if (outgoing.length > 0) {
         currentNodeId = outgoing[0].target;
