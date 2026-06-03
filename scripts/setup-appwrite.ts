@@ -349,6 +349,89 @@ async function main() {
   await addIndex("chatwoot_messages", "idx_processed", "key", ["processed"]);
   await addIndex("chatwoot_messages", "idx_createdAt", "key", ["createdAt"]);
 
+  // === CRM OPERATORS ===
+  await ensureCollection("crm_operators", "CRM Operators");
+  await addAttr("crm_operators", str("crm_operators", "name", 255, true));
+  await addAttr("crm_operators", str("crm_operators", "appwriteUserId", 128, false));
+  await addAttr("crm_operators", str("crm_operators", "telegramUserId", 128, false));
+  await addAttr("crm_operators", str("crm_operators", "chatwootContactId", 128, false));
+  await addAttr("crm_operators", str("crm_operators", "chatwootAgentId", 128, false));
+  await addAttr("crm_operators", enm("crm_operators", "role", ["admin", "sales", "finance", "operations", "developer"], true));
+  await addAttr("crm_operators", text("crm_operators", "scopes", true, 8192));
+  await addAttr("crm_operators", bool("crm_operators", "active", true, true));
+  await addAttr("crm_operators", text("crm_operators", "notes", false));
+  await addAttr("crm_operators", dt("crm_operators", "createdAt", true));
+  await addAttr("crm_operators", dt("crm_operators", "updatedAt", true));
+  await addIndex("crm_operators", "idx_telegramUserId", "key", ["telegramUserId"]);
+  await addIndex("crm_operators", "idx_chatwootContactId", "key", ["chatwootContactId"]);
+  await addIndex("crm_operators", "idx_role", "key", ["role"]);
+  await addIndex("crm_operators", "idx_active", "key", ["active"]);
+
+  // === TELEGRAM MESSAGES ===
+  await ensureCollection("telegram_messages", "Telegram Messages");
+  await addAttr("telegram_messages", str("telegram_messages", "updateId", 128, true));
+  await addAttr("telegram_messages", str("telegram_messages", "messageId", 128, true));
+  await addAttr("telegram_messages", str("telegram_messages", "chatId", 128, true));
+  await addAttr("telegram_messages", str("telegram_messages", "senderTelegramId", 128, false));
+  await addAttr("telegram_messages", str("telegram_messages", "senderName", 255, false));
+  await addAttr("telegram_messages", str("telegram_messages", "username", 255, false));
+  await addAttr("telegram_messages", enm("telegram_messages", "direction", ["inbound"], true, "inbound"));
+  await addAttr("telegram_messages", text("telegram_messages", "messageText", true, 16384));
+  await addAttr("telegram_messages", str("telegram_messages", "messageType", 50, true, "text"));
+  await addAttr("telegram_messages", text("telegram_messages", "rawPayload", true, 65535));
+  await addAttr("telegram_messages", bool("telegram_messages", "processed", true, false));
+  await addAttr("telegram_messages", str("telegram_messages", "runId", 128, false));
+  await addAttr("telegram_messages", dt("telegram_messages", "createdAt", true));
+  await addAttr("telegram_messages", dt("telegram_messages", "updatedAt", true));
+  await addIndex("telegram_messages", "idx_updateId_unique", "unique", ["updateId"]);
+  await addIndex("telegram_messages", "idx_chatId", "key", ["chatId"]);
+  await addIndex("telegram_messages", "idx_senderTelegramId", "key", ["senderTelegramId"]);
+  await addIndex("telegram_messages", "idx_processed", "key", ["processed"]);
+  await addIndex("telegram_messages", "idx_createdAt", "key", ["createdAt"]);
+
+  // === TELEGRAM OUTBOX ===
+  await ensureCollection("telegram_outbox", "Telegram Outbox");
+  await addAttr("telegram_outbox", str("telegram_outbox", "chatId", 128, true));
+  await addAttr("telegram_outbox", text("telegram_outbox", "messageText", true, 16384));
+  await addAttr("telegram_outbox", enm("telegram_outbox", "status", ["pending", "sent", "failed"], true, "pending"));
+  await addAttr("telegram_outbox", str("telegram_outbox", "telegramMessageId", 128, false));
+  await addAttr("telegram_outbox", str("telegram_outbox", "runId", 128, false));
+  await addAttr("telegram_outbox", text("telegram_outbox", "error", false));
+  await addAttr("telegram_outbox", dt("telegram_outbox", "sentAt", false));
+  await addAttr("telegram_outbox", dt("telegram_outbox", "createdAt", true));
+  await addAttr("telegram_outbox", dt("telegram_outbox", "updatedAt", true));
+  await addIndex("telegram_outbox", "idx_chatId", "key", ["chatId"]);
+  await addIndex("telegram_outbox", "idx_status", "key", ["status"]);
+  await addIndex("telegram_outbox", "idx_runId", "key", ["runId"]);
+  await addIndex("telegram_outbox", "idx_createdAt", "key", ["createdAt"]);
+
+  // === COMMAND CONFIRMATIONS ===
+  await ensureCollection("command_confirmations", "Command Confirmations");
+  await addAttr("command_confirmations", str("command_confirmations", "source", 64, true));
+  await addAttr("command_confirmations", str("command_confirmations", "conversationId", 128, true));
+  await addAttr("command_confirmations", str("command_confirmations", "senderTelegramId", 128, false));
+  await addAttr("command_confirmations", str("command_confirmations", "operatorId", 128, false));
+  await addAttr("command_confirmations", str("command_confirmations", "operatorRole", 64, false));
+  await addAttr("command_confirmations", str("command_confirmations", "senderRole", 64, true));
+  await addAttr("command_confirmations", text("command_confirmations", "commandText", true, 16384));
+  await addAttr("command_confirmations", str("command_confirmations", "toolName", 128, true));
+  await addAttr("command_confirmations", text("command_confirmations", "toolArgs", true, 65535));
+  await addAttr("command_confirmations", enm("command_confirmations", "riskLevel", ["low", "medium", "high", "critical"], true, "medium"));
+  await addAttr("command_confirmations", enm("command_confirmations", "status", ["pending", "confirmed", "cancelled", "expired", "executed"], true, "pending"));
+  await addAttr("command_confirmations", str("command_confirmations", "confirmationCode", 32, true));
+  await addAttr("command_confirmations", str("command_confirmations", "requestedRunId", 128, false));
+  await addAttr("command_confirmations", str("command_confirmations", "executedRunId", 128, false));
+  await addAttr("command_confirmations", text("command_confirmations", "resultSummary", false));
+  await addAttr("command_confirmations", dt("command_confirmations", "expiresAt", true));
+  await addAttr("command_confirmations", dt("command_confirmations", "respondedAt", false));
+  await addAttr("command_confirmations", dt("command_confirmations", "createdAt", true));
+  await addAttr("command_confirmations", dt("command_confirmations", "updatedAt", true));
+  await addIndex("command_confirmations", "idx_source_conversation_status", "key", ["source", "conversationId", "status"]);
+  await addIndex("command_confirmations", "idx_operatorId", "key", ["operatorId"]);
+  await addIndex("command_confirmations", "idx_senderTelegramId", "key", ["senderTelegramId"]);
+  await addIndex("command_confirmations", "idx_confirmationCode", "key", ["confirmationCode"]);
+  await addIndex("command_confirmations", "idx_expiresAt", "key", ["expiresAt"]);
+
   // === ORCHESTRATOR RUNS ===
   await ensureCollection("orchestrator_runs", "Orchestrator Runs");
   await addAttr("orchestrator_runs", str("orchestrator_runs", "source", 128, true));

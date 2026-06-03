@@ -82,6 +82,7 @@ export async function createOrchestratorRun(data: {
   status?: RunStatus;
   riskLevel?: RiskLevel;
   autodeploy?: boolean;
+  conversationId?: string | null;
 }): Promise<OrchestratorRun> {
   const now = new Date().toISOString();
   const doc = await databases.createDocument(
@@ -105,7 +106,7 @@ export async function createOrchestratorRun(data: {
       currentStep: null,
       finalUrl: null,
       repoUrl: null,
-      conversationId: null,
+      conversationId: data.conversationId ?? null,
       error: null,
       createdAt: now,
       updatedAt: now,

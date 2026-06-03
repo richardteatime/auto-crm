@@ -3,7 +3,7 @@ import { verifyChatwootWebhook } from "@/lib/chatwoot/verify";
 import { normalizeChatwootMessage } from "@/lib/chatwoot/normalize-message";
 import { createChatwootMessage } from "@/lib/db/chatwoot-messages";
 import { sendChatwootMessage } from "@/lib/chatwoot/client";
-import { checkMessagePermission } from "@/lib/orchestrator/permissions";
+import { checkInternalCommandPermission } from "@/lib/orchestrator/permissions";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
 import { createRun, updateRun } from "@/lib/orchestrator/runs";
 import { callHermes } from "@/lib/hermes/client";
@@ -18,7 +18,7 @@ import type { ChatwootMessagePayload } from "@/lib/chatwoot/types";
  * - Ignores outbound messages (avoid loops)
  * - Validates webhook secret if configured
  * - Normalizes and saves inbound messages
- * - Permission check: blocks non-admin senders
+ * - Permission check: allows active CRM operators, with legacy admin fallback
  * - Forwards to Hermes Agent for natural-language CRM interaction
  */
 
@@ -110,7 +110,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Permission check
-    const permission = checkMessagePermission(normalized.senderPhone, normalized.senderTelegramId);
+    const permission = await checkInternalCommandPermission({
+      phone: normalized.senderPhone,
+      telegramId: normalized.senderTelegramId,
+      chatwootContactId: normalized.chatwootContactId,
+    });
 
     if (!permission.allowed) {
       await sendChatwootMessage(
@@ -126,15 +130,18 @@ export async function POST(request: NextRequest) {
           senderTelegramId: normalized.senderTelegramId,
           senderName: normalized.senderName,
           role: permission.role,
+          operatorId: permission.operator?.id ?? null,
+          operatorRole: permission.operator?.role ?? null,
           conversationId: normalized.conversationId,
           messageText: normalized.messageText,
         },
       });
 
       return NextResponse.json({
-        blocked: true,
-        reason: permission.reason,
-        role: permission.role,
+      blocked: true,
+      reason: permission.reason,
+      role: permission.role,
+      operatorId: permission.operator?.id ?? null,
       });
     }
 
@@ -142,7 +149,7 @@ export async function POST(request: NextRequest) {
     const run = await createRun({
       source: "chatwoot",
       senderPhone: normalized.senderPhone,
-      senderRole: "founder_admin",
+      senderRole: permission.role,
       commandText: normalized.messageText,
       status: "running",
       conversationId: String(normalized.conversationId),
@@ -155,7 +162,11 @@ export async function POST(request: NextRequest) {
       message: `Messaggio ricevuto da ${normalized.senderPhone || "sconosciuto"}`,
       metadata: {
         senderPhone: normalized.senderPhone,
+        senderTelegramId: normalized.senderTelegramId,
         senderName: normalized.senderName,
+        role: permission.role,
+        operatorId: permission.operator?.id ?? null,
+        operatorRole: permission.operator?.role ?? null,
         conversationId: normalized.conversationId,
         messageText: normalized.messageText,
       },
@@ -207,8 +218,9 @@ export async function POST(request: NextRequest) {
         success: false,
         messageId: payload.id,
         conversationId: payload.conversation.id,
-        role: permission.role,
-        error: errorMsg,
+      role: permission.role,
+      operatorId: permission.operator?.id ?? null,
+      error: errorMsg,
         saved: !!saved,
       });
     }
@@ -243,6 +255,7 @@ export async function POST(request: NextRequest) {
       messageId: payload.id,
       conversationId: payload.conversation.id,
       role: permission.role,
+      operatorId: permission.operator?.id ?? null,
       runId,
       hermesSessionId,
       saved: !!saved,

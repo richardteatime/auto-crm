@@ -10,6 +10,12 @@ services:
       - APPWRITE_API_KEY=${APPWRITE_API_KEY:-}
       - APPWRITE_DATABASE_ID=${APPWRITE_DATABASE_ID:-crm}
       - SESSION_SECRET=${SESSION_SECRET:-}
+      # Telegram bot diretto online
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET:-}
+      - ADMIN_TELEGRAM_IDS=${ADMIN_TELEGRAM_IDS:-}
+      - CRM_CONFIRMATION_MODE=${CRM_CONFIRMATION_MODE:-risky}
+      - CRM_CONFIRMATION_TTL_MINUTES=${CRM_CONFIRMATION_TTL_MINUTES:-10}
       # Email (Resend) + notifiche lead/workflow — necessarie per send_email
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - DIGEST_FROM=${DIGEST_FROM:-onboarding@resend.dev}

@@ -9,6 +9,8 @@
     "lint": "eslint",
     "setup": "npx tsx scripts/setup-appwrite.ts",
     "seed": "npx tsx scripts/seed.ts",
+    "telegram:webhook": "npx tsx scripts/setup-telegram-webhook.ts",
+    "telegram:operators": "npx tsx scripts/seed-crm-operators.ts",
     "e2e:capture": "npx tsx scripts/capture-platform-e2e.ts",
     "mcp": "npx tsx mcp-server/crm-server.ts"
   },

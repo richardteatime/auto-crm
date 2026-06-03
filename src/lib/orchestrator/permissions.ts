@@ -4,6 +4,11 @@ import {
   getAdminTelegramIds,
   ORCHESTRATOR_CONFIG,
 } from "./config";
+import type { CrmOperator } from "@/lib/crm-operators/types";
+import {
+  hasOperatorScope,
+  mapOperatorRoleToSenderRole,
+} from "@/lib/crm-operators/types";
 
 /**
  * Normalize a phone number for comparison.
@@ -86,5 +91,68 @@ export function checkMessagePermission(
     allowed: false,
     role,
     reason: "Questo canale al momento è riservato ai comandi interni SarconX.",
+  };
+}
+
+export interface OperatorMessagePermission {
+  allowed: boolean;
+  role: SenderRole;
+  reason: string | null;
+  operator: CrmOperator | null;
+}
+
+async function resolveOperator(
+  telegramId: string | null | undefined,
+  chatwootContactId: string | number | null | undefined,
+): Promise<CrmOperator | null> {
+  try {
+    const operators = await import("@/lib/db/crm-operators");
+    return (
+      (await operators.getOperatorByTelegramUserId(telegramId)) ??
+      (await operators.getOperatorByChatwootContactId(chatwootContactId))
+    );
+  } catch (error) {
+    console.warn(
+      "[orchestrator/permissions] operator lookup skipped:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+/**
+ * Permission check for internal CRM command channels.
+ *
+ * First resolves an active CRM operator from persistent operator profiles.
+ * If no operator profile exists yet, it falls back to the legacy env allow-list
+ * so existing founder/admin access keeps working during migration.
+ */
+export async function checkInternalCommandPermission(params: {
+  phone: string | null | undefined;
+  telegramId?: string | null | undefined;
+  chatwootContactId?: string | number | null | undefined;
+  requiredScope?: string;
+}): Promise<OperatorMessagePermission> {
+  const requiredScope = params.requiredScope ?? "crm:command";
+  const operator = await resolveOperator(params.telegramId, params.chatwootContactId);
+
+  if (operator) {
+    const role = mapOperatorRoleToSenderRole(operator.role);
+    if (hasOperatorScope(operator, requiredScope)) {
+      return { allowed: true, role, reason: null, operator };
+    }
+
+    return {
+      allowed: false,
+      role,
+      operator,
+      reason: "Operatore riconosciuto, ma senza permesso per questo comando CRM.",
+    };
+  }
+
+  const legacy = checkMessagePermission(params.phone, params.telegramId);
+  return {
+    ...legacy,
+    operator: null,
   };
 }
