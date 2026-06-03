@@ -90,7 +90,7 @@ export async function createTelegramMessage(
       senderName: data.senderName,
       username: data.username,
       direction: data.direction,
-      messageText: data.messageText,
+      messageText: data.messageText || `[${data.messageType}]`,
       messageType: data.messageType,
       rawPayload: data.rawPayload,
       processed: false,
@@ -100,6 +100,16 @@ export async function createTelegramMessage(
     },
   );
   return fromDoc(doc);
+}
+
+export async function updateTelegramMessageText(
+  id: string,
+  messageText: string,
+): Promise<void> {
+  await databases.updateDocument(DB_ID, COLLECTIONS.telegramMessages, id, {
+    messageText,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export async function markTelegramMessageProcessed(

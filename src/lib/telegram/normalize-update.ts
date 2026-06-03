@@ -27,7 +27,12 @@ export function normalizeTelegramUpdate(
     ? "text"
     : message.caption
       ? "caption"
-      : "unsupported";
+      : message.voice
+        ? "voice"
+        : message.audio
+          ? "audio"
+          : "unsupported";
+  const audio = message.voice ?? message.audio ?? null;
 
   return {
     updateId: String(update.update_id),
@@ -39,6 +44,10 @@ export function normalizeTelegramUpdate(
     direction: "inbound",
     messageText: text,
     messageType,
+    audioFileId: audio?.file_id ?? null,
+    audioDurationSeconds: audio?.duration ?? null,
+    audioMimeType: audio?.mime_type ?? null,
+    audioFileSize: audio?.file_size ?? null,
     rawPayload: JSON.stringify(update),
   };
 }
@@ -59,6 +68,10 @@ export function normalizeTelegramCallbackQuery(
     direction: "inbound",
     messageText: callbackQuery.data ?? "",
     messageType: "callback",
+    audioFileId: null,
+    audioDurationSeconds: null,
+    audioMimeType: null,
+    audioFileSize: null,
     rawPayload: JSON.stringify(update),
   };
 }

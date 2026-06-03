@@ -16,6 +16,8 @@ services:
       - ADMIN_TELEGRAM_IDS=${ADMIN_TELEGRAM_IDS:-}
       - CRM_CONFIRMATION_MODE=${CRM_CONFIRMATION_MODE:-risky}
       - CRM_CONFIRMATION_TTL_MINUTES=${CRM_CONFIRMATION_TTL_MINUTES:-10}
+      - TELEGRAM_AUDIO_MAX_SECONDS=${TELEGRAM_AUDIO_MAX_SECONDS:-120}
+      - TELEGRAM_AUDIO_MAX_BYTES=${TELEGRAM_AUDIO_MAX_BYTES:-20971520}
       # Email (Resend) + notifiche lead/workflow — necessarie per send_email
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - DIGEST_FROM=${DIGEST_FROM:-onboarding@resend.dev}
@@ -31,6 +33,10 @@ services:
       # AI provider (OpenRouter) — opzionale
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      # OpenAI diretto — trascrizione voice/audio Telegram
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_TRANSCRIPTION_MODEL=${OPENAI_TRANSCRIPTION_MODEL:-gpt-4o-mini-transcribe}
+      - OPENAI_TRANSCRIPTION_LANGUAGE=${OPENAI_TRANSCRIPTION_LANGUAGE:-it}
       # Optional: Anthropic
       # - ANTHROPIC_API_KEY=sk-ant-...
     restart: unless-stopped

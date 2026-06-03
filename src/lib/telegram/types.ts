@@ -22,6 +22,27 @@ export interface TelegramMessage {
   date: number;
   text?: string;
   caption?: string;
+  voice?: TelegramVoice;
+  audio?: TelegramAudio;
+}
+
+export interface TelegramVoice {
+  file_id: string;
+  file_unique_id: string;
+  duration: number;
+  mime_type?: string;
+  file_size?: number;
+}
+
+export interface TelegramAudio {
+  file_id: string;
+  file_unique_id: string;
+  duration: number;
+  performer?: string;
+  title?: string;
+  file_name?: string;
+  mime_type?: string;
+  file_size?: number;
 }
 
 export interface TelegramCallbackQuery {
@@ -54,7 +75,11 @@ export interface NormalizedTelegramMessage {
   username: string | null;
   direction: "inbound";
   messageText: string;
-  messageType: "text" | "caption" | "callback" | "unsupported";
+  messageType: "text" | "caption" | "voice" | "audio" | "callback" | "unsupported";
+  audioFileId: string | null;
+  audioDurationSeconds: number | null;
+  audioMimeType: string | null;
+  audioFileSize: number | null;
   rawPayload: string;
 }
 

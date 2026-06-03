@@ -6,6 +6,7 @@ import {
 import {
   answerTelegramCallbackQuery,
   clearTelegramInlineKeyboard,
+  downloadTelegramFile,
   sendTelegramMessage,
 } from "@/lib/telegram/client";
 import type {
@@ -16,6 +17,7 @@ import {
   createTelegramMessage,
   getTelegramMessageByUpdateId,
   markTelegramMessageProcessed,
+  updateTelegramMessageText,
 } from "@/lib/db/telegram-messages";
 import {
   createTelegramOutboxMessage,
@@ -25,6 +27,7 @@ import {
 import { checkInternalCommandPermission } from "@/lib/orchestrator/permissions";
 import { runCrmCommand } from "@/lib/orchestrator/command-runner";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
+import { transcribeAudio } from "@/lib/audio/transcription";
 
 function verifyTelegramSecret(request: NextRequest): boolean {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET || "";
@@ -59,6 +62,52 @@ function parseConfirmationCallback(data: string | undefined): {
     action,
     code,
     messageText: action === "confirm" ? `CONFERMA ${code}` : `ANNULLA ${code}`,
+  };
+}
+
+function isAudioMessage(messageType: string): boolean {
+  return messageType === "voice" || messageType === "audio";
+}
+
+function audioMaxSeconds(): number {
+  const configured = Number(process.env.TELEGRAM_AUDIO_MAX_SECONDS);
+  if (Number.isFinite(configured) && configured > 0) return configured;
+  return 120;
+}
+
+async function transcribeTelegramAudio(params: {
+  fileId: string;
+  messageType: string;
+  mimeType?: string | null;
+  durationSeconds?: number | null;
+}): Promise<{
+  text: string;
+  model: string;
+  fileName: string;
+  fileSize: number;
+}> {
+  const maxSeconds = audioMaxSeconds();
+  if (params.durationSeconds && params.durationSeconds > maxSeconds) {
+    throw new Error(
+      `Audio troppo lungo (${params.durationSeconds}s). Limite: ${maxSeconds}s.`,
+    );
+  }
+
+  const file = await downloadTelegramFile(params.fileId, {
+    fallbackFileName: params.messageType === "voice" ? "telegram-voice.ogg" : "telegram-audio",
+    mimeType: params.mimeType,
+  });
+  const transcription = await transcribeAudio({
+    audio: file.blob,
+    fileName: file.fileName,
+    mimeType: file.mimeType,
+  });
+
+  return {
+    text: transcription.text,
+    model: transcription.model,
+    fileName: file.fileName,
+    fileSize: file.size,
   };
 }
 
@@ -251,11 +300,6 @@ export async function POST(request: NextRequest) {
 
   const saved = await createTelegramMessage(normalized);
 
-  if (!normalized.messageText.trim() || normalized.messageType === "unsupported") {
-    await markTelegramMessageProcessed(saved.id, null);
-    return NextResponse.json({ ignored: true, reason: "empty_or_unsupported_message" });
-  }
-
   const permission = await checkInternalCommandPermission({
     phone: null,
     telegramId: normalized.senderTelegramId,
@@ -291,6 +335,64 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  let commandText = normalized.messageText;
+  let transcriptionMetadata: Record<string, unknown> | null = null;
+
+  if (isAudioMessage(normalized.messageType)) {
+    if (!normalized.audioFileId) {
+      await markTelegramMessageProcessed(saved.id, null);
+      return NextResponse.json({ ignored: true, reason: "audio_without_file_id" });
+    }
+
+    try {
+      const transcription = await transcribeTelegramAudio({
+        fileId: normalized.audioFileId,
+        messageType: normalized.messageType,
+        mimeType: normalized.audioMimeType,
+        durationSeconds: normalized.audioDurationSeconds,
+      });
+      commandText = transcription.text;
+      await updateTelegramMessageText(saved.id, commandText);
+      transcriptionMetadata = {
+        messageType: normalized.messageType,
+        transcriptionModel: transcription.model,
+        audioFileName: transcription.fileName,
+        audioFileSize: transcription.fileSize,
+        audioDurationSeconds: normalized.audioDurationSeconds,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await logWorkflowEvent({
+        eventType: "error",
+        message: `Telegram audio transcription error: ${errorMessage}`,
+        metadata: {
+          source: "telegram",
+          chatId: normalized.chatId,
+          updateId: normalized.updateId,
+          messageType: normalized.messageType,
+          senderTelegramId: normalized.senderTelegramId,
+          error: errorMessage,
+        },
+      });
+
+      await sendTrackedTelegramReply(
+        normalized.chatId,
+        `Non sono riuscito a trascrivere l'audio: ${errorMessage}`,
+      );
+      await markTelegramMessageProcessed(saved.id, null);
+
+      return NextResponse.json(
+        { success: false, updateId: normalized.updateId, error: errorMessage },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (!commandText.trim() || normalized.messageType === "unsupported") {
+    await markTelegramMessageProcessed(saved.id, null);
+    return NextResponse.json({ ignored: true, reason: "empty_or_unsupported_message" });
+  }
+
   try {
     const result = await runCrmCommand({
       source: "telegram",
@@ -302,12 +404,16 @@ export async function POST(request: NextRequest) {
       operatorId: permission.operator?.id ?? null,
       operatorRole: permission.operator?.role ?? null,
       conversationId: normalized.chatId,
-      messageText: normalized.messageText,
+      messageText: commandText,
     });
+
+    const reply = transcriptionMetadata
+      ? `🎙️ Trascrizione: "${commandText}"\n\n${result.reply}`
+      : result.reply;
 
     await sendTrackedTelegramReply(
       normalized.chatId,
-      result.reply,
+      reply,
       result.runId,
       result.confirmation
         ? buildConfirmationKeyboard(result.confirmation.code)
@@ -323,6 +429,7 @@ export async function POST(request: NextRequest) {
         source: "telegram",
         chatId: normalized.chatId,
         updateId: normalized.updateId,
+        transcription: transcriptionMetadata,
         operatorId: permission.operator?.id ?? null,
       },
     });
