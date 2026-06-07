@@ -221,6 +221,10 @@ export async function ingestLead(
       patch.pipelineStage = "prospect";
     }
 
+    // Forza l'aggiornamento della data così il lead sale in cima alla pipeline
+    // e il workflow vede che è stato toccato di recente.
+    patch.updatedAt = new Date().toISOString();
+
     // Ricalcola score con i dati aggiornati
     patch.leadScore = computeLeadScore({
       email: existing.email || email,
