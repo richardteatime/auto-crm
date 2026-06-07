@@ -215,6 +215,12 @@ export async function ingestLead(
       patch.customFields = customFields;
     }
 
+    // Riattiva un lead chiuso che torna con una nuova submission.
+    if (existing.status === "lost" || existing.status === "won") {
+      patch.status = "working";
+      patch.pipelineStage = "prospect";
+    }
+
     // Ricalcola score con i dati aggiornati
     patch.leadScore = computeLeadScore({
       email: existing.email || email,

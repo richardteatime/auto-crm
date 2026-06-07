@@ -62,7 +62,7 @@ export async function listLeads(
   const queries: string[] = [
     Query.limit(pagination?.limit ?? 500),
     Query.offset(pagination?.offset ?? 0),
-    Query.orderDesc("$createdAt"),
+    Query.orderDesc("$updatedAt"),
   ];
 
   if (filters?.pipelineStage) {
