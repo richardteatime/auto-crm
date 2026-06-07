@@ -39,9 +39,22 @@ export async function triggerWorkflows(
     const workflows = await listActiveWorkflowsByTrigger(triggerType);
     if (workflows.length === 0) return { triggered: 0 };
 
+    // Filter by triggerConfig (e.g. formId for form_submitted)
+    const matching = workflows.filter((wf) => {
+      if (!wf.triggerConfig || wf.triggerConfig === "{}") return true;
+      try {
+        const cfg = JSON.parse(wf.triggerConfig) as Record<string, unknown>;
+        if (cfg.formId && payload.formId !== cfg.formId) return false;
+        return true;
+      } catch {
+        return true;
+      }
+    });
+    if (matching.length === 0) return { triggered: 0 };
+
     const executor = new WorkflowExecutor();
     const results = await Promise.allSettled(
-      workflows.map((wf) => executor.run(wf, payload)),
+      matching.map((wf) => executor.run(wf, payload)),
     );
 
     const failures = results.filter((r) => r.status === "rejected");

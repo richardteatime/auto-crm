@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import type { FlowNode } from "@/lib/workflows/types";
 import { NODE_CATEGORY_LABELS } from "@/lib/workflows/types";
 import {
@@ -15,7 +16,84 @@ interface NodePropertiesPanelProps {
   onDelete?: (nodeId: string) => void;
 }
 
+const TRIGGER_VARIABLES = [
+  { label: "Nome lead", value: "{{trigger.payload.name}}" },
+  { label: "Email lead", value: "{{trigger.payload.email}}" },
+  { label: "Telefono lead", value: "{{trigger.payload.phone}}" },
+  { label: "Azienda lead", value: "{{trigger.payload.company}}" },
+  { label: "Messaggio lead", value: "{{trigger.payload.message}}" },
+  { label: "Tipo progetto", value: "{{trigger.payload.projectType}}" },
+  { label: "Budget", value: "{{trigger.payload.budget}}" },
+  { label: "Sorgente", value: "{{trigger.payload.source}}" },
+  { label: "ID Lead", value: "{{trigger.payload.leadId}}" },
+  { label: "ID Form", value: "{{trigger.payload.formId}}" },
+  { label: "ID Landing", value: "{{trigger.payload.landingPageId}}" },
+  { label: "ID Funnel", value: "{{trigger.payload.funnelId}}" },
+  { label: "ID Booking", value: "{{trigger.payload.bookingLinkId}}" },
+];
+
+function VariableInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+      />
+      <div className="flex flex-wrap gap-1">
+        {TRIGGER_VARIABLES.map((v) => (
+          <button
+            key={v.value}
+            type="button"
+            onClick={() => onChange(v.value)}
+            className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            title={v.value}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function NodePropertiesPanel({ node, onChange, onDelete }: NodePropertiesPanelProps) {
+  const [forms, setForms] = useState<{ id: string; name: string }[]>([]);
+  const [stages, setStages] = useState<{ id: string; name: string }[]>([]);
+
+  const nodeType = node?.data?.nodeType;
+  const nodeId = node?.id;
+  useEffect(() => {
+    if (!node) return;
+    const subtype = node.data.nodeType;
+    if (subtype === "form_submitted") {
+      fetch("/api/forms")
+        .then((r) => r.json())
+        .then((data) => setForms(Array.isArray(data) ? data : []))
+        .catch(() => setForms([]));
+    }
+    if (subtype === "move_pipeline_stage") {
+      fetch("/api/pipeline")
+        .then((r) => r.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          setStages(list.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
+        })
+        .catch(() => setStages([]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeType, nodeId]);
+
   if (!node) {
     return (
       <aside className="w-72 border-l bg-card flex flex-col h-full">
@@ -46,6 +124,112 @@ export function NodePropertiesPanel({ node, onChange, onDelete }: NodeProperties
 
   const setConfig = (key: string, value: unknown) => {
     onChange?.({ ...node, data: { ...node.data, config: { ...config, [key]: value } } });
+  };
+
+  const renderField = (f: NodeField) => {
+    // Trigger form: selezione form specifico
+    if (currentSubtype === "form_submitted" && f.key === "formId") {
+      return (
+        <div key={f.key} className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+          <select
+            value={String(config[f.key] ?? "")}
+            onChange={(e) => setConfig(f.key, e.target.value)}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+          >
+            <option value="">Qualsiasi form</option>
+            {forms.map((form) => (
+              <option key={form.id} value={form.id}>
+                {form.name}
+              </option>
+            ))}
+          </select>
+          {forms.length === 0 && (
+            <p className="text-[10px] text-muted-foreground">Nessun form trovato. Crea un form nella sezione Capture.</p>
+          )}
+          {f.hint && <p className="text-[10px] text-muted-foreground">{f.hint}</p>}
+        </div>
+      );
+    }
+
+    // Pipeline stage: selezione dinamica
+    if (currentSubtype === "move_pipeline_stage" && f.key === "stageId") {
+      return (
+        <div key={f.key} className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+          <select
+            value={String(config[f.key] ?? "")}
+            onChange={(e) => setConfig(f.key, e.target.value)}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+          >
+            <option value="">— Scegli la fase —</option>
+            {stages.map((stage) => (
+              <option key={stage.id} value={stage.id}>
+                {stage.name}
+              </option>
+            ))}
+          </select>
+          {stages.length === 0 && <p className="text-[10px] text-muted-foreground">Caricamento fasi...</p>}
+        </div>
+      );
+    }
+
+    // Nascondi dealId dal flusso principale (mostrato in Avanzato)
+    if (currentSubtype === "move_pipeline_stage" && f.key === "dealId") {
+      return null;
+    }
+
+    // Campo variabile con chip
+    if (f.type === "variable") {
+      return (
+        <div key={f.key} className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+          <VariableInput
+            value={String(config[f.key] ?? "")}
+            onChange={(v) => setConfig(f.key, v)}
+            placeholder={f.placeholder}
+          />
+          {f.hint && <p className="text-[10px] text-muted-foreground">{f.hint}</p>}
+        </div>
+      );
+    }
+
+    // Rendering standard
+    return (
+      <div key={f.key} className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
+        {f.type === "textarea" ? (
+          <textarea
+            value={String(config[f.key] ?? "")}
+            placeholder={f.placeholder}
+            onChange={(e) => setConfig(f.key, e.target.value)}
+            rows={3}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+          />
+        ) : f.type === "select" ? (
+          <select
+            value={String(config[f.key] ?? "")}
+            onChange={(e) => setConfig(f.key, e.target.value)}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+          >
+            {(f.options ?? []).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={f.type === "number" ? "number" : "text"}
+            value={String(config[f.key] ?? "")}
+            placeholder={f.placeholder}
+            onChange={(e) => setConfig(f.key, e.target.value)}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
+          />
+        )}
+        {f.hint && <p className="text-[10px] text-muted-foreground">{f.hint}</p>}
+      </div>
+    );
   };
 
   return (
@@ -87,42 +271,7 @@ export function NodePropertiesPanel({ node, onChange, onDelete }: NodeProperties
         )}
 
         {/* Campi guidati per il sottotipo scelto */}
-        {isConfigured &&
-          fields.map((f) => (
-            <div key={f.key} className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{f.label}</label>
-              {f.type === "textarea" ? (
-                <textarea
-                  value={String(config[f.key] ?? "")}
-                  placeholder={f.placeholder}
-                  onChange={(e) => setConfig(f.key, e.target.value)}
-                  rows={3}
-                  className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
-                />
-              ) : f.type === "select" ? (
-                <select
-                  value={String(config[f.key] ?? "")}
-                  onChange={(e) => setConfig(f.key, e.target.value)}
-                  className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
-                >
-                  {(f.options ?? []).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={f.type === "number" ? "number" : "text"}
-                  value={String(config[f.key] ?? "")}
-                  placeholder={f.placeholder}
-                  onChange={(e) => setConfig(f.key, e.target.value)}
-                  className="w-full rounded-md border bg-background px-2 py-1.5 text-xs"
-                />
-              )}
-              {f.hint && <p className="text-[10px] text-muted-foreground">{f.hint}</p>}
-            </div>
-          ))}
+        {isConfigured && fields.map(renderField)}
 
         {/* Aiuto specifico per le condizioni */}
         {category === "condition" && isConfigured && (
@@ -132,15 +281,7 @@ export function NodePropertiesPanel({ node, onChange, onDelete }: NodeProperties
           </p>
         )}
 
-        {/* Suggerimento variabili */}
-        {isConfigured && fields.length > 0 && category !== "condition" && (
-          <p className="text-[10px] text-muted-foreground">
-            Suggerimento: scrivi <code className="rounded bg-muted px-1">{"{{trigger.payload.campo}}"}</code> per
-            inserire automaticamente i dati che hanno avviato il workflow.
-          </p>
-        )}
-
-        {/* Avanzato: etichetta + JSON grezzo per i power user */}
+        {/* Avanzato: etichetta + campi opzionali + JSON grezzo */}
         <details className="rounded-md border bg-muted/20 p-2">
           <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground">Avanzato</summary>
           <div className="mt-2 space-y-2">
@@ -153,6 +294,21 @@ export function NodePropertiesPanel({ node, onChange, onDelete }: NodeProperties
                 className="w-full rounded-md border bg-background px-2 py-1 text-xs"
               />
             </div>
+
+            {/* Deal ID per move_pipeline_stage */}
+            {currentSubtype === "move_pipeline_stage" && (
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">Deal specifico (opzionale)</label>
+                <input
+                  type="text"
+                  value={String(config["dealId"] ?? "")}
+                  onChange={(e) => setConfig("dealId", e.target.value)}
+                  className="w-full rounded-md border bg-background px-2 py-1 text-xs"
+                />
+                <p className="text-[10px] text-muted-foreground">Lascia vuoto per usare il deal attivo nel flusso.</p>
+              </div>
+            )}
+
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Config (JSON)</label>
               <textarea

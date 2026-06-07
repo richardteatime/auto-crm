@@ -21,7 +21,7 @@ import {
 export interface NodeField {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "select";
+  type: "text" | "textarea" | "number" | "select" | "variable";
   placeholder?: string;
   hint?: string;
   options?: { value: string; label: string }[];
@@ -48,7 +48,14 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
   // --- Trigger (no-op: il trigger passa solo il contesto) ---
   contact_created: [],
   deal_moved: [],
-  form_submitted: [],
+  form_submitted: [
+    {
+      key: "formId",
+      label: "Scegli il form di origine",
+      type: "text",
+      hint: "Lascia vuoto per attivarsi con qualsiasi form.",
+    },
+  ],
   booking_created: [],
   call_outcome_recorded: [],
   schedule: [],
@@ -56,17 +63,17 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
 
   // --- Azioni ---
   create_contact: [
-    { key: "name", label: "Nome", type: "text", placeholder: "{{trigger.payload.name}}" },
-    { key: "email", label: "Email", type: "text", placeholder: "{{trigger.payload.email}}" },
-    { key: "phone", label: "Telefono", type: "text" },
-    { key: "company", label: "Azienda", type: "text" },
+    { key: "name", label: "Nome", type: "variable", placeholder: "{{trigger.payload.name}}" },
+    { key: "email", label: "Email", type: "variable", placeholder: "{{trigger.payload.email}}" },
+    { key: "phone", label: "Telefono", type: "variable", placeholder: "{{trigger.payload.phone}}" },
+    { key: "company", label: "Azienda", type: "variable", placeholder: "{{trigger.payload.company}}" },
   ],
   update_contact: [
     { key: "contactId", label: "ID Contatto", type: "text", hint: "Vuoto = usa il contatto del contesto" },
-    { key: "name", label: "Nome", type: "text" },
-    { key: "email", label: "Email", type: "text" },
-    { key: "phone", label: "Telefono", type: "text" },
-    { key: "company", label: "Azienda", type: "text" },
+    { key: "name", label: "Nome", type: "variable" },
+    { key: "email", label: "Email", type: "variable" },
+    { key: "phone", label: "Telefono", type: "variable" },
+    { key: "company", label: "Azienda", type: "variable" },
     {
       key: "temperature",
       label: "Temperatura",
@@ -78,7 +85,7 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
         { value: "hot", label: "Caldo" },
       ],
     },
-    { key: "notes", label: "Note", type: "textarea" },
+    { key: "notes", label: "Note", type: "variable" },
   ],
   create_deal: [
     { key: "title", label: "Titolo", type: "text" },
@@ -99,7 +106,7 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
     { key: "assignedTo", label: "Assegna a (ID utente)", type: "text", hint: "Vuoto = nessun assegnatario" },
   ],
   send_email: [
-    { key: "to", label: "Destinatario", type: "text", placeholder: "{{trigger.payload.email}}" },
+    { key: "to", label: "Destinatario", type: "variable", placeholder: "{{trigger.payload.email}}" },
     { key: "subject", label: "Oggetto", type: "text" },
     { key: "body", label: "Corpo (HTML)", type: "textarea" },
   ],
@@ -108,8 +115,13 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
     { key: "message", label: "Messaggio", type: "textarea" },
   ],
   move_pipeline_stage: [
-    { key: "dealId", label: "ID Deal", type: "text", hint: "Vuoto = usa il deal del contesto" },
-    { key: "stageId", label: "ID Stage di destinazione", type: "text" },
+    {
+      key: "dealId",
+      label: "Deal specifico (opzionale)",
+      type: "text",
+      hint: "Lascia vuoto per usare il deal attivo nel flusso.",
+    },
+    { key: "stageId", label: "Fase di destinazione", type: "text" },
   ],
 
   // --- Azioni sul LEAD (pipeline call) — agiscono sul lead che ha avviato il workflow ---
@@ -124,7 +136,7 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
       ],
       hint: "Crea un task chiamata per il lead, assegnato alla persona scelta.",
     },
-    { key: "notes", label: "Note", type: "textarea", placeholder: "{{trigger.payload.message}}" },
+    { key: "notes", label: "Note", type: "variable", placeholder: "{{trigger.payload.message}}" },
   ],
   set_lead_status: [
     {
@@ -171,14 +183,14 @@ export const NODE_FIELDS: Record<string, NodeField[]> = {
 
   // --- Condizioni (i rami Sì/No si impostano collegando le uscite del nodo) ---
   if_field_equals: [
-    { key: "field", label: "Campo da controllare", type: "text", placeholder: "es. email" },
+    { key: "field", label: "Campo da controllare", type: "variable", placeholder: "es. email" },
     { key: "compareValue", label: "È uguale a", type: "text", placeholder: "valore atteso" },
   ],
   if_field_exists: [
-    { key: "field", label: "Campo da controllare", type: "text", placeholder: "es. email" },
+    { key: "field", label: "Campo da controllare", type: "variable", placeholder: "es. email" },
   ],
   if_field_in: [
-    { key: "field", label: "Campo da controllare", type: "text", placeholder: "es. outcomeLabel" },
+    { key: "field", label: "Campo da controllare", type: "variable", placeholder: "es. outcomeLabel" },
     {
       key: "values",
       label: "Valori ammessi (separati da virgola)",
