@@ -58,7 +58,7 @@ export function LandingBlockPreview({
                   {item.title.charAt(0).toUpperCase()}
                 </div>
                 <h3 className="text-base font-semibold">{item.title}</h3>
-                <p className="text-sm text-gray-600">{item.description}</p>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
               </div>
             ))}
           </div>
@@ -67,15 +67,15 @@ export function LandingBlockPreview({
 
     case "testimonials":
       return (
-        <section className="px-8 py-12 bg-gray-50">
+        <section className="px-8 py-12 bg-muted/30">
           {block.heading && <h2 className="text-2xl font-bold text-center mb-8">{block.heading}</h2>}
           <div className="grid gap-4 grid-cols-1 @md:grid-cols-2 @xl:grid-cols-3">
             {block.items.map((item, i) => (
-              <figure key={i} className="rounded-xl border bg-white p-5 space-y-2">
-                <blockquote className="text-sm text-gray-700">&ldquo;{item.quote}&rdquo;</blockquote>
+              <figure key={i} className="rounded-xl border bg-card p-5 space-y-2">
+                <blockquote className="text-sm text-muted-foreground">&ldquo;{item.quote}&rdquo;</blockquote>
                 <figcaption className="text-sm font-semibold">
                   {item.author}
-                  {item.role && <span className="block text-xs font-normal text-gray-500">{item.role}</span>}
+                  {item.role && <span className="block text-xs font-normal text-muted-foreground">{item.role}</span>}
                 </figcaption>
               </figure>
             ))}
@@ -108,11 +108,11 @@ export function LandingBlockPreview({
       return (
         <section className="px-8 py-12">
           {block.heading && <h2 className="text-xl font-bold text-center mb-5">{block.heading}</h2>}
-          <div className="mx-auto max-w-sm space-y-3 rounded-xl border bg-white p-5 shadow-sm">
+          <div className="mx-auto max-w-sm space-y-3 rounded-xl border bg-card p-5 shadow-sm">
             {["Nome", "Email", "Telefono"].map((label) => (
               <div key={label} className="space-y-1">
-                <span className="block text-xs font-medium text-gray-500">{label}</span>
-                <div className="h-9 rounded-md border border-gray-200 bg-gray-50" />
+                <span className="block text-xs font-medium text-muted-foreground">{label}</span>
+                <div className="h-9 rounded-md border border-gray-200 bg-muted/30" />
               </div>
             ))}
             <div
@@ -139,7 +139,7 @@ export function LandingBlockPreview({
               unoptimized
             />
           ) : (
-            <div className="mx-auto flex h-40 max-w-md items-center justify-center rounded-lg border border-dashed bg-gray-50 text-sm text-gray-400">
+            <div className="mx-auto flex h-40 max-w-md items-center justify-center rounded-lg border border-dashed bg-muted/30 text-sm text-muted-foreground">
               Immagine non impostata
             </div>
           )}
@@ -150,7 +150,7 @@ export function LandingBlockPreview({
       return (
         <section className="px-8 py-6">
           <p
-            className="text-sm text-gray-700 whitespace-pre-line"
+            className="text-sm text-muted-foreground whitespace-pre-line"
             style={{ textAlign: block.align }}
           >
             {block.content}
@@ -161,27 +161,27 @@ export function LandingBlockPreview({
     case "divider":
       return (
         <div className="px-8 py-4">
-          <hr className="border-gray-200" />
+          <hr className="border-border" />
         </div>
       );
 
     case "footer":
       return (
         <footer className="px-8 py-8 border-t">
-          <p className="text-center text-xs text-gray-500">{block.text}</p>
+          <p className="text-center text-xs text-muted-foreground">{block.text}</p>
         </footer>
       );
 
     case "logos":
       return (
         <section className="px-8 py-9">
-          {block.heading && <h2 className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">{block.heading}</h2>}
+          {block.heading && <h2 className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{block.heading}</h2>}
           <div className="flex flex-wrap items-center justify-center gap-7">
             {block.items.map((item, i) => (
               item.imageUrl ? (
                 <Image key={i} src={item.imageUrl} alt={item.name} width={112} height={24} className="h-6 max-w-28 object-contain grayscale opacity-55" unoptimized />
               ) : (
-                <span key={i} className="font-serif text-xl font-bold text-gray-500 opacity-65">{item.name}</span>
+                <span key={i} className="font-serif text-xl font-bold text-muted-foreground opacity-65">{item.name}</span>
               )
             ))}
           </div>
@@ -190,11 +190,11 @@ export function LandingBlockPreview({
 
     case "faq":
       return (
-        <section className="bg-gray-50 px-8 py-12">
+        <section className="bg-muted/30 px-8 py-12">
           {block.heading && <h2 className="mb-6 text-center text-2xl font-bold">{block.heading}</h2>}
           <div className="mx-auto max-w-2xl space-y-2">
             {block.items.map((item, i) => (
-              <div key={i} className="rounded-lg border bg-white px-4 py-3 text-sm font-semibold">
+              <div key={i} className="rounded-lg border bg-card px-4 py-3 text-sm font-semibold">
                 {item.question}
               </div>
             ))}
@@ -206,20 +206,20 @@ export function LandingBlockPreview({
       return (
         <section className="px-8 py-12">
           {block.heading && <h2 className="text-center text-2xl font-bold">{block.heading}</h2>}
-          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-600">
+          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex gap-0.5 text-amber-400">
               {[0, 1, 2, 3, 4].map((index) => <Star key={index} className="h-4 w-4" fill={index < Math.round(block.averageRating) ? "currentColor" : "none"} />)}
             </span>
-            <strong className="text-sm text-gray-900">{block.averageRating.toFixed(1)}</strong>
+            <strong className="text-sm text-foreground">{block.averageRating.toFixed(1)}</strong>
             <span>{block.ratingCountLabel}</span>
           </div>
           <div className="mt-6 grid gap-3 grid-cols-1 @md:grid-cols-2 @xl:grid-cols-3">
             {block.items.map((item, i) => (
-              <figure key={i} className="rounded-lg border bg-white p-4">
+              <figure key={i} className="rounded-lg border bg-card p-4">
                 <span className="inline-flex gap-0.5 text-amber-400">
                   {[0, 1, 2, 3, 4].map((index) => <Star key={index} className="h-3.5 w-3.5" fill={index < item.rating ? "currentColor" : "none"} />)}
                 </span>
-                <blockquote className="mt-3 text-xs text-gray-700">&ldquo;{item.quote}&rdquo;</blockquote>
+                <blockquote className="mt-3 text-xs text-muted-foreground">&ldquo;{item.quote}&rdquo;</blockquote>
                 <figcaption className="mt-3 text-xs font-semibold">{item.author}</figcaption>
               </figure>
             ))}
@@ -240,7 +240,7 @@ export function LandingBlockPreview({
             <ul className="mt-4 space-y-2 text-xs">
               {block.includes.map((item, i) => <li key={i} className="flex gap-2"><Check className="h-3.5 w-3.5 shrink-0" />{item}</li>)}
             </ul>
-            {block.buttonText && <span className="mt-5 inline-block rounded-md bg-white px-4 py-2 text-xs font-bold text-gray-900">{block.buttonText}</span>}
+            {block.buttonText && <span className="mt-5 inline-block rounded-md bg-card px-4 py-2 text-xs font-bold text-foreground">{block.buttonText}</span>}
           </div>
         </section>
       );
@@ -251,8 +251,8 @@ export function LandingBlockPreview({
           {block.heading && <h2 className="mb-6 text-center text-2xl font-bold">{block.heading}</h2>}
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[520px] text-xs">
-              <thead><tr><th className="bg-gray-50 px-3 py-3 text-left">Confronto</th>{block.columns.map((column, index) => <th key={index} className="px-3 py-3 text-center" style={index === block.highlightColumn ? { backgroundColor: primaryColor, color: "#fff" } : undefined}>{column}</th>)}</tr></thead>
-              <tbody>{block.rows.map((row, rowIndex) => <tr key={rowIndex} className="border-t"><th className="bg-gray-50 px-3 py-3 text-left">{row.label}</th>{block.columns.map((_, columnIndex) => {
+              <thead><tr><th className="bg-muted/30 px-3 py-3 text-left">Confronto</th>{block.columns.map((column, index) => <th key={index} className="px-3 py-3 text-center" style={index === block.highlightColumn ? { backgroundColor: primaryColor, color: "#fff" } : undefined}>{column}</th>)}</tr></thead>
+              <tbody>{block.rows.map((row, rowIndex) => <tr key={rowIndex} className="border-t"><th className="bg-muted/30 px-3 py-3 text-left">{row.label}</th>{block.columns.map((_, columnIndex) => {
                 const value = row.values[columnIndex] ?? "";
                 return <td key={columnIndex} className="px-3 py-3 text-center" style={columnIndex === block.highlightColumn ? { backgroundColor: `${primaryColor}12` } : undefined}>{value === true ? <Check className="mx-auto h-4 w-4 text-emerald-600" /> : value === false ? <X className="mx-auto h-4 w-4 text-red-500" /> : value}</td>;
               })}</tr>)}</tbody>

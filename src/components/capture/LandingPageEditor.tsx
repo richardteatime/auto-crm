@@ -99,14 +99,14 @@ function SortableBlock({
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md border bg-white/90 text-gray-600 shadow-sm active:cursor-grabbing"
+          className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md border bg-card/90 text-muted-foreground shadow-sm active:cursor-grabbing"
           title="Trascina"
         >
           <GripVertical className="h-4 w-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
-          className="flex h-7 w-7 items-center justify-center rounded-md border bg-white/90 text-gray-600 shadow-sm hover:text-foreground"
+          className="flex h-7 w-7 items-center justify-center rounded-md border bg-card/90 text-muted-foreground shadow-sm hover:text-foreground"
           title="Duplica"
         >
           <Copy className="h-4 w-4" />
@@ -313,7 +313,7 @@ export function LandingPageEditor({ page }: { page: LandingPage }) {
           ) : (
             <div
               className={cn(
-                "@container mx-auto overflow-hidden rounded-lg border bg-white transition-[max-width]",
+                "@container mx-auto overflow-hidden rounded-lg border bg-card transition-[max-width]",
                 device === "tablet" && "max-w-[768px]",
                 device === "mobile" && "max-w-[390px]",
               )}

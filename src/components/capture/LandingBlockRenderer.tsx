@@ -65,7 +65,7 @@ export function LandingBlockRenderer({
   const { theme } = config;
   const firstFormBlockId = config.blocks.find((block) => block.type === "form")?.id;
   return (
-    <div style={{ fontFamily: theme.fontFamily, color: "#0f172a" }}>
+    <div style={{ fontFamily: theme.fontFamily }}>
       {config.blocks.map((block) => (
         <BlockSwitch
           key={block.id}
@@ -154,7 +154,7 @@ function BlockSwitch({
     case "divider":
       return (
         <Container maxWidth={maxWidth} className="py-6">
-          <hr className="border-gray-200" />
+          <hr className="border-border" />
         </Container>
       );
     case "footer":
@@ -223,7 +223,7 @@ function Features({
                 {item.title.charAt(0).toUpperCase()}
               </div>
               <h3 className="text-lg font-semibold">{item.title}</h3>
-              <p className="text-sm text-gray-600">{item.description}</p>
+              <p className="text-sm text-muted-foreground">{item.description}</p>
             </div>
           ))}
         </div>
@@ -234,18 +234,18 @@ function Features({
 
 function Testimonials({ block, maxWidth }: { block: TestimonialsBlock; maxWidth: number }) {
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-16 bg-muted/30">
       <Container maxWidth={maxWidth}>
         {block.heading && (
           <h2 className="text-3xl font-bold text-center mb-10">{block.heading}</h2>
         )}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {block.items.map((item, i) => (
-            <figure key={i} className="rounded-xl border bg-white p-6 space-y-3">
-              <blockquote className="text-sm text-gray-700">“{item.quote}”</blockquote>
+            <figure key={i} className="rounded-xl border bg-card p-6 space-y-3">
+              <blockquote className="text-sm text-muted-foreground">“{item.quote}”</blockquote>
               <figcaption className="text-sm font-semibold">
                 {item.author}
-                {item.role && <span className="block text-xs font-normal text-gray-500">{item.role}</span>}
+                {item.role && <span className="block text-xs font-normal text-muted-foreground">{item.role}</span>}
               </figcaption>
             </figure>
           ))}
@@ -260,7 +260,7 @@ function Logos({ block, maxWidth }: { block: LogosBlock; maxWidth: number }) {
     <section className="py-12">
       <Container maxWidth={maxWidth}>
         {block.heading && (
-          <h2 className="mb-7 text-center text-sm font-semibold uppercase tracking-[0.25em] text-gray-500">
+          <h2 className="mb-7 text-center text-sm font-semibold uppercase tracking-[0.25em] text-muted-foreground">
             {block.heading}
           </h2>
         )}
@@ -277,7 +277,7 @@ function Logos({ block, maxWidth }: { block: LogosBlock; maxWidth: number }) {
                 unoptimized
               />
             ) : (
-              <span key={i} className="font-serif text-2xl font-bold tracking-wide text-gray-500 opacity-65">
+              <span key={i} className="font-serif text-2xl font-bold tracking-wide text-muted-foreground opacity-65">
                 {item.name}
               </span>
             )
@@ -290,16 +290,16 @@ function Logos({ block, maxWidth }: { block: LogosBlock; maxWidth: number }) {
 
 function Faq({ block, maxWidth }: { block: FaqBlock; maxWidth: number }) {
   return (
-    <section className="bg-gray-50 py-16">
+    <section className="bg-muted/30 py-16">
       <Container maxWidth={Math.min(maxWidth, 860)}>
         {block.heading && <h2 className="mb-10 text-center text-3xl font-bold">{block.heading}</h2>}
         <div className="space-y-3">
           {block.items.map((item, i) => (
-            <details key={i} className="group rounded-xl border bg-white p-5">
+            <details key={i} className="group rounded-xl border bg-card p-5">
               <summary className="cursor-pointer list-none pr-6 text-base font-semibold marker:hidden">
                 {item.question}
               </summary>
-              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-600">{item.answer}</p>
+              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-muted-foreground">{item.answer}</p>
             </details>
           ))}
         </div>
@@ -324,21 +324,21 @@ function Reviews({ block, maxWidth }: { block: ReviewsBlock; maxWidth: number })
     <section className="py-16">
       <Container maxWidth={maxWidth}>
         {block.heading && <h2 className="text-center text-3xl font-bold">{block.heading}</h2>}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-600">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
           <Stars rating={block.averageRating} size={20} />
-          <strong className="text-base text-gray-900">{block.averageRating.toFixed(1)}</strong>
+          <strong className="text-base text-foreground">{block.averageRating.toFixed(1)}</strong>
           {block.ratingCountLabel && <span>{block.ratingCountLabel}</span>}
         </div>
         <div className="mt-9 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {block.items.map((item, i) => (
-            <figure key={i} className="rounded-xl border bg-white p-6 shadow-sm">
+            <figure key={i} className="rounded-xl border bg-card p-6 shadow-sm">
               <Stars rating={item.rating} size={16} />
-              <blockquote className="mt-4 text-sm leading-6 text-gray-700">&ldquo;{item.quote}&rdquo;</blockquote>
+              <blockquote className="mt-4 text-sm leading-6 text-muted-foreground">&ldquo;{item.quote}&rdquo;</blockquote>
               <figcaption className="mt-5 flex items-center gap-3 text-sm font-semibold">
                 {item.avatarUrl ? (
                   <Image src={item.avatarUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" unoptimized />
                 ) : (
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs text-gray-600">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
                     {item.author.charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -382,7 +382,7 @@ function Offer({ block, maxWidth }: { block: OfferBlock; maxWidth: number }) {
             <a
               href={block.buttonUrl || "#form"}
               data-sx-cta
-              className="mt-8 inline-block rounded-md bg-white px-6 py-3 text-base font-bold text-gray-900"
+              className="mt-8 inline-block rounded-md bg-card px-6 py-3 text-base font-bold text-foreground"
             >
               {block.buttonText}
             </a>
@@ -416,7 +416,7 @@ function Comparison({
           <table className="w-full min-w-[640px] border-collapse text-left text-sm">
             <thead>
               <tr>
-                <th className="border-b bg-gray-50 px-4 py-4 font-semibold">Confronto</th>
+                <th className="border-b bg-muted/30 px-4 py-4 font-semibold">Confronto</th>
                 {block.columns.map((column, index) => (
                   <th
                     key={index}
@@ -431,11 +431,11 @@ function Comparison({
             <tbody>
               {block.rows.map((row, rowIndex) => (
                 <tr key={rowIndex} className="border-b last:border-b-0">
-                  <th className="bg-gray-50 px-4 py-4 font-medium">{row.label}</th>
+                  <th className="bg-muted/30 px-4 py-4 font-medium">{row.label}</th>
                   {block.columns.map((_, columnIndex) => (
                     <td
                       key={columnIndex}
-                      className="px-4 py-4 text-center text-gray-700"
+                      className="px-4 py-4 text-center text-muted-foreground"
                       style={columnIndex === block.highlightColumn ? { backgroundColor: `${primaryColor}12` } : undefined}
                     >
                       <ComparisonValue value={row.values[columnIndex] ?? ""} />
@@ -547,7 +547,7 @@ function TextSection({ block, maxWidth }: { block: TextBlock; maxWidth: number }
   return (
     <section className="py-8">
       <Container maxWidth={maxWidth}>
-        <p className="text-base text-gray-700 whitespace-pre-line" style={{ textAlign: block.align }}>
+        <p className="text-base text-muted-foreground whitespace-pre-line" style={{ textAlign: block.align }}>
           {block.content}
         </p>
       </Container>
@@ -559,7 +559,7 @@ function Footer({ block, maxWidth }: { block: FooterBlock; maxWidth: number }) {
   return (
     <footer className="py-10 border-t">
       <Container maxWidth={maxWidth}>
-        <p className="text-center text-xs text-gray-500">{block.text}</p>
+        <p className="text-center text-xs text-muted-foreground">{block.text}</p>
       </Container>
     </footer>
   );

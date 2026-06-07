@@ -10,7 +10,7 @@ import { NODE_CATEGORY_COLORS } from "@/lib/workflows/types";
 export function ConditionNode({ data, selected }: NodeProps & { data: FlowNodeData }) {
   return (
     <div
-      className="relative min-w-[170px] rounded-lg border-2 bg-white px-4 pt-2 pb-6 shadow-sm"
+      className="relative min-w-[170px] rounded-lg border-2 bg-card px-4 pt-2 pb-6 shadow-sm text-card-foreground"
       style={{
         borderColor: NODE_CATEGORY_COLORS.condition,
         boxShadow: selected ? `0 0 0 2px ${NODE_CATEGORY_COLORS.condition}` : undefined,

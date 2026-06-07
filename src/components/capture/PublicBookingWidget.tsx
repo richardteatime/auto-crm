@@ -153,7 +153,7 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
 
   if (done) {
     return (
-      <div className="rounded-xl border bg-white p-6 text-center text-sm text-slate-700">
+      <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
         {done}
       </div>
     );
@@ -162,11 +162,11 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
   return (
     <form
       onSubmit={submit}
-      className="space-y-4 rounded-xl border bg-white p-5"
+      className="space-y-4 rounded-xl border bg-card p-5"
       style={{ ["--tw-ring-color" as string]: PRIMARY }}
     >
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-slate-700">Data</label>
+        <label className="block text-sm font-medium text-muted-foreground">Data</label>
         <input
           type="date"
           className={inputClass}
@@ -176,20 +176,20 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
           onChange={(e) => setDate(e.target.value)}
         />
         {openDays.length > 0 && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Giorni disponibili: {openDays.map((d) => WEEKDAY_LABELS[d]).join(", ")}
           </p>
         )}
       </div>
 
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-muted-foreground">
           Orari disponibili ({durationMinutes} min)
         </label>
         {loadingSlots ? (
-          <p className="text-sm text-slate-400">Caricamento…</p>
+          <p className="text-sm text-muted-foreground">Caricamento…</p>
         ) : slots.length === 0 ? (
-          <p className="text-sm text-slate-400">Nessuno slot disponibile per questa data.</p>
+          <p className="text-sm text-muted-foreground">Nessuno slot disponibile per questa data.</p>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {slots.map((s) => {
@@ -220,7 +220,7 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
       {selected && (
         <div className="space-y-3 border-t pt-4">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-muted-foreground">
               Nome <span style={{ color: PRIMARY }}>*</span>
             </label>
             <input
@@ -231,7 +231,7 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
             />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-muted-foreground">
               Email <span style={{ color: PRIMARY }}>*</span>
             </label>
             <input
@@ -243,7 +243,7 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
             />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700">Telefono</label>
+            <label className="block text-sm font-medium text-muted-foreground">Telefono</label>
             <input
               type="tel"
               className={inputClass}
@@ -253,7 +253,7 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
             />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700">Note</label>
+            <label className="block text-sm font-medium text-muted-foreground">Note</label>
             <textarea
               className={inputClass}
               style={fieldStyle}

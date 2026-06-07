@@ -103,16 +103,16 @@ function SortableField({
       ref={setNodeRef}
       style={style}
       onClick={onSelect}
-      className={cn("group relative cursor-pointer rounded-lg border bg-white p-3", selected && "ring-2 ring-primary")}
+      className={cn("group relative cursor-pointer rounded-lg border bg-card p-3", selected && "ring-2 ring-primary")}
     >
       <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <button {...attributes} {...listeners} onClick={(e) => e.stopPropagation()} className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md border bg-white text-gray-500 active:cursor-grabbing" title="Trascina">
+        <button {...attributes} {...listeners} onClick={(e) => e.stopPropagation()} className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md border bg-card text-muted-foreground active:cursor-grabbing" title="Trascina">
           <GripVertical className="h-4 w-4" />
         </button>
-        <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="flex h-7 w-7 items-center justify-center rounded-md border bg-white text-gray-500 hover:text-foreground" title="Duplica">
+        <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="flex h-7 w-7 items-center justify-center rounded-md border bg-card text-muted-foreground hover:text-foreground" title="Duplica">
           <Copy className="h-4 w-4" />
         </button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="flex h-7 w-7 items-center justify-center rounded-md border bg-white text-gray-500 hover:text-destructive" title="Elimina">
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="flex h-7 w-7 items-center justify-center rounded-md border bg-card text-muted-foreground hover:text-destructive" title="Elimina">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
