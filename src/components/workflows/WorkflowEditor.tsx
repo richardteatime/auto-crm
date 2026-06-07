@@ -38,6 +38,7 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
   const [selectedNode, setSelectedNode] = useState<FlowNode | null>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testTrace, setTestTrace] = useState<Array<{ nodeId: string; nodeType: string; status: string; error?: string }> | null>(null);
 
   const handleSave = async () => {
     setSaving(true);
@@ -64,6 +65,7 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
 
   const handleTest = async () => {
     setTesting(true);
+    setTestTrace(null);
     try {
       const res = await fetch(`/api/workflows/${workflow.id}/test`, {
         method: "POST",
@@ -72,14 +74,10 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
       });
       if (!res.ok) throw new Error();
       const result = await res.json();
+      setTestTrace(result.trace ?? null);
       if (result.status === "failed") {
         const errMsg = result.error || "Sconosciuto";
-        const traceInfo = Array.isArray(result.trace)
-          ? result.trace.map((t: { nodeId: string; nodeType: string; status: string; error?: string }) =>
-              `${t.nodeType} → ${t.status}${t.error ? ` (${t.error})` : ""}`
-            ).join(" | ")
-          : "";
-        toast.error(`Test fallito: ${errMsg}${traceInfo ? ` — Trace: ${traceInfo}` : ""}`);
+        toast.error(`Test fallito: ${errMsg}`);
       } else {
         toast.success(`Test completato: ${result.status}`);
       }
@@ -118,6 +116,35 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
         saving={saving}
         testing={testing}
       />
+      {testTrace && (
+        <div className="px-4 py-2 border-b bg-muted/20">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold">Risultato test</span>
+            <button
+              onClick={() => setTestTrace(null)}
+              className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Chiudi
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {testTrace.map((t, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "text-[11px] px-2 py-0.5 rounded-full border",
+                  t.status === "failed"
+                    ? "bg-red-50 text-red-700 border-red-200"
+                    : "bg-green-50 text-green-700 border-green-200"
+                )}
+              >
+                {t.nodeType} → {t.status}
+                {t.error ? ` (${t.error})` : ""}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-1 px-4 py-1.5 border-b bg-muted/30">
         <button
           onClick={() => setTab("editor")}
