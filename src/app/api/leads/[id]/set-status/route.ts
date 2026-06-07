@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { getLead, updateLead, updateContact } from "@/lib/db";
 import { LEAD_STATUSES, type LeadStatus } from "@/lib/leads/types";
+
+const BodySchema = z.object({
+  status: z.enum(LEAD_STATUSES as [string, ...string[]]),
+});
 
 // POST /api/leads/[id]/set-status  { status }
 // Manual status change from the lead UI — powers the quick "Vinto" / "Perso"
@@ -16,20 +21,22 @@ export async function POST(
 
   const { id } = await params;
 
-  let body: { status?: string };
+  let body;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const status = body.status;
-  if (!status || !LEAD_STATUSES.includes(status as LeadStatus)) {
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Stato non valido", validStatuses: LEAD_STATUSES },
+      { error: "Dati non validi", issues: parsed.error.issues },
       { status: 400 },
     );
   }
+
+  const status = parsed.data.status;
 
   const lead = await getLead(id);
   if (!lead) {

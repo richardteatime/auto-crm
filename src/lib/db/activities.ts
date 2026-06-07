@@ -1,8 +1,10 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { Activity } from "@/types";
 import { getContact } from "./contacts";
+import { parseDoc } from "./parse-doc";
+import { ActivitySchema } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -18,16 +20,6 @@ function toIsoDate(
   return new Date(d).toISOString();
 }
 
-function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
-  return {
-    id: $id,
-    createdAt: new Date($createdAt),
-    updatedAt: new Date($updatedAt),
-    ...rest,
-  } as T;
-}
-
 /** Activity extended with contactName for denormalized reads. */
 export interface ActivityWithContact extends Activity {
   contactName?: string | null;
@@ -37,13 +29,20 @@ export interface ActivityWithContact extends Activity {
 // listActivities
 // ---------------------------------------------------------------------------
 
-export async function listActivities(filters?: {
-  contactId?: string;
-  dealId?: string;
-  isCompleted?: boolean;
-  assignedTo?: string;
-}): Promise<ActivityWithContact[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listActivities(
+  filters?: {
+    contactId?: string;
+    dealId?: string;
+    isCompleted?: boolean;
+    assignedTo?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<ActivityWithContact[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.contactId) {
     queries.push(Query.equal("contactId", filters.contactId));
@@ -63,7 +62,7 @@ export async function listActivities(filters?: {
     COLLECTIONS.activities,
     queries,
   );
-  return res.documents.map((d) => fromDoc<ActivityWithContact>(d));
+  return res.documents.map((d) => parseDoc(ActivitySchema,d));
 }
 
 // ---------------------------------------------------------------------------
@@ -114,7 +113,7 @@ export async function createActivity(data: {
     ID.unique(),
     payload,
   );
-  return fromDoc<ActivityWithContact>(doc);
+  return parseDoc(ActivitySchema,doc);
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +154,7 @@ export async function updateActivity(
     id,
     payload,
   );
-  return fromDoc<ActivityWithContact>(doc);
+  return parseDoc(ActivitySchema,doc);
 }
 
 // ---------------------------------------------------------------------------
@@ -165,7 +164,7 @@ export async function updateActivity(
 export async function getActivity(id: string): Promise<ActivityWithContact | null> {
   try {
     const doc = await databases.getDocument(DB_ID, COLLECTIONS.activities, id);
-    return fromDoc<ActivityWithContact>(doc);
+    return parseDoc(ActivitySchema,doc);
   } catch {
     return null;
   }
@@ -194,5 +193,5 @@ export async function getPendingFollowups(): Promise<ActivityWithContact[]> {
     Query.limit(200),
   ]);
 
-  return res.documents.map((d) => fromDoc<ActivityWithContact>(d));
+  return res.documents.map((d) => parseDoc(ActivitySchema,d));
 }

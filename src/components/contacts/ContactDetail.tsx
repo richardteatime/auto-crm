@@ -33,6 +33,7 @@ import { formatCurrency, formatDate, formatRelativeDate, cleanPhoneForWhatsApp, 
 import { ACTIVITY_TYPE_CONFIG, SOURCE_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 import type { Temperature, ActivityType, LeadSource } from "@/types";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const activityIcons: Record<string, typeof Phone> = {
   call: Phone,
@@ -91,6 +92,7 @@ export function ContactDetailClient({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [internalNotes, setInternalNotes] = useState(contact.notes || "");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);
@@ -120,11 +122,10 @@ export function ContactDetailClient({
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Sei sicuro di voler eliminare questo contatto? Questa azione non può essere annullata.")) {
-      return;
-    }
+  const handleDelete = () => setShowDeleteDialog(true);
 
+  const handleConfirmDelete = async () => {
+    setShowDeleteDialog(false);
     try {
       const res = await fetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Errore durante l'eliminazione");
@@ -504,6 +505,15 @@ export function ContactDetailClient({
           router.refresh();
         }}
         preselectedContactId={contact.id}
+      />
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Elimina contatto"
+        description="Sei sicuro di voler eliminare questo contatto? Questa azione non può essere annullata."
+        onConfirm={handleConfirmDelete}
+        destructive
       />
     </div>
   );

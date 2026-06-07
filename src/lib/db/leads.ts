@@ -1,5 +1,5 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type {
   Lead,
@@ -7,17 +7,19 @@ import type {
   LeadPipelineStage,
   LeadStatus,
 } from "@/lib/leads/types";
+import { parseDoc } from "./parse-doc";
+import { LeadSchema } from "./schemas";
 
-function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
-  void createdAt;
-  void updatedAt;
-  return {
-    id: $id,
-    createdAt: new Date($createdAt),
-    updatedAt: new Date($updatedAt),
-    ...rest,
-  } as T;
+function isConflictError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  const code = (error as { code?: unknown }).code;
+  return (
+    msg.includes("duplicate") ||
+    msg.includes("already exists") ||
+    msg.includes("conflict") ||
+    (typeof code === "number" && code === 409)
+  );
 }
 
 export interface CreateLeadInput {
@@ -48,13 +50,20 @@ export interface CreateLeadInput {
   bookingLinkId?: string | null;
 }
 
-export async function listLeads(filters?: {
-  pipelineStage?: string;
-  status?: string;
-  category?: string;
-  search?: string;
-}): Promise<Lead[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listLeads(
+  filters?: {
+    pipelineStage?: string;
+    status?: string;
+    category?: string;
+    search?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<Lead[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.pipelineStage) {
     queries.push(Query.equal("pipelineStage", filters.pipelineStage));
@@ -70,13 +79,13 @@ export async function listLeads(filters?: {
   }
 
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.leads, queries);
-  return res.documents.map((d) => fromDoc<Lead>(d));
+  return res.documents.map((d) => parseDoc(LeadSchema,d));
 }
 
 export async function getLead(id: string): Promise<Lead | null> {
   try {
     const doc = await databases.getDocument(DB_ID, COLLECTIONS.leads, id);
-    return fromDoc<Lead>(doc);
+    return parseDoc(LeadSchema,doc);
   } catch {
     return null;
   }
@@ -84,41 +93,52 @@ export async function getLead(id: string): Promise<Lead | null> {
 
 export async function createLead(data: CreateLeadInput): Promise<Lead> {
   const now = new Date().toISOString();
-  const doc = await databases.createDocument(
-    DB_ID,
-    COLLECTIONS.leads,
-    ID.unique(),
-    {
-      firstName: data.firstName ?? null,
-      lastName: data.lastName ?? null,
-      fullName: data.fullName,
-      email: data.email ?? null,
-      phone: data.phone ?? null,
-      company: data.company ?? null,
-      businessName: data.businessName ?? null,
-      website: data.website ?? null,
-      projectType: data.projectType ?? null,
-      category: data.category ?? "unknown",
-      source: data.source ?? "email",
-      formName: data.formName ?? null,
-      message: data.message ?? null,
-      rawSubject: data.rawSubject ?? null,
-      rawBody: data.rawBody ?? null,
-      customFields: data.customFields ? JSON.stringify(data.customFields) : null,
-      status: data.status ?? "new",
-      pipelineStage: data.pipelineStage ?? "prospect",
-      assignedTo: data.assignedTo ?? null,
-      leadScore: data.leadScore ?? 0,
-      contactId: data.contactId ?? null,
-      landingPageId: data.landingPageId ?? null,
-      formId: data.formId ?? null,
-      funnelId: data.funnelId ?? null,
-      bookingLinkId: data.bookingLinkId ?? null,
-      createdAt: now,
-      updatedAt: now,
-    },
-  );
-  return fromDoc<Lead>(doc);
+  try {
+    const doc = await databases.createDocument(
+      DB_ID,
+      COLLECTIONS.leads,
+      ID.unique(),
+      {
+        firstName: data.firstName ?? null,
+        lastName: data.lastName ?? null,
+        fullName: data.fullName,
+        email: data.email ?? null,
+        phone: data.phone ?? null,
+        company: data.company ?? null,
+        businessName: data.businessName ?? null,
+        website: data.website ?? null,
+        projectType: data.projectType ?? null,
+        category: data.category ?? "unknown",
+        source: data.source ?? "email",
+        formName: data.formName ?? null,
+        message: data.message ?? null,
+        rawSubject: data.rawSubject ?? null,
+        rawBody: data.rawBody ?? null,
+        customFields: data.customFields ? JSON.stringify(data.customFields) : null,
+        status: data.status ?? "new",
+        pipelineStage: data.pipelineStage ?? "prospect",
+        assignedTo: data.assignedTo ?? null,
+        leadScore: data.leadScore ?? 0,
+        contactId: data.contactId ?? null,
+        landingPageId: data.landingPageId ?? null,
+        formId: data.formId ?? null,
+        funnelId: data.funnelId ?? null,
+        bookingLinkId: data.bookingLinkId ?? null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+    return parseDoc(LeadSchema,doc);
+  } catch (error: unknown) {
+    if (isConflictError(error)) {
+      const existing = await findDuplicateLead({
+        email: data.email,
+        phone: data.phone,
+      });
+      if (existing) return existing;
+    }
+    throw error;
+  }
 }
 
 export async function updateLead(
@@ -171,7 +191,7 @@ export async function updateLead(
     id,
     cleanData,
   );
-  return fromDoc<Lead>(doc);
+  return parseDoc(LeadSchema,doc);
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +217,7 @@ export async function findDuplicateLead(criteria: {
         Query.limit(1),
       ]);
       if (res.documents.length > 0) {
-        return fromDoc<Lead>(res.documents[0]);
+        return parseDoc(LeadSchema,res.documents[0]);
       }
     } catch {
       // ignore and try next criterion

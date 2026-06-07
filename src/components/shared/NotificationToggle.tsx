@@ -10,6 +10,7 @@ const NOTIFICATION_STORAGE_EVENT = "crm-notifications-change";
 const subscribeToMount = () => () => {};
 
 function subscribeToNotificationPreference(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", callback);
   window.addEventListener(NOTIFICATION_STORAGE_EVENT, callback);
   return () => {
@@ -19,10 +20,12 @@ function subscribeToNotificationPreference(callback: () => void) {
 }
 
 function getNotificationPreference() {
+  if (typeof window === "undefined") return false;
   return localStorage.getItem(NOTIFICATION_STORAGE_KEY) === "true";
 }
 
 function setNotificationPreference(enabled: boolean) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(NOTIFICATION_STORAGE_KEY, String(enabled));
   window.dispatchEvent(new Event(NOTIFICATION_STORAGE_EVENT));
 }

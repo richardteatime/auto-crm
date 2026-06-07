@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getActivity, updateActivity, deleteActivity } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { notifyAssignment } from "@/lib/notify";
@@ -8,6 +9,20 @@ function isNotFoundError(error: unknown): boolean {
   const msg = error.message;
   return msg.includes("404") || msg.includes("not found") || msg.includes("NOT_FOUND");
 }
+
+const BodySchema = z.object({
+  completedAt: z.union([z.string().datetime(), z.boolean(), z.null()]).optional(),
+  description: z.string().min(1).optional(),
+  scheduledAt: z.union([z.string().datetime(), z.null()]).optional(),
+  type: z.string().optional(),
+  contactId: z.string().optional(),
+  dealId: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  attachments: z.array(z.record(z.string(), z.unknown())).optional().nullable(),
+  assignedTo: z.string().optional().nullable(),
+  startAt: z.union([z.string().datetime(), z.null()]).optional(),
+  endAt: z.union([z.string().datetime(), z.null()]).optional(),
+});
 
 export async function PUT(
   request: NextRequest,
@@ -25,56 +40,58 @@ export async function PUT(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+
   const updateData: Record<string, unknown> = {};
 
-  if (body.completedAt !== undefined) {
-    if (body.completedAt === null || body.completedAt === true) {
+  if (parsed.data.completedAt !== undefined) {
+    if (parsed.data.completedAt === null || parsed.data.completedAt === true) {
       updateData.completedAt = new Date();
       updateData.isCompleted = true;
-    } else if (typeof body.completedAt === "string") {
-      const parsed = new Date(body.completedAt);
-      if (isNaN(parsed.getTime())) {
+    } else if (typeof parsed.data.completedAt === "string") {
+      const parsedDate = new Date(parsed.data.completedAt);
+      if (isNaN(parsedDate.getTime())) {
         return NextResponse.json(
           { error: "completedAt deve essere una data valida" },
           { status: 400 }
         );
       }
-      updateData.completedAt = parsed;
+      updateData.completedAt = parsedDate;
       updateData.isCompleted = true;
     }
   }
 
-  if (body.description !== undefined) {
-    if (typeof body.description !== "string" || !body.description.trim()) {
-      return NextResponse.json(
-        { error: "description deve essere un testo non vuoto" },
-        { status: 400 }
-      );
-    }
-    updateData.description = body.description;
+  if (parsed.data.description !== undefined) {
+    updateData.description = parsed.data.description;
   }
 
-  if (body.scheduledAt !== undefined) {
-    if (body.scheduledAt === null) {
+  if (parsed.data.scheduledAt !== undefined) {
+    if (parsed.data.scheduledAt === null) {
       updateData.scheduledAt = null;
-    } else if (typeof body.scheduledAt === "string") {
-      const parsed = new Date(body.scheduledAt);
-      if (!isNaN(parsed.getTime())) updateData.scheduledAt = parsed;
+    } else {
+      const parsedDate = new Date(parsed.data.scheduledAt);
+      if (!isNaN(parsedDate.getTime())) updateData.scheduledAt = parsedDate;
     }
   }
 
-  if (body.type !== undefined) updateData.type = body.type;
-  if (body.contactId !== undefined) updateData.contactId = body.contactId;
-  if (body.dealId !== undefined) updateData.dealId = body.dealId ?? null;
-  if (body.notes !== undefined) updateData.notes = body.notes ?? null;
-  if (body.attachments !== undefined) updateData.attachments = body.attachments ?? null;
-  if (body.assignedTo !== undefined) updateData.assignedTo = body.assignedTo ?? null;
+  if (parsed.data.type !== undefined) updateData.type = parsed.data.type;
+  if (parsed.data.contactId !== undefined) updateData.contactId = parsed.data.contactId;
+  if (parsed.data.dealId !== undefined) updateData.dealId = parsed.data.dealId ?? null;
+  if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
+  if (parsed.data.attachments !== undefined) updateData.attachments = parsed.data.attachments ?? null;
+  if (parsed.data.assignedTo !== undefined) updateData.assignedTo = parsed.data.assignedTo ?? null;
 
-  if (body.startAt !== undefined) {
-    updateData.startAt = body.startAt ? new Date(body.startAt) : null;
+  if (parsed.data.startAt !== undefined) {
+    updateData.startAt = parsed.data.startAt ? new Date(parsed.data.startAt) : null;
   }
-  if (body.endAt !== undefined) {
-    updateData.endAt = body.endAt ? new Date(body.endAt) : null;
+  if (parsed.data.endAt !== undefined) {
+    updateData.endAt = parsed.data.endAt ? new Date(parsed.data.endAt) : null;
   }
 
   if (Object.keys(updateData).length === 0) {

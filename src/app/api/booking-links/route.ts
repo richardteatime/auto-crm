@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listBookingLinks, createBookingLink } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  name: z.string().min(1),
+  assignedTo: z.string().optional(),
+  durationMinutes: z.number().int().positive().optional(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -28,22 +35,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name) {
-    return NextResponse.json({ error: "Il nome è obbligatorio" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
 
-  const assignedTo =
-    typeof body.assignedTo === "string" && body.assignedTo.trim()
-      ? body.assignedTo.trim()
-      : auth.user.id;
+  const assignedTo = parsed.data.assignedTo?.trim() || auth.user.id;
 
   try {
     const link = await createBookingLink({
-      name,
+      name: parsed.data.name.trim(),
       assignedTo,
-      durationMinutes:
-        typeof body.durationMinutes === "number" ? body.durationMinutes : undefined,
+      durationMinutes: parsed.data.durationMinutes,
       createdBy: auth.user.id,
     });
     return NextResponse.json(link, { status: 201 });

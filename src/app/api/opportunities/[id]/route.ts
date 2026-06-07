@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getOpportunity, updateOpportunity, deleteOpportunity } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  attachments: z.array(z.record(z.string(), z.unknown())).optional().nullable(),
+  value: z.number().optional().nullable(),
+  status: z.string().optional(),
+});
 
 export async function GET(
   _req: NextRequest,
@@ -31,13 +41,21 @@ export async function PUT(
   const existing = await getOpportunity(id);
   if (!existing) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });
 
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+
   const patch: Record<string, unknown> = {};
-  if (body.title !== undefined) patch.title = body.title;
-  if (body.description !== undefined) patch.description = body.description;
-  if (body.notes !== undefined) patch.notes = body.notes;
-  if (body.attachments !== undefined) patch.attachments = body.attachments;
-  if (body.value !== undefined) patch.value = body.value != null ? Math.round(body.value * 100) : null;
-  if (body.status !== undefined) patch.status = body.status;
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title;
+  if (parsed.data.description !== undefined) patch.description = parsed.data.description;
+  if (parsed.data.notes !== undefined) patch.notes = parsed.data.notes;
+  if (parsed.data.attachments !== undefined) patch.attachments = parsed.data.attachments;
+  if (parsed.data.value !== undefined) patch.value = parsed.data.value != null ? Math.round(parsed.data.value * 100) : null;
+  if (parsed.data.status !== undefined) patch.status = parsed.data.status;
 
   try {
     const result = await updateOpportunity(id, patch);

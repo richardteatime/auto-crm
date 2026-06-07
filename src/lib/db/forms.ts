@@ -24,9 +24,12 @@ function fromDoc(doc: Models.Document): CrmForm {
   };
 }
 
-export async function listForms(): Promise<CrmForm[]> {
+export async function listForms(
+  pagination?: { offset?: number; limit?: number },
+): Promise<CrmForm[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.forms, [
-    Query.limit(500),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ]);
   return res.documents.map(fromDoc);

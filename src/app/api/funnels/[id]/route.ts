@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { deleteFunnel, getFunnel, updateFunnel } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import type { FunnelStatus } from "@/lib/capture/types";
 
-const STATUSES: FunnelStatus[] = ["draft", "active", "archived"];
+const BodySchema = z.object({
+  name: z.string().min(1).optional(),
+  steps: z.string().optional(),
+  thankYouPageId: z.string().nullable().optional(),
+  status: z.enum(["draft", "active", "archived"]).optional(),
+});
 
 export async function GET(
   request: NextRequest,
@@ -33,26 +38,29 @@ export async function PUT(
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
   const patch: Parameters<typeof updateFunnel>[1] = {};
-  if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim();
-  if (typeof body.steps === "string") {
+  if (parsed.data.name !== undefined) patch.name = parsed.data.name.trim();
+  if (parsed.data.steps !== undefined) {
     try {
-      const parsed = JSON.parse(body.steps);
-      if (!Array.isArray(parsed)) throw new Error();
-      patch.steps = body.steps;
+      const parsedSteps = JSON.parse(parsed.data.steps);
+      if (!Array.isArray(parsedSteps)) throw new Error();
+      patch.steps = parsed.data.steps;
     } catch {
       return NextResponse.json({ error: "Step non validi" }, { status: 400 });
     }
   }
-  if (body.thankYouPageId === null || typeof body.thankYouPageId === "string") {
-    patch.thankYouPageId = body.thankYouPageId || null;
+  if (parsed.data.thankYouPageId !== undefined) {
+    patch.thankYouPageId = parsed.data.thankYouPageId;
   }
-  if (typeof body.status === "string") {
-    if (!STATUSES.includes(body.status as FunnelStatus)) {
-      return NextResponse.json({ error: "Stato non valido" }, { status: 400 });
-    }
-    patch.status = body.status as FunnelStatus;
-  }
+  if (parsed.data.status !== undefined) patch.status = parsed.data.status;
 
   try {
     return NextResponse.json(await updateFunnel(id, patch));

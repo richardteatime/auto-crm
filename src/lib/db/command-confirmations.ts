@@ -126,13 +126,16 @@ export async function createCommandConfirmation(data: {
   return fromDoc(doc);
 }
 
-export async function listPendingCommandConfirmations(params: {
-  source: string;
-  conversationId: string;
-  operatorId?: string | null;
-  senderTelegramId?: string | null;
-  limit?: number;
-}): Promise<CommandConfirmation[]> {
+export async function listPendingCommandConfirmations(
+  params: {
+    source: string;
+    conversationId: string;
+    operatorId?: string | null;
+    senderTelegramId?: string | null;
+    limit?: number;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<CommandConfirmation[]> {
   const res = await databases.listDocuments(
     DB_ID,
     COLLECTIONS.commandConfirmations,
@@ -141,7 +144,8 @@ export async function listPendingCommandConfirmations(params: {
       Query.equal("source", params.source),
       Query.equal("conversationId", params.conversationId),
       Query.orderDesc("$createdAt"),
-      Query.limit(params.limit ?? 10),
+      Query.limit(pagination?.limit ?? params.limit ?? 10),
+      Query.offset(pagination?.offset ?? 0),
     ],
   );
 

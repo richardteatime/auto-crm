@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   format,
   startOfMonth,
@@ -43,9 +43,12 @@ interface CalendarProps {
 }
 
 export function ActivityCalendar({ activities, onEdit }: CalendarProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setCurrentMonth(new Date()), []);
 
   const days = useMemo(() => {
+    if (!currentMonth) return [];
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
     return eachDayOfInterval({ start, end });
@@ -68,6 +71,10 @@ export function ActivityCalendar({ activities, onEdit }: CalendarProps) {
   }, [activities]);
 
   const weekDays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+
+  if (!currentMonth) {
+    return <div className="h-[300px] animate-pulse bg-muted rounded" />;
+  }
 
   return (
     <div className="space-y-4">

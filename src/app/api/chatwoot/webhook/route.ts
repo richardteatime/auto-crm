@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyChatwootWebhook } from "@/lib/chatwoot/verify";
 import { normalizeChatwootMessage } from "@/lib/chatwoot/normalize-message";
 import { createChatwootMessage } from "@/lib/db/chatwoot-messages";
@@ -21,6 +22,8 @@ import type { ChatwootMessagePayload } from "@/lib/chatwoot/types";
  * - Permission check: allows active CRM operators, with legacy admin fallback
  * - Forwards to Hermes Agent for natural-language CRM interaction
  */
+
+const BodySchema = z.record(z.string(), z.unknown());
 
 // Simple in-memory rate limiter
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -72,6 +75,14 @@ export async function POST(request: NextRequest) {
     payload = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
+  }
+
+  const parsed = BodySchema.safeParse(payload);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
 
   // Only handle message_created events for now

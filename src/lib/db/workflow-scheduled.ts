@@ -13,6 +13,8 @@ function fromDoc(doc: Models.Document): WorkflowScheduled {
     executeAt: new Date(rest.executeAt ?? $createdAt),
     payload: rest.payload ?? "{}",
     status: (rest.status ?? "pending") as ScheduledStatus,
+    workerId: rest.workerId ?? undefined,
+    startedAt: rest.startedAt ? new Date(rest.startedAt) : undefined,
     createdAt: new Date($createdAt),
   };
 }
@@ -20,8 +22,13 @@ function fromDoc(doc: Models.Document): WorkflowScheduled {
 export async function listWorkflowScheduled(
   status?: ScheduledStatus,
   before?: Date,
+  pagination?: { offset?: number; limit?: number },
 ): Promise<WorkflowScheduled[]> {
-  const queries = [Query.limit(500), Query.orderAsc("executeAt")];
+  const queries = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderAsc("executeAt"),
+  ];
   if (status) queries.push(Query.equal("status", status));
   if (before) queries.push(Query.lessThanEqual("executeAt", before.toISOString()));
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.workflowScheduled, queries);
@@ -63,6 +70,8 @@ export async function updateWorkflowScheduled(
     status: ScheduledStatus;
     executeAt: string;
     payload: string;
+    workerId: string;
+    startedAt: string;
   }>,
 ): Promise<WorkflowScheduled> {
   const payload: Record<string, unknown> = { ...data };

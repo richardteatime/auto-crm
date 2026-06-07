@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSession } from "@/lib/auth";
 import {
   setFinanceCookie,
@@ -7,17 +8,23 @@ import {
   isFinanceUser,
 } from "@/lib/finance-auth";
 
+const BodySchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
-    if (!email || !password) {
+    const body = await request.json();
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Email e password obbligatorie" },
+        { error: "Dati non validi", issues: parsed.error.issues },
         { status: 400 }
       );
     }
 
-    const { userId } = await createSession(email, password);
+    const { userId } = await createSession(parsed.data.email, parsed.data.password);
 
     if (!isFinanceUser(userId)) {
       return NextResponse.json(

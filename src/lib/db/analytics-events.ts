@@ -43,12 +43,19 @@ export async function createAnalyticsEvent(data: {
   });
 }
 
-export async function listAnalyticsEvents(filters?: {
-  assetType?: AnalyticsAssetType;
-  assetId?: string;
-  since?: Date | string;
-}): Promise<AnalyticsEvent[]> {
-  const queries: string[] = [Query.limit(5000), Query.orderDesc("$createdAt")];
+export async function listAnalyticsEvents(
+  filters?: {
+    assetType?: AnalyticsAssetType;
+    assetId?: string;
+    since?: Date | string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<AnalyticsEvent[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 5000),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
   if (filters?.assetType) queries.push(Query.equal("assetType", filters.assetType));
   if (filters?.assetId) queries.push(Query.equal("assetId", filters.assetId));
   if (filters?.since) {

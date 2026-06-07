@@ -20,6 +20,7 @@ export interface ExecutorResult {
   runId: string | null;
   status: "completed" | "failed" | "scheduled";
   error?: string;
+  trace?: Array<{ nodeId: string; nodeType: string; status: string; error?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,41 +42,50 @@ function buildAdjacency(edges: FlowEdge[]): Map<string, FlowEdge[]> {
 // ---------------------------------------------------------------------------
 
 export class WorkflowExecutor {
+  private dryRun: boolean;
+
+  constructor(opts?: { dryRun?: boolean }) {
+    this.dryRun = opts?.dryRun ?? false;
+  }
+
   async run(workflow: Workflow, payload: unknown): Promise<ExecutorResult> {
-    const run = await createWorkflowRun({
-      workflowId: workflow.id,
-      triggerType: workflow.triggerType,
-      triggerPayload: JSON.stringify(payload),
-      status: "running",
-    });
+    const runId = this.dryRun
+      ? `dry-run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      : (await createWorkflowRun({
+          workflowId: workflow.id,
+          triggerType: workflow.triggerType,
+          triggerPayload: JSON.stringify(payload),
+          status: "running",
+        })).id;
 
     try {
-      const result = await this.executeGraph(workflow, payload, run.id);
+      const result = await this.executeGraph(workflow, payload, runId);
 
-      if (result.status === "scheduled") {
-        await updateWorkflowRun(run.id, { status: "scheduled" });
-        return { runId: run.id, status: "scheduled" };
+      if (!this.dryRun) {
+        if (result.status === "scheduled") {
+          await updateWorkflowRun(runId, { status: "scheduled" });
+        } else {
+          await updateWorkflowRun(runId, {
+            status: result.status,
+            completedAt: new Date().toISOString(),
+            error: result.error ?? null,
+          });
+        }
       }
 
-      await updateWorkflowRun(run.id, {
-        status: result.status,
-        completedAt: new Date().toISOString(),
-        error: result.error ?? null,
-      });
-
-      return { runId: run.id, status: result.status, error: result.error };
+      return { runId, status: result.status, error: result.error, trace: result.trace };
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
-      await updateWorkflowRun(run.id, { status: "failed", error: err });
-      return { runId: run.id, status: "failed", error: err };
+      if (!this.dryRun) {
+        await updateWorkflowRun(runId, { status: "failed", error: err });
+      }
+      return { runId, status: "failed", error: err };
     }
   }
 
   async runTest(workflow: Workflow, payload: unknown): Promise<ExecutorResult> {
-    // Test runs are executed exactly like real runs so the user can inspect
-    // logs and behaviour in the test panel. The only difference is semantic:
-    // the frontend labels them as "Test".
-    return this.run(workflow, payload);
+    const testExecutor = new WorkflowExecutor({ dryRun: true });
+    return testExecutor.run(workflow, payload);
   }
 
   async resumeFromScheduled(scheduled: WorkflowScheduled): Promise<ExecutorResult> {
@@ -93,10 +103,8 @@ export class WorkflowExecutor {
     try {
       context = JSON.parse(scheduled.payload) as ExecutionContext;
     } catch {
-      context = {
-        trigger: { type: workflow.triggerType, payload: {} },
-        variables: {},
-      };
+      console.error(`[resumeFromScheduled] JSON.parse failed for scheduled ${scheduled.id}, run ${scheduled.runId}`);
+      return { runId: scheduled.runId, status: "failed", error: "Contesto workflow corrotto o mancante" };
     }
     // Always restore the real workflowId so chained delay nodes can re-schedule.
     context.variables.workflowId = workflow.id;
@@ -135,9 +143,17 @@ export class WorkflowExecutor {
     workflow: Workflow,
     payload: unknown,
     runId: string,
-  ): Promise<{ status: "completed" | "failed" | "scheduled"; error?: string }> {
-    const nodes: FlowNode[] = JSON.parse(workflow.nodes || "[]");
-    const edges: FlowEdge[] = JSON.parse(workflow.edges || "[]");
+  ): Promise<{ status: "completed" | "failed" | "scheduled"; error?: string; trace?: ExecutorResult["trace"] }> {
+    let nodes: FlowNode[] = [];
+    let edges: FlowEdge[] = [];
+    try {
+      const parsedNodes = JSON.parse(workflow.nodes || "[]");
+      const parsedEdges = JSON.parse(workflow.edges || "[]");
+      nodes = Array.isArray(parsedNodes) ? parsedNodes : [];
+      edges = Array.isArray(parsedEdges) ? parsedEdges : [];
+    } catch (e) {
+      return { status: "failed", error: `JSON parse error: ${e instanceof Error ? e.message : String(e)}` };
+    }
 
     if (nodes.length === 0) {
       return { status: "completed" };
@@ -169,28 +185,33 @@ export class WorkflowExecutor {
     adj: Map<string, FlowEdge[]>,
     context: ExecutionContext,
     runId: string,
-  ): Promise<{ status: "completed" | "failed" | "scheduled"; error?: string }> {
+  ): Promise<{ status: "completed" | "failed" | "scheduled"; error?: string; trace?: ExecutorResult["trace"] }> {
     let currentNodeId: string | undefined = startNodeId;
-    const visited = new Set<string>();
+    // Use inStack (not visited) for cycle detection so a future DAG-join
+    // implementation (parallel branches merging back) won’t false-positive.
+    const inStack = new Set<string>();
+    const trace: ExecutorResult["trace"] = this.dryRun ? [] : undefined;
 
     while (currentNodeId) {
-      if (visited.has(currentNodeId)) {
-        return { status: "failed", error: "Ciclo infinito rilevato nel workflow" };
+      if (inStack.has(currentNodeId)) {
+        return { status: "failed", error: "Ciclo infinito rilevato nel workflow", trace };
       }
-      visited.add(currentNodeId);
+      inStack.add(currentNodeId);
 
       const node = nodeMap.get(currentNodeId);
       if (!node) {
-        return { status: "failed", error: `Nodo ${currentNodeId} non trovato` };
+        return { status: "failed", error: `Nodo ${currentNodeId} non trovato`, trace };
       }
 
       const def = getNodeDefinition(node.data.nodeType);
       if (!def) {
+        const err = `Tipo nodo sconosciuto: ${node.data.nodeType}`;
         await this.logExecution(runId, node, {
           status: "failed",
-          error: `Tipo nodo sconosciuto: ${node.data.nodeType}`,
+          error: err,
         });
-        return { status: "failed", error: `Tipo nodo sconosciuto: ${node.data.nodeType}` };
+        trace?.push({ nodeId: node.id, nodeType: String(node.data.nodeType), status: "failed", error: err });
+        return { status: "failed", error: err, trace };
       }
 
       // Inject runtime variables so handlers can reference workflow/run ids
@@ -203,6 +224,7 @@ export class WorkflowExecutor {
         nodeType: node.data.nodeType,
         config: node.data.config,
         context,
+        dryRun: this.dryRun,
       };
 
       const logInput = JSON.stringify({ config: node.data.config, variables: context.variables });
@@ -219,10 +241,14 @@ export class WorkflowExecutor {
         Object.assign(context.variables, result.output);
       }
 
-      await this.logExecution(runId, node, result, logInput);
+      if (!this.dryRun) {
+        await this.logExecution(runId, node, result, logInput);
+      }
+
+      trace?.push({ nodeId: node.id, nodeType: node.data.nodeType, status: result.status, error: result.error });
 
       if (result.status === "failed") {
-        return { status: "failed", error: result.error };
+        return { status: "failed", error: result.error, trace };
       }
 
       // Determine next node
@@ -253,11 +279,11 @@ export class WorkflowExecutor {
 
       // Delay nodes schedule a future resume — stop traversal now
       if (def.category === "delay" && result.status === "ok") {
-        return { status: "scheduled" };
+        return { status: "scheduled", trace };
       }
     }
 
-    return { status: "completed" };
+    return { status: "completed", trace };
   }
 
   private async logExecution(

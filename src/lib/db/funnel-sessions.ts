@@ -74,10 +74,14 @@ export async function getFunnelSession(
   return res.documents.length ? fromDoc(res.documents[0]) : null;
 }
 
-export async function listFunnelSessions(funnelId: string): Promise<FunnelSession[]> {
+export async function listFunnelSessions(
+  funnelId: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<FunnelSession[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.funnelSessions, [
     Query.equal("funnelId", funnelId),
-    Query.limit(1000),
+    Query.limit(pagination?.limit ?? 1000),
+    Query.offset(pagination?.offset ?? 0),
   ]);
   return res.documents.map(fromDoc);
 }

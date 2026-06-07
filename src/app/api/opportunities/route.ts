@@ -1,20 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listOpportunities, createOpportunity } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const QuerySchema = z.object({
+  contactId: z.string().optional(),
+  status: z.string().optional(),
+  format: z.string().optional(),
+});
+
+const BodySchema = z.object({
+  contactId: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  attachments: z.string().optional().nullable(),
+  value: z.number().optional().nullable(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
-  const contactId = searchParams.get("contactId") || undefined;
-  const status = searchParams.get("status") || undefined;
+  const queryObj = Object.fromEntries(searchParams.entries());
+  const parsedQuery = QuerySchema.safeParse(queryObj);
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Parametri non validi", issues: parsedQuery.error.issues },
+      { status: 400 }
+    );
+  }
 
   try {
-    const results = await listOpportunities({ contactId, status });
+    const results = await listOpportunities({
+      contactId: parsedQuery.data.contactId,
+      status: parsedQuery.data.status,
+    });
 
-    const format = searchParams.get("format");
-    if (format === "csv") {
+    if (parsedQuery.data.format === "csv") {
       const header = "ID,Titolo,Stato,Valore,Descrizione,Note,Creato\n";
       const rows = results.map((o) => [
         o.id,
@@ -51,18 +75,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { contactId, title, description, notes, attachments, value } = body;
-  if (!contactId) return NextResponse.json({ error: "contactId obbligatorio" }, { status: 400 });
-  if (!title?.trim()) return NextResponse.json({ error: "Il titolo è obbligatorio" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
 
   try {
     const result = await createOpportunity({
-      contactId,
-      title: title.trim(),
-      description: description || null,
-      notes: notes || null,
-      attachments: attachments || null,
-      value: value != null ? Math.round(value * 100) : null,
+      contactId: parsed.data.contactId,
+      title: parsed.data.title.trim(),
+      description: parsed.data.description ?? null,
+      notes: parsed.data.notes ?? null,
+      attachments: parsed.data.attachments ?? null,
+      value: parsed.data.value != null ? Math.round(parsed.data.value * 100) : null,
     });
     return NextResponse.json(result, { status: 201 });
   } catch {

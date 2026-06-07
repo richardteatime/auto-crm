@@ -15,12 +15,19 @@ function fromDoc<T>(doc: Models.Document): T {
   } as T;
 }
 
-export async function listAutomationRules(filters?: {
-  triggerType?: AutomationTrigger;
-  enabledOnly?: boolean;
-}): Promise<AutomationRule[]> {
+export async function listAutomationRules(
+  filters?: {
+    triggerType?: AutomationTrigger;
+    enabledOnly?: boolean;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<AutomationRule[]> {
   try {
-    const queries: string[] = [Query.limit(200), Query.orderDesc("$createdAt")];
+    const queries: string[] = [
+      Query.limit(pagination?.limit ?? 200),
+      Query.offset(pagination?.offset ?? 0),
+      Query.orderDesc("$createdAt"),
+    ];
     if (filters?.triggerType) {
       queries.push(Query.equal("triggerType", filters.triggerType));
     }

@@ -1,19 +1,13 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { PipelineStage, PipelineColumn, DealWithContact } from "@/types";
+import { parseDoc } from "./parse-doc";
+import { PipelineStageSchema, DealSchema } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function fromDoc<T>(doc: Models.Document): T {
-  const { $id, ...rest } = doc;
-  return {
-    id: $id,
-    ...(rest as Record<string, unknown>),
-  } as T;
-}
 
 // ---------------------------------------------------------------------------
 // getStages
@@ -24,7 +18,7 @@ export async function getStages(): Promise<PipelineStage[]> {
     Query.orderAsc("order"),
     Query.limit(100),
   ]);
-  return res.documents.map((d) => fromDoc<PipelineStage>(d));
+  return res.documents.map((d) => parseDoc(PipelineStageSchema,d));
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +32,7 @@ export async function getStage(id: string): Promise<PipelineStage | null> {
       COLLECTIONS.pipelineStages,
       id,
     );
-    return fromDoc<PipelineStage>(doc);
+    return parseDoc(PipelineStageSchema,doc);
   } catch {
     return null;
   }
@@ -97,20 +91,25 @@ export async function replaceStages(
     ),
   );
 
-  return created.map((d) => fromDoc<PipelineStage>(d));
+  return created.map((d) => parseDoc(PipelineStageSchema,d));
 }
 
 // ---------------------------------------------------------------------------
 // getFullPipeline
 // ---------------------------------------------------------------------------
 
-export async function getFullPipeline(): Promise<PipelineColumn[]> {
+export async function getFullPipeline(
+  pagination?: { offset?: number; limit?: number },
+): Promise<PipelineColumn[]> {
   const [stages, dealsRes] = await Promise.all([
     getStages(),
-    databases.listDocuments(DB_ID, COLLECTIONS.deals, [Query.limit(500)]),
+    databases.listDocuments(DB_ID, COLLECTIONS.deals, [
+      Query.limit(pagination?.limit ?? 500),
+      Query.offset(pagination?.offset ?? 0),
+    ]),
   ]);
 
-  const allDeals = dealsRes.documents.map((d) => fromDoc<DealWithContact>(d));
+  const allDeals = dealsRes.documents.map((d) => parseDoc(DealSchema, d) as unknown as DealWithContact);
 
   return stages.map((stage) => ({
     ...stage,

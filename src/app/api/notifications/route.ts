@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationsReadByType,
 } from "@/lib/db/notifications";
+
+const BodySchema = z.object({
+  type: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -26,16 +31,24 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
+  let body = {};
   try {
-    let body: { type?: string } = {};
-    try {
-      body = await request.json();
-    } catch {
-      // empty body is fine
-    }
+    body = await request.json();
+  } catch {
+    // empty body is fine
+  }
 
-    if (body.type) {
-      await markNotificationsReadByType(auth.user.id, body.type as "chat_message");
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  try {
+    if (parsed.data.type) {
+      await markNotificationsReadByType(auth.user.id, parsed.data.type as "chat_message");
     } else {
       await markAllNotificationsRead(auth.user.id);
     }

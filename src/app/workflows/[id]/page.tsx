@@ -1,6 +1,11 @@
 import { notFound } from "next/navigation";
 import { getWorkflow } from "@/lib/db";
-import { WorkflowEditor } from "@/components/workflows/WorkflowEditor";
+import nextDynamic from "next/dynamic";
+
+const WorkflowEditor = nextDynamic(
+  () => import("@/components/workflows/WorkflowEditor").then((m) => m.WorkflowEditor),
+  { ssr: false },
+);
 
 export const dynamic = "force-dynamic";
 

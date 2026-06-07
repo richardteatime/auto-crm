@@ -96,12 +96,17 @@ export async function GET(
   const company = loadCompanyConfig();
 
   let items: DbQuoteItem[] = [];
-  try {
-    items = JSON.parse(quote.items) as DbQuoteItem[];
-  } catch {
-    items = [];
+  if (Array.isArray(quote.items)) {
+    items = quote.items as DbQuoteItem[];
+  } else if (typeof quote.items === "string" && quote.items.trim()) {
+    try {
+      items = JSON.parse(quote.items) as DbQuoteItem[];
+    } catch {
+      items = [];
+    }
   }
 
+  const vatRate = typeof quote.vatRate === "number" ? quote.vatRate : 22;
   const setupItem = items.find((i) => i.isSetup);
   const normalItems = items.filter((i) => !i.isSetup);
 
@@ -116,7 +121,7 @@ export async function GET(
 
   // First year: setup + one-time normal + 12 months monthly + 1 year annual
   const firstYearSub = setupSub + oneTimeSub + monthlySub * 12 + annualSub;
-  const firstYearVat = Math.round((firstYearSub * quote.vatRate) / 100);
+  const firstYearVat = Math.round((firstYearSub * vatRate) / 100);
   const firstYearTotal = firstYearSub + firstYearVat;
 
   // Second year onward: only recurring (no setup, no one-time)
@@ -180,7 +185,7 @@ export async function GET(
     ${hasMonthly ? `<div class="total-row"><span>Ricorrente/mese</span><span>${formatEur(monthlySub)}/mese</span></div>` : ""}
     ${hasAnnual ? `<div class="total-row"><span>Ricorrente/anno</span><span>${formatEur(annualSub)}/anno</span></div>` : ""}
     <div class="total-row" style="border-top:1px solid var(--bordo); margin-top:6px; padding-top:8px;"><span>Subtotale primo anno</span><span>${formatEur(firstYearSub)}</span></div>
-    <div class="total-row"><span>IVA (${quote.vatRate}%)</span><span>${formatEur(firstYearVat)}</span></div>
+    <div class="total-row"><span>IVA (${vatRate}%)</span><span>${formatEur(firstYearVat)}</span></div>
     <div class="total-row total-final">
       <span>Totale da corrispondere</span>
       <span>${formatEur(firstYearTotal)}</span>
@@ -431,10 +436,10 @@ export async function GET(
             </div>
             <div class="dati-preventivo">
                 <h2>PREVENTIVO</h2>
-                <p><strong>N° Doc:</strong> ${esc(quote.number)}</p>
+                <p><strong>N° Doc:</strong> ${esc(quote.number ?? "—")}</p>
                 <p><strong>Data:</strong> ${formatDateIt(quote.createdAt)}</p>
                 <p><strong>Valido fino al:</strong> ${formatDateIt(quote.validUntil)}</p>
-                <p><strong>Oggetto:</strong> ${esc(quote.title)}</p>
+                <p><strong>Oggetto:</strong> ${esc(quote.title ?? "Preventivo")}</p>
             </div>
         </header>
 
@@ -464,6 +469,13 @@ export async function GET(
             `}
         </section>
 
+        <!-- DESCRIZIONE PROGETTO (bozza generata dal lead) -->
+        ${quote.generatedText ? `
+        <section class="note">
+            <h3>Descrizione Progetto</h3>
+            <p>${esc(quote.generatedText).replace(/\n/g, "<br>")}</p>
+        </section>` : ""}
+
         <!-- RIGHE OFFERTA -->
         <section class="items-section">
             <h3>Dettaglio Offerta</h3>
@@ -479,7 +491,7 @@ export async function GET(
         <!-- FOOTER -->
         <footer class="footer">
             <p>${footerCompany || "Azienda"}</p>
-            <p>Documento generato il ${formatDateIt(new Date())} | Rif. ${esc(quote.number)}</p>
+            <p>Documento generato il ${formatDateIt(new Date())} | Rif. ${esc(quote.number ?? "—")}</p>
             <p style="font-size:11px; color:#999; margin-top:5px;">Per accettazione: Firma ________________________ Data _______________</p>
         </footer>
     </div>

@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getQuote, updateQuote, deleteQuote } from "@/lib/db/quotes";
 import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+const BodySchema = z.object({
+  title: z.string().min(1).optional(),
+  items: z.array(z.record(z.string(), z.unknown())).optional(),
+  notes: z.string().optional().nullable(),
+  status: z.string().optional(),
+  vatRate: z.number().optional(),
+  validUntil: z.string().datetime().optional().nullable(),
+});
 
 export async function GET(
   _req: NextRequest,
@@ -39,22 +49,21 @@ export async function PUT(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  const { title, items, notes, status, vatRate, validUntil } = body as {
-    title?: string;
-    items?: unknown[];
-    notes?: string | null;
-    status?: string;
-    vatRate?: number;
-    validUntil?: string | null;
-  };
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
 
   const updates: Record<string, unknown> = {};
-  if (title !== undefined) updates.title = title.trim();
-  if (items !== undefined) updates.items = JSON.stringify(items);
-  if (notes !== undefined) updates.notes = notes?.trim() || null;
-  if (status !== undefined) updates.status = status;
-  if (vatRate !== undefined) updates.vatRate = vatRate;
-  if (validUntil !== undefined) updates.validUntil = validUntil ? new Date(validUntil) : null;
+  if (parsed.data.title !== undefined) updates.title = parsed.data.title.trim();
+  if (parsed.data.items !== undefined) updates.items = JSON.stringify(parsed.data.items);
+  if (parsed.data.notes !== undefined) updates.notes = parsed.data.notes?.trim() || null;
+  if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+  if (parsed.data.vatRate !== undefined) updates.vatRate = parsed.data.vatRate;
+  if (parsed.data.validUntil !== undefined) updates.validUntil = parsed.data.validUntil ? new Date(parsed.data.validUntil) : null;
 
   const updated = await updateQuote(id, updates);
 

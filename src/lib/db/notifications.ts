@@ -30,11 +30,15 @@ function fromDoc(doc: Models.Document): AppNotification {
   } as unknown as AppNotification;
 }
 
-export async function listNotifications(userId: string): Promise<AppNotification[]> {
+export async function listNotifications(
+  userId: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<AppNotification[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.notifications, [
     Query.equal("userId", userId),
     Query.orderDesc("$createdAt"),
-    Query.limit(50),
+    Query.limit(pagination?.limit ?? 50),
+    Query.offset(pagination?.offset ?? 0),
   ]);
   return res.documents.map(fromDoc);
 }

@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getForm } from "@/lib/db";
 import { ingestLead } from "@/lib/capture/ingest";
 import { clientIp } from "@/lib/capture/analytics";
 import { rateLimit } from "@/lib/capture/rate-limit";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
+import { corsHeaders } from "@/lib/cors";
 import type { FormField } from "@/lib/capture/types";
+
+const BodySchema = z.object({
+  values: z.record(z.string(), z.unknown()).optional(),
+  landingPageId: z.string().optional(),
+  funnelId: z.string().optional(),
+  sessionId: z.string().optional(),
+});
 
 function parseFields(raw: string): FormField[] {
   try {
@@ -25,19 +34,29 @@ export async function POST(
 ) {
   const { id } = await params;
   const ip = clientIp(request.headers) ?? "unknown";
-  if (!rateLimit(`forms:${ip}`)) {
+  if (!(await rateLimit(`forms:${ip}`))) {
     return NextResponse.json(
       { success: false, error: "Troppe richieste. Riprova più tardi." },
       { status: 429 },
     );
   }
 
-  let body: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ success: false, error: "JSON invalido" }, { status: 400 });
   }
+
+  const parsed = BodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const body = parsed.data as Record<string, unknown>;
 
   const form = await getForm(id);
   if (!form || form.status !== "active") {
@@ -108,17 +127,21 @@ export async function POST(
       },
     );
 
-    triggerWorkflows("form_submitted", {
-      formId: id,
-      leadId: lead.id,
-      contactId: lead.contactId,
-      duplicate,
-      name: mapped.name ?? null,
-      email: mapped.email ?? null,
-      phone: mapped.phone ?? null,
-      company: mapped.company ?? null,
-      message: mapped.message ?? null,
-    });
+    await triggerWorkflows(
+      "form_submitted",
+      {
+        formId: id,
+        leadId: lead.id,
+        contactId: lead.contactId,
+        duplicate,
+        name: mapped.name ?? null,
+        email: mapped.email ?? null,
+        phone: mapped.phone ?? null,
+        company: mapped.company ?? null,
+        message: mapped.message ?? null,
+      },
+      `form_submitted:${lead.id}`,
+    );
 
     return NextResponse.json(
       {
@@ -129,7 +152,7 @@ export async function POST(
       },
       {
         status: 201,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: corsHeaders(request),
       },
     );
   } catch {
@@ -140,12 +163,8 @@ export async function POST(
   }
 }
 
-export function OPTIONS() {
+export function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
+    headers: corsHeaders(request),
   });
 }

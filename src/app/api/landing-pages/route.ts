@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listLandingPages, createLandingPage, getLandingTemplate } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  name: z.string().min(1),
+  templateId: z.string().optional(),
+  config: z.string().optional(),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -28,30 +37,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name) {
-    return NextResponse.json({ error: "Il nome è obbligatorio" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
 
   try {
-    const templateId =
-      typeof body.templateId === "string" && body.templateId.trim()
-        ? body.templateId.trim()
-        : null;
+    const templateId = parsed.data.templateId?.trim() || null;
     const template = templateId ? await getLandingTemplate(templateId) : null;
     if (templateId && !template) {
       return NextResponse.json({ error: "Template non trovato" }, { status: 404 });
     }
     const page = await createLandingPage({
-      name,
+      name: parsed.data.name.trim(),
       templateId,
-      config:
-        typeof body.config === "string"
-          ? body.config
-          : template?.config,
-      metaTitle: typeof body.metaTitle === "string" ? body.metaTitle : undefined,
-      metaDescription:
-        typeof body.metaDescription === "string" ? body.metaDescription : undefined,
+      config: parsed.data.config ?? template?.config,
+      metaTitle: parsed.data.metaTitle,
+      metaDescription: parsed.data.metaDescription,
       createdBy: auth.user.id,
     });
     return NextResponse.json(page, { status: 201 });

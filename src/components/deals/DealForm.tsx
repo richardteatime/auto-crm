@@ -140,7 +140,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
     };
 
     init();
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, initialData, preselectedContactId, reset, setStages, setContacts, setAttachments, setBillingType, setRecurringMonths, setIsPaid]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);

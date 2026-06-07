@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getDeal, updateDeal, deleteDeal } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  title: z.string().optional(),
+  value: z.number().optional(),
+  stageId: z.string().optional(),
+  contactId: z.string().optional(),
+  expectedClose: z.string().datetime().optional().nullable(),
+  probability: z.number().min(0).max(100).optional(),
+  notes: z.string().optional().nullable(),
+  attachments: z.array(z.record(z.string(), z.unknown())).optional(),
+  billingType: z.enum(["una_tantum", "mensile", "annuale"]).optional(),
+  recurringMonths: z.number().optional().nullable(),
+  isPaid: z.boolean().optional(),
+});
 
 export async function GET(
   _request: NextRequest,
@@ -55,22 +70,30 @@ export async function PUT(
       );
     }
 
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dati non validi", issues: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
     const updateData: Record<string, unknown> = {};
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.value !== undefined) updateData.value = body.value;
-    if (body.stageId !== undefined) updateData.stageId = body.stageId;
-    if (body.contactId !== undefined) updateData.contactId = body.contactId;
-    if (body.expectedClose !== undefined) {
-      updateData.expectedClose = body.expectedClose ? new Date(body.expectedClose) : null;
+    if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
+    if (parsed.data.value !== undefined) updateData.value = parsed.data.value;
+    if (parsed.data.stageId !== undefined) updateData.stageId = parsed.data.stageId;
+    if (parsed.data.contactId !== undefined) updateData.contactId = parsed.data.contactId;
+    if (parsed.data.expectedClose !== undefined) {
+      updateData.expectedClose = parsed.data.expectedClose ? new Date(parsed.data.expectedClose) : null;
     }
-    if (body.probability !== undefined) {
-      updateData.probability = Math.max(0, Math.min(100, Number(body.probability)));
+    if (parsed.data.probability !== undefined) {
+      updateData.probability = Math.max(0, Math.min(100, parsed.data.probability));
     }
-    if (body.notes !== undefined) updateData.notes = body.notes;
-    if (body.attachments !== undefined) updateData.attachments = JSON.stringify(body.attachments ?? []);
-    if (body.billingType !== undefined) updateData.billingType = ["una_tantum", "mensile", "annuale"].includes(body.billingType) ? body.billingType : "una_tantum";
-    if (body.recurringMonths !== undefined) updateData.recurringMonths = Number(body.recurringMonths) || 12;
-    if (body.isPaid !== undefined) updateData.isPaid = !!body.isPaid;
+    if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
+    if (parsed.data.attachments !== undefined) updateData.attachments = JSON.stringify(parsed.data.attachments ?? []);
+    if (parsed.data.billingType !== undefined) updateData.billingType = parsed.data.billingType;
+    if (parsed.data.recurringMonths !== undefined) updateData.recurringMonths = parsed.data.recurringMonths ?? 12;
+    if (parsed.data.isPaid !== undefined) updateData.isPaid = parsed.data.isPaid;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(existing);

@@ -103,6 +103,8 @@ export interface WorkflowScheduled {
   executeAt: Date;
   payload: string; // JSON (execution context)
   status: ScheduledStatus;
+  workerId?: string;
+  startedAt?: Date;
   createdAt: Date;
 }
 
@@ -143,6 +145,7 @@ export interface NodeExecutorInput {
   nodeType: string;
   config: Record<string, unknown>;
   context: ExecutionContext;
+  dryRun?: boolean;
 }
 
 export interface NodeExecutorOutput {

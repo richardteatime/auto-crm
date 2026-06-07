@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   getFullPipeline,
   replaceStages,
@@ -9,6 +10,23 @@ import {
 } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
+
+const MoveDealSchema = z.object({
+  dealId: z.string().min(1),
+  stageId: z.string().min(1),
+});
+
+const StageSchema = z.object({
+  name: z.string().min(1),
+  order: z.number(),
+  color: z.string().optional(),
+  isWon: z.boolean().optional(),
+  isLost: z.boolean().optional(),
+});
+
+const ReplaceStagesSchema = z.object({
+  stages: z.array(StageSchema),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -36,10 +54,10 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  // Update a single deal's stage (drag and drop)
-  if (body.dealId && body.stageId) {
+  const moveParsed = MoveDealSchema.safeParse(body);
+  if (moveParsed.success) {
     try {
-      const existing = await getDeal(body.dealId);
+      const existing = await getDeal(moveParsed.data.dealId);
       if (!existing) {
         return NextResponse.json(
           { error: "Trattativa non trovata" },
@@ -48,18 +66,18 @@ export async function PUT(request: NextRequest) {
       }
 
       const previousStageId = existing.stageId;
-      const result = await updateDeal(body.dealId, {
-        stageId: body.stageId,
+      const result = await updateDeal(moveParsed.data.dealId, {
+        stageId: moveParsed.data.stageId,
       });
 
-      triggerWorkflows("deal_moved", {
-        dealId: body.dealId,
-        stageId: body.stageId,
+      await triggerWorkflows("deal_moved", {
+        dealId: moveParsed.data.dealId,
+        stageId: moveParsed.data.stageId,
         previousStageId,
         contactId: existing.contactId,
         title: existing.title,
         value: existing.value,
-      });
+      }).catch(() => {});
 
       return NextResponse.json(result);
     } catch (error) {
@@ -76,8 +94,8 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  // Bulk update stages (from /setup or /customize)
-  if (body.stages && Array.isArray(body.stages)) {
+  const stagesParsed = ReplaceStagesSchema.safeParse(body);
+  if (stagesParsed.success) {
     try {
       const existingDeals = await listDeals();
       if (existingDeals.length > 0) {
@@ -91,7 +109,7 @@ export async function PUT(request: NextRequest) {
       }
 
       await replaceStages(
-        body.stages.map((stage: { name: string; order: number; color?: string; isWon?: boolean; isLost?: boolean }) => ({
+        stagesParsed.data.stages.map((stage) => ({
           name: stage.name,
           order: stage.order,
           color: stage.color || "#64748b",

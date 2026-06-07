@@ -6,6 +6,7 @@
 // fields and runs authoritative validation.
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import type { FormField, FormStyle } from "@/lib/capture/types";
 import { sendPublicAnalytics } from "@/components/capture/PublicAnalyticsTracker";
 
@@ -95,8 +96,7 @@ export function PublicFormRenderer({
     return (
       <div style={{ fontFamily: style.fontFamily || undefined }}>
         {style.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={style.logoUrl} alt="" style={{ maxHeight: 48, marginBottom: 12 }} />
+          <Image src={style.logoUrl} alt="" width={192} height={48} style={{ maxHeight: 48, marginBottom: 12, objectFit: "contain" }} unoptimized />
         ) : null}
         <div
           className="rounded-xl border p-6 text-center text-sm"
@@ -121,8 +121,7 @@ export function PublicFormRenderer({
       }}
     >
       {style.logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={style.logoUrl} alt="" style={{ maxHeight: 48, marginBottom: 4 }} />
+        <Image src={style.logoUrl} alt="" width={192} height={48} style={{ maxHeight: 48, marginBottom: 4, objectFit: "contain" }} unoptimized />
       ) : null}
       {fields.map((f) => (
         <div key={f.id} className="space-y-1.5">

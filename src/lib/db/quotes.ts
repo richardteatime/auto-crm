@@ -1,6 +1,8 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
+import { parseDoc } from "./parse-doc";
+import { QuoteSchema } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,6 +15,7 @@ export interface Quote {
   title: string;
   items: string; // JSON string
   notes: string | null;
+  generatedText: string | null;
   status: "bozza" | "inviato" | "accettato" | "rifiutato";
   vatRate: number;
   validUntil: string | null;
@@ -34,16 +37,6 @@ function toIsoDate(
   return new Date(d).toISOString();
 }
 
-function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
-  return {
-    id: $id,
-    createdAt: new Date($createdAt),
-    updatedAt: new Date($updatedAt),
-    ...rest,
-  } as T;
-}
-
 async function generateQuoteNumber(): Promise<string> {
   const today = new Date();
   const dateStr = [
@@ -59,11 +52,18 @@ async function generateQuoteNumber(): Promise<string> {
 // listQuotes
 // ---------------------------------------------------------------------------
 
-export async function listQuotes(filters?: {
-  dealId?: string;
-  status?: string;
-}): Promise<Quote[]> {
-  const queries: string[] = [Query.orderDesc("$createdAt"), Query.limit(500)];
+export async function listQuotes(
+  filters?: {
+    dealId?: string;
+    status?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<Quote[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.dealId) {
     queries.push(Query.equal("dealId", filters.dealId));
@@ -73,7 +73,7 @@ export async function listQuotes(filters?: {
   }
 
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.quotes, queries);
-  return res.documents.map((d) => fromDoc<Quote>(d));
+  return res.documents.map((d) => parseDoc(QuoteSchema,d));
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ export async function listQuotes(filters?: {
 export async function getQuote(id: string): Promise<Quote | null> {
   try {
     const doc = await databases.getDocument(DB_ID, COLLECTIONS.quotes, id);
-    return fromDoc<Quote>(doc);
+    return parseDoc(QuoteSchema,doc);
   } catch {
     return null;
   }
@@ -98,6 +98,7 @@ export async function createQuote(data: {
   title: string;
   items?: string;
   notes?: string | null;
+  generatedText?: string | null;
   vatRate?: number;
   validUntil?: Date | string | number | null;
 }): Promise<Quote> {
@@ -120,6 +121,10 @@ export async function createQuote(data: {
     payload.notes = data.notes.trim();
   }
 
+  if (data.generatedText?.trim()) {
+    payload.generatedText = data.generatedText.trim();
+  }
+
   const validUntilIso = toIsoDate(data.validUntil);
   if (validUntilIso) {
     payload.validUntil = validUntilIso;
@@ -131,7 +136,7 @@ export async function createQuote(data: {
     ID.unique(),
     payload,
   );
-  return fromDoc<Quote>(doc);
+  return parseDoc(QuoteSchema,doc);
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +166,7 @@ export async function updateQuote(
     id,
     payload,
   );
-  return fromDoc<Quote>(doc);
+  return parseDoc(QuoteSchema,doc);
 }
 
 // ---------------------------------------------------------------------------

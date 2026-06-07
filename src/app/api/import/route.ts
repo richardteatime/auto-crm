@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createContact } from "@/lib/db/contacts";
-import { isValidEmail } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth";
 
 const MAX_IMPORT_BATCH = 500;
+
+const ContactItemSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  company: z.string().optional().nullable(),
+  source: z.string().optional(),
+  notes: z.string().optional().nullable(),
+});
+
+const BodySchema = z.object({
+  contacts: z.array(ContactItemSchema).max(MAX_IMPORT_BATCH),
+});
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -15,21 +28,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
-  const { contacts: contactList } = body;
 
-  if (!Array.isArray(contactList) || contactList.length === 0) {
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "È richiesto un array di contatti" },
+      { error: "Dati non validi", issues: parsed.error.issues },
       { status: 400 }
     );
   }
 
-  if (contactList.length > MAX_IMPORT_BATCH) {
-    return NextResponse.json(
-      { error: `Massimo ${MAX_IMPORT_BATCH} contatti per importazione` },
-      { status: 400 }
-    );
-  }
+  const contactList = parsed.data.contacts;
 
   const results = {
     imported: 0,
@@ -38,27 +46,15 @@ export async function POST(request: NextRequest) {
   };
 
   for (const contact of contactList) {
-    if (!contact.name) {
-      results.failed++;
-      results.errors.push(`Contatto senza nome`);
-      continue;
-    }
-
-    if (contact.email && !isValidEmail(contact.email)) {
-      results.failed++;
-      results.errors.push(`Email non valida per ${contact.name}`);
-      continue;
-    }
-
     try {
       await createContact({
         name: contact.name,
-        email: contact.email || null,
-        phone: contact.phone || null,
-        company: contact.company || null,
+        email: contact.email ?? null,
+        phone: contact.phone ?? null,
+        company: contact.company ?? null,
         source: contact.source || "import",
-        temperature: contact.temperature || "cold",
-        notes: contact.notes || null,
+        temperature: "cold",
+        notes: contact.notes ?? null,
       });
       results.imported++;
     } catch {

@@ -1,4 +1,5 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listContacts } from "@/lib/db/contacts";
 import { requireAuth } from "@/lib/auth";
 import { listDeals } from "@/lib/db/deals";
@@ -60,14 +61,29 @@ function csvResponse(csv: string, filename: string) {
   });
 }
 
+const QuerySchema = z.object({
+  type: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+});
+
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
-  const type = searchParams.get("type") || "contacts";
-  const fromParam = searchParams.get("from");
-  const toParam = searchParams.get("to");
+  const queryObj = Object.fromEntries(searchParams.entries());
+  const parsedQuery = QuerySchema.safeParse(queryObj);
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Parametri non validi", issues: parsedQuery.error.issues },
+      { status: 400 }
+    );
+  }
+
+  const type = parsedQuery.data.type || "contacts";
+  const fromParam = parsedQuery.data.from ?? null;
+  const toParam = parsedQuery.data.to ?? null;
   const { fromMs, maxMs } = parsePeriod(fromParam, toParam);
   const today = new Date().toISOString().split("T")[0];
   const suffix = fromParam && toParam ? `_${fromParam}_${toParam}` : `_${today}`;

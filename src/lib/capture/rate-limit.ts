@@ -1,14 +1,32 @@
-// Tiny in-memory, per-key fixed-window rate limiter shared by the public
-// capture endpoints (forms, booking, funnels). Process-local — good enough to
-// blunt casual spam on a single instance; swap for a shared store if scaled out.
+import { getRedis } from "@/lib/redis";
 
-const buckets = new Map<string, { count: number; resetAt: number }>();
+// Fallback in-memory buckets when Redis is not configured.
+const memoryBuckets = new Map<string, { count: number; resetAt: number }>();
 
-export function rateLimit(key: string, limit = 20, windowMs = 60_000): boolean {
+/**
+ * Fixed-window rate limiter.
+ * Uses Redis (ioredis) when REDIS_URL is set, otherwise falls back to
+ * in-memory Map. Returns `true` if the request is allowed.
+ */
+export async function rateLimit(
+  key: string,
+  limit = 20,
+  windowMs = 60_000,
+): Promise<boolean> {
+  const redis = getRedis();
+  if (redis) {
+    const redisKey = `rate_limit:${key}`;
+    const current = await redis.incr(redisKey);
+    if (current === 1) {
+      await redis.pexpire(redisKey, windowMs);
+    }
+    return current <= limit;
+  }
+
   const now = Date.now();
-  const entry = buckets.get(key);
+  const entry = memoryBuckets.get(key);
   if (!entry || now > entry.resetAt) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    memoryBuckets.set(key, { count: 1, resetAt: now + windowMs });
     return true;
   }
   if (entry.count >= limit) return false;

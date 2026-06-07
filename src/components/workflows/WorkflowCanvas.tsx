@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ReactFlow,
   Controls,
@@ -25,6 +25,7 @@ import { ConditionNode } from "./nodes/ConditionNode";
 import { DelayNode } from "./nodes/DelayNode";
 import type { FlowNode, FlowEdge } from "@/lib/workflows/types";
 import { getNodeCategory, NODE_TYPE_LABELS } from "@/lib/workflows/types";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const nodeTypes = {
   trigger: TriggerNode,
@@ -56,6 +57,8 @@ export function WorkflowCanvas({
 }: WorkflowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  const [showDeleteEdgeDialog, setShowDeleteEdgeDialog] = useState(false);
+  const [edgeToDelete, setEdgeToDelete] = useState<Edge | null>(null);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -133,14 +136,21 @@ export function WorkflowCanvas({
   // oltre al tasto Canc/Backspace sull'elemento selezionato).
   const onEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: Edge) => {
-      if (typeof window !== "undefined" && window.confirm("Eliminare questa connessione?")) {
-        onEdgesChange(
-          (edges as unknown as Edge[]).filter((e) => e.id !== edge.id) as unknown as FlowEdge[],
-        );
-      }
+      setEdgeToDelete(edge);
+      setShowDeleteEdgeDialog(true);
     },
-    [edges, onEdgesChange],
+    [],
   );
+
+  const handleConfirmDeleteEdge = useCallback(() => {
+    if (edgeToDelete) {
+      onEdgesChange(
+        (edges as unknown as Edge[]).filter((e) => e.id !== edgeToDelete.id) as unknown as FlowEdge[],
+      );
+    }
+    setShowDeleteEdgeDialog(false);
+    setEdgeToDelete(null);
+  }, [edgeToDelete, edges, onEdgesChange]);
 
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
@@ -165,6 +175,15 @@ export function WorkflowCanvas({
         <MiniMap nodeStrokeWidth={3} zoomable pannable />
         <Background gap={12} size={1} />
       </ReactFlow>
+
+      <ConfirmDialog
+        open={showDeleteEdgeDialog}
+        onOpenChange={setShowDeleteEdgeDialog}
+        title="Elimina connessione"
+        description="Eliminare questa connessione?"
+        onConfirm={handleConfirmDeleteEdge}
+        destructive
+      />
     </div>
   );
 }

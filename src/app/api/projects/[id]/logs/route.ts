@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listProjectLogs, createProjectLog, getProject, updateProject } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { notifyAssignment } from "@/lib/notify";
 import type { ProjectStatus } from "@/types";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+const BodySchema = z.object({
+  toStatus: z.string().min(1),
+  notes: z.string().min(1),
+  assignedTo: z.array(z.string()).optional(),
+});
 
 export async function GET(request: NextRequest, { params }: Ctx) {
   const auth = await requireAuth(request);
@@ -26,28 +33,33 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   try {
     const body = await request.json();
-    if (!body.toStatus) return NextResponse.json({ error: "toStatus obbligatorio" }, { status: 400 });
-    if (!body.notes?.trim()) return NextResponse.json({ error: "notes obbligatorio" }, { status: 400 });
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dati non validi", issues: parsed.error.issues },
+        { status: 400 }
+      );
+    }
 
     const project = await getProject(id);
     if (!project) return NextResponse.json({ error: "Progetto non trovato" }, { status: 404 });
 
-    const newAssignedTo: string[] = Array.isArray(body.assignedTo) ? body.assignedTo : [];
+    const newAssignedTo: string[] = parsed.data.assignedTo ?? [];
     const projectUpdate: Parameters<typeof updateProject>[1] = {
-      status: body.toStatus as ProjectStatus,
+      status: parsed.data.toStatus as ProjectStatus,
       deliveredAt:
-        body.toStatus === "consegnato" && !project.deliveredAt
+        parsed.data.toStatus === "consegnato" && !project.deliveredAt
           ? new Date()
           : undefined,
     };
-    if (body.assignedTo !== undefined) projectUpdate.assignedTo = newAssignedTo;
+    if (parsed.data.assignedTo !== undefined) projectUpdate.assignedTo = newAssignedTo;
 
     const [log] = await Promise.all([
       createProjectLog({
         projectId: id,
         fromStatus: project.status,
-        toStatus: body.toStatus,
-        notes: body.notes,
+        toStatus: parsed.data.toStatus,
+        notes: parsed.data.notes,
       }),
       updateProject(id, projectUpdate),
     ]);

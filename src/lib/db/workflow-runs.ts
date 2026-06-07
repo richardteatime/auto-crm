@@ -18,8 +18,15 @@ function fromDoc(doc: Models.Document): WorkflowRun {
   };
 }
 
-export async function listWorkflowRuns(workflowId?: string): Promise<WorkflowRun[]> {
-  const queries = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listWorkflowRuns(
+  workflowId?: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<WorkflowRun[]> {
+  const queries = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
   if (workflowId) queries.push(Query.equal("workflowId", workflowId));
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.workflowRuns, queries);
   return res.documents.map(fromDoc);

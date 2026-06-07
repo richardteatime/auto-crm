@@ -32,8 +32,15 @@ function fromDoc<T>(doc: Models.Document): T {
 // listMessages
 // ---------------------------------------------------------------------------
 
-export async function listMessages(sinceTimestamp?: string): Promise<Message[]> {
-  const queries: string[] = [Query.orderAsc("$createdAt"), Query.limit(500)];
+export async function listMessages(
+  sinceTimestamp?: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<Message[]> {
+  const queries: string[] = [
+    Query.orderAsc("$createdAt"),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+  ];
 
   const ts = sinceTimestamp ? Number(sinceTimestamp) : 0;
   if (ts > 0) {

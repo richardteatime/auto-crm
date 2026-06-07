@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { clientIp, track } from "@/lib/capture/analytics";
 import { rateLimit } from "@/lib/capture/rate-limit";
 import type { AnalyticsAssetType, AnalyticsEventType } from "@/lib/capture/types";
@@ -11,25 +12,37 @@ const EVENT_TYPES: AnalyticsEventType[] = [
 ];
 const ASSET_TYPES: AnalyticsAssetType[] = ["landing", "form", "booking", "funnel"];
 
+const BodySchema = z.object({
+  eventType: z.string(),
+  assetType: z.string(),
+  assetId: z.string().min(1),
+  sessionId: z.string().optional(),
+});
+
 export async function POST(request: NextRequest) {
   const ip = clientIp(request.headers) ?? "unknown";
-  if (!rateLimit(`analytics:${ip}`, 120)) {
+  if (!(await rateLimit(`analytics:${ip}`, 120))) {
     return NextResponse.json({ success: false }, { status: 429 });
   }
-  let body: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ success: false }, { status: 400 });
   }
-  const eventType = typeof body.eventType === "string" ? body.eventType : "";
-  const assetType = typeof body.assetType === "string" ? body.assetType : "";
-  const assetId = typeof body.assetId === "string" ? body.assetId.trim() : "";
-  const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : null;
+
+  const parsed = BodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const { eventType, assetType, assetId, sessionId } = parsed.data;
   if (
     !EVENT_TYPES.includes(eventType as AnalyticsEventType) ||
-    !ASSET_TYPES.includes(assetType as AnalyticsAssetType) ||
-    !assetId
+    !ASSET_TYPES.includes(assetType as AnalyticsAssetType)
   ) {
     return NextResponse.json({ success: false }, { status: 400 });
   }
@@ -37,7 +50,7 @@ export async function POST(request: NextRequest) {
     ip,
     userAgent: request.headers.get("user-agent"),
     referrer: request.headers.get("referer"),
-    sessionId,
+    sessionId: sessionId ?? null,
   });
   return NextResponse.json({ success: true }, { status: 201 });
 }

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Project, ProjectLog, ProjectStatus } from "@/types";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "—";
@@ -46,6 +47,7 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
   const [showEdit, setShowEdit] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Mark notification as read when viewing project detail
   useEffect(() => {
@@ -74,8 +76,10 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
   const isOverdue = project.dueDate && project.status !== "consegnato"
     && new Date(project.dueDate) < new Date();
 
-  const handleDelete = async () => {
-    if (!confirm("Eliminare il progetto? L'azione non può essere annullata.")) return;
+  const handleDelete = () => setShowDeleteDialog(true);
+
+  const handleConfirmDelete = async () => {
+    setShowDeleteDialog(false);
     try {
       const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
@@ -279,6 +283,15 @@ export function ProjectDetailClient({ project, logs }: ProjectDetailClientProps)
         projectId={project.id}
         currentStatus={project.status}
         currentAssignedTo={project.assignedTo}
+      />
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Elimina progetto"
+        description="Eliminare il progetto? L'azione non può essere annullata."
+        onConfirm={handleConfirmDelete}
+        destructive
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getOrchestratorRun, updateOrchestratorRun } from "@/lib/db/orchestrator-runs";
 import { createDeploymentResult } from "@/lib/db/deployment-results";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
@@ -6,15 +7,23 @@ import { sendChatwootMessage } from "@/lib/chatwoot/client";
 import { getProject } from "@/lib/db/projects";
 import { getContact } from "@/lib/db/contacts";
 
-const DEPLOY_CALLBACK_SECRET = process.env.DEPLOY_CALLBACK_SECRET || "";
+const DEPLOY_CALLBACK_SECRET = process.env.DEPLOY_CALLBACK_SECRET;
+
+const BodySchema = z.object({
+  runId: z.string().min(1),
+  projectId: z.string().optional(),
+  status: z.string().optional(),
+  environment: z.string().optional(),
+  url: z.string().optional(),
+  provider: z.string().optional(),
+  healthcheckStatus: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
-  // 1. Validate secret
-  if (DEPLOY_CALLBACK_SECRET) {
-    const headerSecret = req.headers.get("x-deploy-callback-secret");
-    if (headerSecret !== DEPLOY_CALLBACK_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  // 1. Validate secret — mandatory
+  const headerSecret = req.headers.get("x-deploy-callback-secret");
+  if (!DEPLOY_CALLBACK_SECRET || headerSecret !== DEPLOY_CALLBACK_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: unknown;
@@ -24,19 +33,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const payload = body as {
-    runId?: string;
-    projectId?: string;
-    status?: string;
-    environment?: string;
-    url?: string;
-    provider?: string;
-    healthcheckStatus?: string;
-  };
-
-  if (!payload.runId) {
-    return NextResponse.json({ error: "Missing runId" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
+
+  const payload = parsed.data;
 
   const run = await getOrchestratorRun(payload.runId);
   if (!run) {

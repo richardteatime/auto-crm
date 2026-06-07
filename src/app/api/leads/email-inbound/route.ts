@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getSetting } from "@/lib/db/settings";
 import {
   createLead,
@@ -18,6 +19,8 @@ import type { Lead, ParsedLead } from "@/lib/leads/types";
 // (same pattern as /api/webhook) + in-memory IP rate limit.
 // NEVER blocks on AI: parseLeadEmail degrades to regex if no provider.
 // ---------------------------------------------------------------------------
+
+const BodySchema = z.record(z.string(), z.unknown());
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 30;
@@ -169,13 +172,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let payload: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    payload = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
+  const bodyParsed = BodySchema.safeParse(rawBody);
+  if (!bodyParsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: bodyParsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const payload = bodyParsed.data;
   const inbound = normalizeInbound(payload);
   if (!inbound.subject && !inbound.text && !inbound.html) {
     return NextResponse.json(
@@ -299,12 +311,9 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
+    console.error("[email-inbound] Errore nella creazione del lead:", error);
     return NextResponse.json(
-      {
-        error: `Errore nella creazione del lead: ${
-          error instanceof Error ? error.message : "sconosciuto"
-        }`,
-      },
+      { error: "Errore interno nella creazione del lead" },
       { status: 500 },
     );
   }

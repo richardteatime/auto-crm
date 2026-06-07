@@ -20,12 +20,16 @@ function fromDoc<T>(doc: Models.Document): T {
   } as T;
 }
 
-export async function listLeadQuotes(leadId: string): Promise<LeadQuote[]> {
+export async function listLeadQuotes(
+  leadId: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<LeadQuote[]> {
   try {
     const res = await databases.listDocuments(DB_ID, COLLECTIONS.leadQuotes, [
       Query.equal("leadId", leadId),
       Query.orderDesc("$createdAt"),
-      Query.limit(100),
+      Query.limit(pagination?.limit ?? 100),
+      Query.offset(pagination?.offset ?? 0),
     ]);
     return res.documents.map((d) => fromDoc<LeadQuote>(d));
   } catch {

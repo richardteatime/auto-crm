@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   getBookingLink,
   updateBookingLink,
   deleteBookingLink,
 } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import type { BookingLinkStatus } from "@/lib/capture/types";
 
-const STATUSES: BookingLinkStatus[] = ["active", "paused", "archived"];
+const BodySchema = z.object({
+  name: z.string().min(1).optional(),
+  assignedTo: z.string().optional(),
+  durationMinutes: z.number().int().positive().optional(),
+  availability: z.string().optional(),
+  successMessage: z.string().optional(),
+  redirectUrl: z.string().nullable().optional(),
+  status: z.enum(["active", "paused", "archived"]).optional(),
+});
 
 export async function GET(
   request: NextRequest,
@@ -40,29 +48,31 @@ export async function PUT(
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
   const existing = await getBookingLink(id);
   if (!existing) {
     return NextResponse.json({ error: "Link non trovato" }, { status: 404 });
   }
 
   const data: Parameters<typeof updateBookingLink>[1] = {};
-  if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
-  if (typeof body.assignedTo === "string") data.assignedTo = body.assignedTo.trim();
-  if (typeof body.durationMinutes === "number" && body.durationMinutes > 0) {
-    data.durationMinutes = Math.round(body.durationMinutes);
+  if (parsed.data.name !== undefined) data.name = parsed.data.name.trim();
+  if (parsed.data.assignedTo !== undefined) data.assignedTo = parsed.data.assignedTo.trim();
+  if (parsed.data.durationMinutes !== undefined) {
+    data.durationMinutes = Math.round(parsed.data.durationMinutes);
   }
-  if (typeof body.availability === "string") data.availability = body.availability;
-  if (typeof body.successMessage === "string") data.successMessage = body.successMessage;
-  if (body.redirectUrl !== undefined) {
-    data.redirectUrl = body.redirectUrl ? String(body.redirectUrl) : null;
+  if (parsed.data.availability !== undefined) data.availability = parsed.data.availability;
+  if (parsed.data.successMessage !== undefined) data.successMessage = parsed.data.successMessage;
+  if (parsed.data.redirectUrl !== undefined) {
+    data.redirectUrl = parsed.data.redirectUrl;
   }
-
-  if (body.status !== undefined) {
-    if (!STATUSES.includes(body.status)) {
-      return NextResponse.json({ error: "Stato non valido" }, { status: 400 });
-    }
-    data.status = body.status;
-  }
+  if (parsed.data.status !== undefined) data.status = parsed.data.status;
 
   try {
     const updated = await updateBookingLink(id, data);

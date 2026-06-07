@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listRuns } from "@/lib/orchestrator/runs";
 
 export const dynamic = "force-dynamic";
+
+const QuerySchema = z.object({
+  status: z.string().optional(),
+  phone: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
 
 /**
  * List orchestrator runs.
@@ -14,14 +21,19 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status") ?? undefined;
-    const phone = searchParams.get("phone") ?? undefined;
-    const limit = parseInt(searchParams.get("limit") ?? "50", 10);
+    const query = Object.fromEntries(searchParams.entries());
+    const parsed = QuerySchema.safeParse(query);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Parametri non validi", issues: parsed.error.issues },
+        { status: 400 },
+      );
+    }
 
     const runs = await listRuns({
-      status: status as import("@/lib/orchestrator/types").RunStatus | undefined,
-      senderPhone: phone,
-      limit: Number.isNaN(limit) ? 50 : limit,
+      status: parsed.data.status as import("@/lib/orchestrator/types").RunStatus | undefined,
+      senderPhone: parsed.data.phone,
+      limit: parsed.data.limit ?? 50,
     });
 
     return NextResponse.json(runs);

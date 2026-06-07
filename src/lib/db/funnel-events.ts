@@ -17,10 +17,14 @@ function fromDoc(doc: Models.Document): FunnelEvent {
   };
 }
 
-export async function listFunnelEvents(funnelId: string): Promise<FunnelEvent[]> {
+export async function listFunnelEvents(
+  funnelId: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<FunnelEvent[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.funnelEvents, [
     Query.equal("funnelId", funnelId),
-    Query.limit(2000),
+    Query.limit(pagination?.limit ?? 2000),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ]);
   return res.documents.map(fromDoc);

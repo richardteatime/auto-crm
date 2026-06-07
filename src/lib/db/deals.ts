@@ -1,9 +1,11 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { DealWithContact } from "@/types";
 import { getContact } from "./contacts";
 import { getStage } from "./pipeline";
+import { parseDoc } from "./parse-doc";
+import { DealSchema } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -19,16 +21,6 @@ function toIsoDate(
   return new Date(d).toISOString();
 }
 
-function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
-  return {
-    ...rest,
-    id: $id,
-    createdAt: new Date($createdAt),
-    updatedAt: new Date($updatedAt),
-  } as T;
-}
-
 // ---------------------------------------------------------------------------
 // Denormalization helper
 // ---------------------------------------------------------------------------
@@ -41,8 +33,9 @@ async function resolveDenormFields(
   contactTemperature?: string;
   stageName?: string;
   stageColor?: string;
+  stageIsWon?: boolean;
 }> {
-  const result: Record<string, string> = {};
+  const result: Record<string, unknown> = {};
 
   if (contactId) {
     const contact = await getContact(contactId);
@@ -57,21 +50,35 @@ async function resolveDenormFields(
     if (stage) {
       result.stageName = stage.name;
       result.stageColor = stage.color;
+      result.stageIsWon = stage.isWon;
     }
   }
 
-  return result;
+  return result as {
+    contactName?: string;
+    contactTemperature?: string;
+    stageName?: string;
+    stageColor?: string;
+    stageIsWon?: boolean;
+  };
 }
 
 // ---------------------------------------------------------------------------
 // listDeals
 // ---------------------------------------------------------------------------
 
-export async function listDeals(filters?: {
-  stageId?: string;
-  contactId?: string;
-}): Promise<DealWithContact[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listDeals(
+  filters?: {
+    stageId?: string;
+    contactId?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<DealWithContact[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.stageId) {
     queries.push(Query.equal("stageId", filters.stageId));
@@ -81,7 +88,7 @@ export async function listDeals(filters?: {
   }
 
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.deals, queries);
-  return res.documents.map((d) => fromDoc<DealWithContact>(d));
+  return res.documents.map((d) => parseDoc(DealSchema,d));
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +98,7 @@ export async function listDeals(filters?: {
 export async function getDeal(id: string): Promise<DealWithContact | null> {
   try {
     const doc = await databases.getDocument(DB_ID, COLLECTIONS.deals, id);
-    return fromDoc<DealWithContact>(doc);
+    return parseDoc(DealSchema,doc);
   } catch {
     return null;
   }
@@ -116,10 +123,8 @@ export async function createDeal(data: {
 }): Promise<DealWithContact> {
   const denorm = await resolveDenormFields(data.contactId, data.stageId);
 
-  const stage =
-    data.stageId ? await getStage(data.stageId) : null;
   const wonAt =
-    stage?.isWon ? new Date().toISOString() : undefined;
+    denorm.stageIsWon ? new Date().toISOString() : undefined;
 
   const billingType = data.billingType ?? "una_tantum";
   const recurringStartDate =
@@ -132,7 +137,7 @@ export async function createDeal(data: {
     stageId: data.stageId ?? "",
     contactId: data.contactId,
     expectedClose: toIsoDate(data.expectedClose),
-    probability: stage?.isWon ? 100 : (data.probability ?? 0),
+    probability: denorm.stageIsWon ? 100 : (data.probability ?? 0),
     notes: data.notes ?? null,
     attachments: data.attachments ?? null,
     billingType,
@@ -154,7 +159,7 @@ export async function createDeal(data: {
     ID.unique(),
     payload,
   );
-  return fromDoc<DealWithContact>(doc);
+  return parseDoc(DealSchema,doc);
 }
 
 // ---------------------------------------------------------------------------
@@ -190,15 +195,14 @@ export async function updateDeal(
     payload.expectedClose = toIsoDate(data.expectedClose);
   }
 
-  // If stage changed, check isWon
+  // If stage changed, check isWon (already fetched by resolveDenormFields)
   if (data.stageId) {
-    const stage = await getStage(data.stageId);
-    if (stage?.isWon) {
+    if (denorm.stageIsWon) {
       payload.wonAt = existing?.wonAt ?? new Date().toISOString();
       payload.probability = 100;
     }
     // If moved away from won stage, clear wonAt
-    if (!stage?.isWon && existing?.wonAt) {
+    if (!denorm.stageIsWon && existing?.wonAt) {
       payload.wonAt = null;
     }
   }
@@ -226,7 +230,7 @@ export async function updateDeal(
     id,
     payload,
   );
-  return fromDoc<DealWithContact>(doc);
+  return parseDoc(DealSchema,doc);
 }
 
 // ---------------------------------------------------------------------------

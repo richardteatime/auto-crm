@@ -23,13 +23,17 @@ function parseMetadata(value: string): Record<string, unknown> | null {
   }
 }
 
-export async function listWorkflowEvents(filters?: {
-  runId?: string;
-  eventType?: WorkflowEvent["eventType"];
-  limit?: number;
-}): Promise<WorkflowEvent[]> {
+export async function listWorkflowEvents(
+  filters?: {
+    runId?: string;
+    eventType?: WorkflowEvent["eventType"];
+    limit?: number;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<WorkflowEvent[]> {
   const queries: string[] = [
-    Query.limit(filters?.limit ?? 200),
+    Query.limit(pagination?.limit ?? filters?.limit ?? 200),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ];
 

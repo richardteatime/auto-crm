@@ -19,10 +19,17 @@ function fromDoc(doc: Models.Document): FormSubmission {
   };
 }
 
-export async function listFormSubmissions(filters?: {
-  formId?: string;
-}): Promise<FormSubmission[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listFormSubmissions(
+  filters?: {
+    formId?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<FormSubmission[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
   if (filters?.formId) queries.push(Query.equal("formId", filters.formId));
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.formSubmissions, queries);
   return res.documents.map(fromDoc);

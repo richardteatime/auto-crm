@@ -1,26 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBookingLinkBySlug } from "@/lib/db";
 import { parseAvailability } from "@/lib/capture/availability";
+import { corsHeaders } from "@/lib/cors";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS });
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(request, "GET, OPTIONS") });
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
   const link = await getBookingLinkBySlug(slug);
 
   if (!link || link.status !== "active") {
-    return NextResponse.json({ error: "Link non trovato" }, { status: 404, headers: CORS });
+    return NextResponse.json({ error: "Link non trovato" }, { status: 404, headers: corsHeaders(request, "GET, OPTIONS") });
   }
 
   const availability = parseAvailability(link.availability);
@@ -39,6 +34,6 @@ export async function GET(
       redirectUrl: link.redirectUrl,
       openDays,
     },
-    { headers: CORS },
+    { headers: corsHeaders(request, "GET, OPTIONS") },
   );
 }

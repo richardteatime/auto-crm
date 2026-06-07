@@ -44,9 +44,13 @@ async function main() {
   const now = new Date().toISOString();
 
   // -------------------------------------------------------------------------
-  // 1) Booking link
+  // 1) Booking link (idempotente)
   // -------------------------------------------------------------------------
-  const bookingSlug = await freeSlug(db, "booking_links", BOOKING_SLUG);
+  const blRes = await db.listDocuments(DB_ID, "booking_links", [
+    Query.equal("slug", BOOKING_SLUG),
+    Query.limit(1),
+  ]);
+  let booking = blRes.documents[0] as Record<string, unknown> | undefined;
   const availability = {
     days: {
       mon: { enabled: true, start: "09:00", end: "18:00" },
@@ -61,24 +65,34 @@ async function main() {
     bufferAfter: 0,
     maxPerDay: 10,
   };
-  const booking = await db.createDocument(DB_ID, "booking_links", ID.unique(), {
-    name: "Call conoscitiva con Leo",
-    slug: bookingSlug,
-    assignedTo: "leo",
-    durationMinutes: 30,
-    availability: JSON.stringify(availability),
-    successMessage: "Perfetto! La tua call con Leo è prenotata. Riceverai i dettagli via email.",
-    redirectUrl: null,
-    status: "active",
-    bookingsCount: 0,
-    createdBy: null,
-    createdAt: now,
-    updatedAt: now,
-  });
-  const bookingUrl = `${PUBLIC_URL}/book/${bookingSlug}`;
+  if (booking) {
+    await db.updateDocument(DB_ID, "booking_links", booking.$id as string, {
+      availability: JSON.stringify(availability),
+      updatedAt: now,
+    });
+    console.log(`  ✓ Booking link /book/${BOOKING_SLUG} aggiornato`);
+  } else {
+    const bookingSlug = await freeSlug(db, "booking_links", BOOKING_SLUG);
+    booking = await db.createDocument(DB_ID, "booking_links", ID.unique(), {
+      name: "Call conoscitiva con Leo",
+      slug: bookingSlug,
+      assignedTo: "leo",
+      durationMinutes: 30,
+      availability: JSON.stringify(availability),
+      successMessage: "Perfetto! La tua call con Leo è prenotata. Riceverai i dettagli via email.",
+      redirectUrl: null,
+      status: "active",
+      bookingsCount: 0,
+      createdBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    console.log(`  ✓ Booking link /book/${bookingSlug} creato`);
+  }
+  const bookingUrl = `${PUBLIC_URL}/book/${(booking?.slug as string) || BOOKING_SLUG}`;
 
   // -------------------------------------------------------------------------
-  // 2) Form salvato (email obbligatoria, telefono opzionale)
+  // 2) Form salvato (idempotente)
   // -------------------------------------------------------------------------
   const formFields = [
     { id: "fld_name", type: "text", label: "Nome", placeholder: "Il tuo nome", crmField: "name", options: [], validation: { required: true, min: null, max: null, pattern: null } },
@@ -87,21 +101,36 @@ async function main() {
     { id: "fld_message", type: "textarea", label: "Parlaci del tuo progetto", placeholder: "Due righe sul tuo obiettivo...", crmField: "message", options: [], validation: { required: false, min: null, max: null, pattern: null } },
   ];
   const formStyle = { theme: "light", primaryColor: "#4F46E5", borderRadius: 10, logoUrl: "", backgroundColor: "", buttonText: "Invia la richiesta", fontFamily: "" };
-  const form = await db.createDocument(DB_ID, "forms", ID.unique(), {
-    name: "Form Lead — Landing SarconX",
-    description: "Form della landing /l/sarconx. Email obbligatoria, telefono opzionale.",
-    fields: JSON.stringify(formFields),
-    style: JSON.stringify(formStyle),
-    successMessage: "Grazie! Abbiamo ricevuto la tua richiesta — controlla la tua email.",
-    redirectUrl: null,
-    embedEnabled: true,
-    status: "active",
-    views: 0,
-    submissions: 0,
-    createdBy: null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const fmRes = await db.listDocuments(DB_ID, "forms", [
+    Query.equal("name", "Form Lead — Landing SarconX"),
+    Query.limit(1),
+  ]);
+  let form = fmRes.documents[0] as Record<string, unknown> | undefined;
+  if (form) {
+    await db.updateDocument(DB_ID, "forms", form.$id as string, {
+      fields: JSON.stringify(formFields),
+      style: JSON.stringify(formStyle),
+      updatedAt: now,
+    });
+    console.log(`  ✓ Form aggiornato`);
+  } else {
+    form = await db.createDocument(DB_ID, "forms", ID.unique(), {
+      name: "Form Lead — Landing SarconX",
+      description: "Form della landing /l/sarconx. Email obbligatoria, telefono opzionale.",
+      fields: JSON.stringify(formFields),
+      style: JSON.stringify(formStyle),
+      successMessage: "Grazie! Abbiamo ricevuto la tua richiesta — controlla la tua email.",
+      redirectUrl: null,
+      embedEnabled: true,
+      status: "active",
+      views: 0,
+      submissions: 0,
+      createdBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    console.log(`  ✓ Form creato`);
+  }
 
   // -------------------------------------------------------------------------
   // 3) Collega il form alla landing /l/sarconx (blocco "form")
@@ -130,7 +159,7 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // 4) Workflow condizionale telefono/email
+  // 4) Workflow condizionale telefono/email (idempotente)
   // -------------------------------------------------------------------------
   const nodes = [
     {
@@ -191,20 +220,35 @@ async function main() {
     { id: "e_cond_client", source: "n_cond", target: "n_client", sourceHandle: "false", label: "No", type: "smoothstep" },
   ];
 
-  const workflow = await db.createDocument(DB_ID, "workflows", ID.unique(), {
-    name: "Lead dal form → Leo chiama o cliente prenota",
-    description: "Se il lead lascia il telefono, avvisa Leo. Altrimenti manda al cliente il link per prenotare la call.",
-    status: "active",
-    triggerType: "form_submitted",
-    triggerConfig: "{}",
-    nodes: JSON.stringify(nodes),
-    edges: JSON.stringify(edges),
-    createdBy: null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const wfRes = await db.listDocuments(DB_ID, "workflows", [
+    Query.equal("name", "Lead dal form → Leo chiama o cliente prenota"),
+    Query.limit(1),
+  ]);
+  let workflow = wfRes.documents[0] as Record<string, unknown> | undefined;
+  if (workflow) {
+    await db.updateDocument(DB_ID, "workflows", workflow.$id as string, {
+      nodes: JSON.stringify(nodes),
+      edges: JSON.stringify(edges),
+      updatedAt: now,
+    });
+    console.log(`  ✓ Workflow aggiornato`);
+  } else {
+    workflow = await db.createDocument(DB_ID, "workflows", ID.unique(), {
+      name: "Lead dal form → Leo chiama o cliente prenota",
+      description: "Se il lead lascia il telefono, avvisa Leo. Altrimenti manda al cliente il link per prenotare la call.",
+      status: "active",
+      triggerType: "form_submitted",
+      triggerConfig: "{}",
+      nodes: JSON.stringify(nodes),
+      edges: JSON.stringify(edges),
+      createdBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    console.log(`  ✓ Workflow creato`);
+  }
 
-  console.log("OK — funnel call creato:");
+  console.log("\nOK — funnel call:");
   console.log(`  Booking link : ${bookingUrl}   (id ${booking.$id})`);
   console.log(`  Form         : id ${form.$id}`);
   console.log(`  Landing      : /l/${LANDING_SLUG} ${landingLinked ? "→ collegata al form" : "(blocco form non trovato!)"}`);

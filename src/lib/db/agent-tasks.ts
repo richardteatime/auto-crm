@@ -21,11 +21,18 @@ function fromDoc(doc: Models.Document): AgentTask {
   };
 }
 
-export async function listAgentTasks(filters?: {
-  runId?: string;
-  status?: AgentTask["status"];
-}): Promise<AgentTask[]> {
-  const queries: string[] = [Query.limit(200), Query.orderDesc("$createdAt")];
+export async function listAgentTasks(
+  filters?: {
+    runId?: string;
+    status?: AgentTask["status"];
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<AgentTask[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 200),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.runId) {
     queries.push(Query.equal("runId", filters.runId));

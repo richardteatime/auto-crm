@@ -5,11 +5,11 @@ const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KE
 const FINANCE_COOKIE = "finance-session";
 const FINANCE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function isFinanceUser(_userId: string): boolean {
-  // Any authenticated CRM user can access Finance.
-  // If you need a whitelist, restore the FINANCE_USER_IDS check here.
-  return true;
+export function isFinanceUser(userId: string): boolean {
+  const whitelist = process.env.FINANCE_USER_IDS;
+  if (!whitelist) return false; // nessun accesso se non configurato
+  const allowed = whitelist.split(",").map((s) => s.trim()).filter(Boolean);
+  return allowed.includes(userId);
 }
 
 function signFinanceToken(userId: string): string {

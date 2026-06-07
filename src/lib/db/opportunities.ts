@@ -13,11 +13,18 @@ function fromDoc<T>(doc: Models.Document): T {
   } as T;
 }
 
-export async function listOpportunities(filters?: {
-  contactId?: string;
-  status?: string;
-}): Promise<Opportunity[]> {
-  const queries: string[] = [Query.orderDesc("$createdAt"), Query.limit(500)];
+export async function listOpportunities(
+  filters?: {
+    contactId?: string;
+    status?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<Opportunity[]> {
+  const queries: string[] = [
+    Query.orderDesc("$createdAt"),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+  ];
   if (filters?.contactId) queries.push(Query.equal("contactId", filters.contactId));
   if (filters?.status) queries.push(Query.equal("status", filters.status));
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.opportunities, queries);

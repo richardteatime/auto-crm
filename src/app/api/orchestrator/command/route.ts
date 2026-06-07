@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { handleCommand } from "@/lib/orchestrator/router";
+
+const BodySchema = z.object({
+  senderPhone: z.string().optional(),
+  senderName: z.string().optional(),
+  conversationId: z.coerce.number().optional(),
+  messageText: z.string().min(1),
+});
 
 /**
  * Orchestrator command endpoint.
@@ -10,21 +18,20 @@ import { handleCommand } from "@/lib/orchestrator/router";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { senderPhone, senderName, conversationId, messageText } = body;
-
-    if (!messageText?.trim()) {
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "messageText obbligatorio" },
+        { error: "Dati non validi", issues: parsed.error.issues },
         { status: 400 },
       );
     }
 
     const result = await handleCommand({
-      senderPhone: senderPhone ?? null,
+      senderPhone: parsed.data.senderPhone ?? null,
       senderTelegramId: null,
-      senderName: senderName ?? null,
-      conversationId: conversationId ?? 0,
-      messageText: messageText.trim(),
+      senderName: parsed.data.senderName ?? null,
+      conversationId: parsed.data.conversationId ?? 0,
+      messageText: parsed.data.messageText.trim(),
     });
 
     return NextResponse.json(result);

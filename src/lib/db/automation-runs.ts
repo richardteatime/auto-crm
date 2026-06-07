@@ -19,12 +19,19 @@ function fromDoc<T>(doc: Models.Document): T {
   } as T;
 }
 
-export async function listAutomationRuns(filters?: {
-  leadId?: string;
-  status?: AutomationRunStatus;
-}): Promise<AutomationRun[]> {
+export async function listAutomationRuns(
+  filters?: {
+    leadId?: string;
+    status?: AutomationRunStatus;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<AutomationRun[]> {
   try {
-    const queries: string[] = [Query.limit(200), Query.orderDesc("$createdAt")];
+    const queries: string[] = [
+      Query.limit(pagination?.limit ?? 200),
+      Query.offset(pagination?.offset ?? 0),
+      Query.orderDesc("$createdAt"),
+    ];
     if (filters?.leadId) queries.push(Query.equal("leadId", filters.leadId));
     if (filters?.status) queries.push(Query.equal("status", filters.status));
     const res = await databases.listDocuments(

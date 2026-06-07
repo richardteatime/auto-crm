@@ -52,12 +52,19 @@ function toIso(d: Date | string | null | undefined): string | undefined {
   return new Date(d).toISOString();
 }
 
-export async function listCalendarEvents(options?: {
-  startAfter?: Date | string;
-  endBefore?: Date | string;
-  assignedTo?: string;
-}): Promise<CalendarEvent[]> {
-  const queries: string[] = [Query.limit(1000), Query.orderDesc("startAt")];
+export async function listCalendarEvents(
+  options?: {
+    startAfter?: Date | string;
+    endBefore?: Date | string;
+    assignedTo?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<CalendarEvent[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 1000),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("startAt"),
+  ];
 
   if (options?.startAfter) {
     queries.push(Query.greaterThan("endAt", toIso(options.startAfter) ?? new Date().toISOString()));

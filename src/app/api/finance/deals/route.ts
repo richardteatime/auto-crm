@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listDeals } from "@/lib/db/deals";
 import { listRevenues } from "@/lib/db/revenues";
 import { requireAuth } from "@/lib/auth";
@@ -30,13 +31,27 @@ function clampMonths(dealStart: Date, dealMonths: number, periodStart: Date, per
   return Math.max(1, monthsBetween(overlapStart, overlapEnd));
 }
 
+const QuerySchema = z.object({
+  start: z.string().datetime().optional(),
+  end: z.string().datetime().optional(),
+});
+
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(req.url);
-  const startParam = searchParams.get("start");
-  const endParam = searchParams.get("end");
+  const queryObj = Object.fromEntries(searchParams.entries());
+  const parsedQuery = QuerySchema.safeParse(queryObj);
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Parametri non validi", issues: parsedQuery.error.issues },
+      { status: 400 }
+    );
+  }
+
+  const startParam = parsedQuery.data.start ?? null;
+  const endParam = parsedQuery.data.end ?? null;
 
   const now = new Date();
   const periodStart = startParam ? new Date(startParam) : new Date(now.getFullYear(), now.getMonth(), 1);

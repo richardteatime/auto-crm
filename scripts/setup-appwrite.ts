@@ -143,6 +143,9 @@ async function main() {
   await addIndex("contacts", "idx_source", "key", ["source"]);
   await addIndex("contacts", "idx_email", "key", ["email"]);
   await addIndex("contacts", "idx_phone", "key", ["phone"]);
+  await addIndex("contacts", "idx_email_unique", "unique", ["email"]);
+  await addIndex("contacts", "idx_phone_unique", "unique", ["phone"]);
+  await addIndex("contacts", "idx_name_fulltext", "fulltext", ["name"]);
   await addIndex("contacts", "idx_createdAt", "key", ["createdAt"]);
 
   // === PIPELINE STAGES ===
@@ -265,6 +268,7 @@ async function main() {
   await addAttr("quotes", str("quotes", "title", 255, true));
   await addAttr("quotes", text("quotes", "items", true, 100000));
   await addAttr("quotes", text("quotes", "notes", false, 100000));
+  await addAttr("quotes", text("quotes", "generatedText", false, 65535));
   await addAttr("quotes", enm("quotes", "status", ["bozza", "inviato", "accettato", "rifiutato"], true, "bozza"));
   await addAttr("quotes", int("quotes", "vatRate", true, 22));
   await addAttr("quotes", dt("quotes", "validUntil", false));
@@ -604,6 +608,9 @@ async function main() {
   await addIndex("leads", "idx_category", "key", ["category"]);
   await addIndex("leads", "idx_email", "key", ["email"]);
   await addIndex("leads", "idx_phone", "key", ["phone"]);
+  await addIndex("leads", "idx_email_unique", "unique", ["email"]);
+  await addIndex("leads", "idx_phone_unique", "unique", ["phone"]);
+  await addIndex("leads", "idx_fullName_fulltext", "fulltext", ["fullName"]);
   await addIndex("leads", "idx_createdAt", "key", ["createdAt"]);
 
   // === PIPELINE MOVEMENTS ===
@@ -722,9 +729,9 @@ async function main() {
         },
         {
           name: "Call completed automation",
-          enabled: true,
+          enabled: false,
           triggerType: "call_completed",
-          actions: JSON.stringify(["save_call_outcome", "route_lead_by_outcome"]),
+          actions: JSON.stringify(["save_call_outcome"]),
         },
       ];
       for (const rule of defaultRules) {
@@ -978,6 +985,7 @@ async function main() {
   await addAttr("workflows", dt("workflows", "updatedAt", true));
   await addIndex("workflows", "idx_status", "key", ["status"]);
   await addIndex("workflows", "idx_triggerType", "key", ["triggerType"]);
+  await addIndex("workflows", "idx_status_triggerType", "key", ["status", "triggerType"]);
   await addIndex("workflows", "idx_createdAt", "key", ["createdAt"]);
 
   // === WORKFLOW RUNS ===
@@ -1015,6 +1023,8 @@ async function main() {
   await addAttr("workflow_scheduled", dt("workflow_scheduled", "executeAt", true));
   await addAttr("workflow_scheduled", text("workflow_scheduled", "payload", true, 65535));
   await addAttr("workflow_scheduled", enm("workflow_scheduled", "status", ["pending", "processing", "completed", "cancelled"], true, "pending"));
+  await addAttr("workflow_scheduled", str("workflow_scheduled", "workerId", 64, false));
+  await addAttr("workflow_scheduled", dt("workflow_scheduled", "startedAt", false));
   await addAttr("workflow_scheduled", dt("workflow_scheduled", "createdAt", true));
   await addIndex("workflow_scheduled", "idx_status_executeAt", "key", ["status", "executeAt"]);
   await addIndex("workflow_scheduled", "idx_workflowId", "key", ["workflowId"]);

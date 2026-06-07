@@ -45,7 +45,11 @@ function resolveVariable(path: string, ctx: ExecutionContext): unknown {
 function interpolateString(template: string, ctx: ExecutionContext): string {
   return template.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
     const value = resolveVariable(`{{${path}}}`, ctx);
-    return value !== undefined ? String(value) : "";
+    if (value === undefined) {
+      console.warn(`[workflow] Variabile mancante: {{${path}}}`);
+      return "";
+    }
+    return String(value);
   });
 }
 
@@ -73,7 +77,8 @@ export const triggerExecutor: NodeExecutor = async ({ context }) => {
 // Action executors
 // ---------------------------------------------------------------------------
 
-export const createContactExecutor: NodeExecutor = async ({ config, context }) => {
+export const createContactExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "create_contact" });
   const name = interpolateString(String(config.name ?? ""), context);
   const email = interpolateString(String(config.email ?? ""), context);
   const phone = interpolateString(String(config.phone ?? ""), context);
@@ -107,7 +112,8 @@ export const createContactExecutor: NodeExecutor = async ({ config, context }) =
   }
 };
 
-export const updateContactExecutor: NodeExecutor = async ({ config, context }) => {
+export const updateContactExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "update_contact" });
   const contactId = String(config.contactId ?? context.contactId ?? "");
   if (!contactId) return fail("ContactId mancante");
 
@@ -127,7 +133,8 @@ export const updateContactExecutor: NodeExecutor = async ({ config, context }) =
   }
 };
 
-export const createDealExecutor: NodeExecutor = async ({ config, context }) => {
+export const createDealExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "create_deal" });
   const title = interpolateString(String(config.title ?? ""), context);
   const value = Number(config.value ?? 0);
   const stageId = String(config.stageId ?? "");
@@ -152,7 +159,8 @@ export const createDealExecutor: NodeExecutor = async ({ config, context }) => {
   }
 };
 
-export const updateDealExecutor: NodeExecutor = async ({ config, context }) => {
+export const updateDealExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "update_deal" });
   const dealId = String(config.dealId ?? context.dealId ?? "");
   if (!dealId) return fail("DealId mancante");
 
@@ -170,7 +178,8 @@ export const updateDealExecutor: NodeExecutor = async ({ config, context }) => {
   }
 };
 
-export const createTaskExecutor: NodeExecutor = async ({ config, context }) => {
+export const createTaskExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "create_task" });
   const title = interpolateString(String(config.title ?? ""), context);
   const description = interpolateString(String(config.description ?? ""), context);
   const assignedTo = String(config.assignedTo ?? "");
@@ -190,7 +199,8 @@ export const createTaskExecutor: NodeExecutor = async ({ config, context }) => {
   }
 };
 
-export const sendEmailExecutor: NodeExecutor = async ({ config, context }) => {
+export const sendEmailExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "send_email" });
   const to = interpolateString(String(config.to ?? ""), context);
   const subject = interpolateString(String(config.subject ?? ""), context);
   const body = interpolateString(String(config.body ?? ""), context);
@@ -207,7 +217,8 @@ export const sendEmailExecutor: NodeExecutor = async ({ config, context }) => {
   }
 };
 
-export const sendInternalMessageExecutor: NodeExecutor = async ({ config, context }) => {
+export const sendInternalMessageExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "send_internal_message" });
   const userId = String(config.userId ?? "");
   const message = interpolateString(String(config.message ?? ""), context);
 
@@ -227,7 +238,8 @@ export const sendInternalMessageExecutor: NodeExecutor = async ({ config, contex
   }
 };
 
-export const movePipelineStageExecutor: NodeExecutor = async ({ config, context }) => {
+export const movePipelineStageExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "move_pipeline_stage" });
   const dealId = String(config.dealId ?? context.dealId ?? "");
   const stageId = String(config.stageId ?? "");
 
@@ -244,7 +256,8 @@ export const movePipelineStageExecutor: NodeExecutor = async ({ config, context 
   }
 };
 
-export const httpRequestExecutor: NodeExecutor = async ({ config, context }) => {
+export const httpRequestExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "http_request" });
   const method = String(config.method ?? "GET").toUpperCase();
   const url = interpolateString(String(config.url ?? ""), context);
   const headers = (config.headers as Record<string, string>) ?? {};
@@ -289,12 +302,13 @@ function resolveLeadId(context: ExecutionContext): string {
   return String(context.leadId ?? context.variables.leadId ?? fromPayload ?? "");
 }
 
-export const createLeadCallTaskExecutor: NodeExecutor = async ({ config, context }) => {
+export const createLeadCallTaskExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "create_lead_call_task" });
   const leadId = resolveLeadId(context);
   if (!leadId) return fail("LeadId mancante nel contesto");
   const who = String(config.assignee ?? "setter") === "closer" ? CLOSER : SETTER;
   try {
-    const existing = await getOpenCallTaskForLead(leadId);
+    const existing = await getOpenCallTaskForLead(leadId, who.id);
     if (existing) return skip(`Call task già aperta (${existing.id})`);
     const lead = await getLead(leadId);
     const notes =
@@ -312,7 +326,8 @@ export const createLeadCallTaskExecutor: NodeExecutor = async ({ config, context
   }
 };
 
-export const setLeadStatusExecutor: NodeExecutor = async ({ config, context }) => {
+export const setLeadStatusExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "set_lead_status" });
   const leadId = resolveLeadId(context);
   if (!leadId) return fail("LeadId mancante nel contesto");
   const status = String(config.status ?? "");
@@ -325,7 +340,8 @@ export const setLeadStatusExecutor: NodeExecutor = async ({ config, context }) =
   }
 };
 
-export const moveLeadStageExecutor: NodeExecutor = async ({ config, context }) => {
+export const moveLeadStageExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "move_lead_stage" });
   const leadId = resolveLeadId(context);
   if (!leadId) return fail("LeadId mancante nel contesto");
   const stage = String(config.stage ?? "");
@@ -365,7 +381,6 @@ export const ifFieldEqualsExecutor: NodeExecutor = async ({ config, context }) =
   const isTrue = String(actualValue) === compareValue;
   return {
     status: "ok",
-    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
     output: { result: isTrue },
   };
 };
@@ -384,7 +399,6 @@ export const ifFieldExistsExecutor: NodeExecutor = async ({ config, context }) =
   const isTrue = actualValue !== undefined && actualValue !== null && String(actualValue).trim() !== "";
   return {
     status: "ok",
-    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
     output: { result: isTrue },
   };
 };
@@ -407,7 +421,6 @@ export const ifFieldInExecutor: NodeExecutor = async ({ config, context }) => {
   const isTrue = values.includes(String(actualValue));
   return {
     status: "ok",
-    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
     output: { result: isTrue },
   };
 };
@@ -418,7 +431,6 @@ export const ifScoreAboveExecutor: NodeExecutor = async ({ config, context }) =>
   const isTrue = score > threshold;
   return {
     status: "ok",
-    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
     output: { result: isTrue },
   };
 };
@@ -429,7 +441,6 @@ export const ifHasTagExecutor: NodeExecutor = async ({ config, context }) => {
   const isTrue = tags.includes(tag);
   return {
     status: "ok",
-    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
     output: { result: isTrue },
   };
 };
@@ -440,7 +451,6 @@ export const ifStageIsExecutor: NodeExecutor = async ({ config, context }) => {
   const isTrue = stage === expectedStage;
   return {
     status: "ok",
-    nextNodeId: isTrue ? (config.trueNextNodeId as string) : (config.falseNextNodeId as string),
     output: { result: isTrue },
   };
 };
@@ -449,7 +459,8 @@ export const ifStageIsExecutor: NodeExecutor = async ({ config, context }) => {
 // Delay executors
 // ---------------------------------------------------------------------------
 
-export const waitForExecutor: NodeExecutor = async ({ nodeId, config, context }) => {
+export const waitForExecutor: NodeExecutor = async ({ nodeId, config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "wait_for" });
   const amount = Number(config.amount ?? 1);
   const unit = String(config.unit ?? "minutes"); // minutes, hours, days
   const workflowId = String(config.workflowId ?? context.variables.workflowId ?? "");
@@ -473,7 +484,8 @@ export const waitForExecutor: NodeExecutor = async ({ nodeId, config, context })
   }
 };
 
-export const waitUntilExecutor: NodeExecutor = async ({ nodeId, config, context }) => {
+export const waitUntilExecutor: NodeExecutor = async ({ nodeId, config, context, dryRun }) => {
+  if (dryRun) return ok({ simulated: true, action: "wait_until" });
   const dayOfWeek = Number(config.dayOfWeek ?? -1); // 0=Sun, 1=Mon, ... 6=Sat, -1=today
   const hour = Number(config.hour ?? 9);
   const minute = Number(config.minute ?? 0);

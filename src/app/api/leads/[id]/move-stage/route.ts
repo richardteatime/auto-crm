@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { moveLeadStage, isValidStage } from "@/lib/leads/pipeline";
 import { LEAD_PIPELINE_STAGES } from "@/lib/leads/types";
+
+const BodySchema = z.object({
+  toStage: z.string().optional(),
+  stage: z.string().optional(),
+  reason: z.string().optional(),
+});
 
 // POST /api/leads/[id]/move-stage  { toStage, reason? }
 // Manual pipeline movement from the CRM UI. Session-authenticated.
@@ -14,14 +21,22 @@ export async function POST(
 
   const { id } = await params;
 
-  let body: { toStage?: string; stage?: string; reason?: string };
+  let body;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const toStage = body.toStage ?? body.stage;
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const toStage = parsed.data.toStage ?? parsed.data.stage;
   if (!toStage || !isValidStage(toStage)) {
     return NextResponse.json(
       {
@@ -36,7 +51,7 @@ export async function POST(
     const result = await moveLeadStage({
       leadId: id,
       toStage,
-      reason: body.reason ?? null,
+      reason: parsed.data.reason ?? null,
       triggeredBy: "user",
       metadata: { actor: auth.user?.email ?? "user" },
     });

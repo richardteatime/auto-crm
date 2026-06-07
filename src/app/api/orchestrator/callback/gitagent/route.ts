@@ -1,18 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getGitAgentCallbackSecret } from "@/lib/orchestrator/dispatchers/gitagent";
 import { getOrchestratorRun, updateOrchestratorRun } from "@/lib/db/orchestrator-runs";
 import { createAgentTask } from "@/lib/db/agent-tasks";
 import { createProjectArtifact } from "@/lib/db/project-artifacts";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
 
+const BodySchema = z.object({
+  runId: z.string().min(1),
+  status: z.string().optional(),
+  repoUrl: z.string().optional(),
+  branch: z.string().optional(),
+  qaStatus: z.string().optional(),
+  artifacts: z
+    .array(
+      z.object({
+        type: z.string(),
+        name: z.string(),
+        url: z.string().optional(),
+        content: z.string().optional(),
+      }),
+    )
+    .optional(),
+  deployRequested: z.boolean().optional(),
+  error: z.string().optional(),
+});
+
 export async function POST(req: NextRequest) {
-  // 1. Validate secret
+  // 1. Validate secret — mandatory
   const secret = getGitAgentCallbackSecret();
-  if (secret) {
-    const headerSecret = req.headers.get("x-gitagent-callback-secret");
-    if (headerSecret !== secret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const headerSecret = req.headers.get("x-gitagent-callback-secret");
+  if (!secret || headerSecret !== secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: unknown;
@@ -22,20 +41,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const payload = body as {
-    runId?: string;
-    status?: string;
-    repoUrl?: string;
-    branch?: string;
-    qaStatus?: string;
-    artifacts?: Array<{ type: string; name: string; url?: string; content?: string }>;
-    deployRequested?: boolean;
-    error?: string;
-  };
-
-  if (!payload.runId) {
-    return NextResponse.json({ error: "Missing runId" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
+
+  const payload = parsed.data;
 
   const run = await getOrchestratorRun(payload.runId);
   if (!run) {

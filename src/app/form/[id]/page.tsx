@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { getForm } from "@/lib/db";
 import { track, clientIp } from "@/lib/capture/analytics";
 import { PublicFormRenderer } from "@/components/capture/PublicFormRenderer";
+import { FormEmbedResizer } from "@/components/capture/FormEmbedResizer";
 import { defaultFormStyle } from "@/lib/capture/defaults";
 import type { FormField, FormStyle } from "@/lib/capture/types";
 
@@ -78,13 +79,7 @@ export default async function PublicFormPage({
     return (
       <div className="p-4">
         {renderer}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){function post(){try{parent.postMessage({type:'sarconx-form-height',id:${JSON.stringify(
-              form.id,
-            )},height:document.documentElement.scrollHeight},'*');}catch(e){}}window.addEventListener('load',post);window.addEventListener('resize',post);try{new ResizeObserver(post).observe(document.documentElement);}catch(e){}post();})();`,
-          }}
-        />
+        <FormEmbedResizer formId={form.id} />
       </div>
     );
   }

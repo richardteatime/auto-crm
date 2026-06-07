@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getForm } from "@/lib/db";
 import { clientIp, track } from "@/lib/capture/analytics";
+import { corsHeaders } from "@/lib/cors";
 
 // Public read of an active form's definition. Used by headless/SPA embeds.
 // Draft and archived forms are treated as not found.
@@ -31,21 +32,13 @@ export async function GET(
       redirectUrl: form.redirectUrl,
     },
     {
-      headers: {
-        // Allow cross-origin fetch for embeds on customer sites.
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-      },
+      headers: corsHeaders(request, "GET, OPTIONS"),
     },
   );
 }
 
-export function OPTIONS() {
+export function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
+    headers: corsHeaders(request, "GET, OPTIONS"),
   });
 }

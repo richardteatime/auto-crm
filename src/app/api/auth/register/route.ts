@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { ID } from "node-appwrite";
 import { users } from "@/lib/appwrite";
 import {
@@ -7,32 +8,24 @@ import {
   setSessionCookie,
 } from "@/lib/auth";
 
+const BodySchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(1),
+});
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, name } = body;
-
-    if (!email || !password || !name) {
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: "Email, password e nome sono obbligatori" },
+        { success: false, error: "Dati non validi", issues: parsed.error.issues },
         { status: 400 }
       );
     }
 
-    if (password.length < 8) {
-      return NextResponse.json(
-        { success: false, error: "La password deve avere almeno 8 caratteri" },
-        { status: 400 }
-      );
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { success: false, error: "Formato email non valido" },
-        { status: 400 }
-      );
-    }
+    const { email, password, name } = parsed.data;
 
     // Check if this is the first user BEFORE creating the account.
     const isFirst = await isFirstUser();

@@ -50,7 +50,8 @@ const fieldStyle: React.CSSProperties = {
 };
 
 export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }: Props) {
-  const [date, setDate] = useState<string>(todayIso());
+  const [date, setDate] = useState<string>("");
+  useEffect(() => setDate(todayIso()), []);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selected, setSelected] = useState<Slot | null>(null);

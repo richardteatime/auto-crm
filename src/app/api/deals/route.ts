@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listDeals, createDeal, getStages } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  title: z.string().min(1),
+  value: z.number().optional(),
+  stageId: z.string().optional(),
+  contactId: z.string().min(1),
+  expectedClose: z.string().datetime().optional().nullable(),
+  probability: z.number().min(0).max(100).optional(),
+  notes: z.string().optional().nullable(),
+  attachments: z.array(z.record(z.string(), z.unknown())).optional(),
+  billingType: z.enum(["una_tantum", "mensile", "annuale"]).optional(),
+  recurringMonths: z.number().optional().nullable(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -28,34 +42,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { title, value, stageId, contactId, expectedClose, probability, notes, attachments, billingType, recurringMonths } = body;
-
-  if (!title || typeof title !== "string" || title.trim().length === 0) {
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Titolo obbligatorio" },
+      { error: "Dati non validi", issues: parsed.error.issues },
       { status: 400 }
     );
-  }
-
-  if (!contactId || typeof contactId !== "string") {
-    return NextResponse.json(
-      { error: "Contatto obbligatorio" },
-      { status: 400 }
-    );
-  }
-
-  if (expectedClose) {
-    const d = new Date(expectedClose);
-    if (isNaN(d.getTime())) {
-      return NextResponse.json(
-        { error: "Data di chiusura attesa non valida" },
-        { status: 400 }
-      );
-    }
   }
 
   // Get first stage if none provided
-  let finalStageId = stageId;
+  let finalStageId = parsed.data.stageId;
   if (!finalStageId) {
     const stages = await getStages();
     finalStageId = stages[0]?.id;
@@ -70,16 +66,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await createDeal({
-      title: title.trim(),
-      value: Number(value) || 0,
+      title: parsed.data.title.trim(),
+      value: parsed.data.value ?? 0,
       stageId: finalStageId,
-      contactId,
-      expectedClose: expectedClose ? new Date(expectedClose) : null,
-      probability: Math.max(0, Math.min(100, Number(probability) || 0)),
-      notes: notes || null,
-      attachments: attachments ? JSON.stringify(attachments) : "[]",
-      billingType: ["una_tantum", "mensile", "annuale"].includes(billingType) ? billingType : "una_tantum",
-      recurringMonths: billingType !== "una_tantum" ? (Number(recurringMonths) || 12) : null,
+      contactId: parsed.data.contactId,
+      expectedClose: parsed.data.expectedClose ? new Date(parsed.data.expectedClose) : null,
+      probability: parsed.data.probability ?? 0,
+      notes: parsed.data.notes ?? null,
+      attachments: parsed.data.attachments ? JSON.stringify(parsed.data.attachments) : "[]",
+      billingType: parsed.data.billingType ?? "una_tantum",
+      recurringMonths: parsed.data.billingType !== "una_tantum" ? (parsed.data.recurringMonths ?? 12) : null,
     });
 
     return NextResponse.json(result, { status: 201 });

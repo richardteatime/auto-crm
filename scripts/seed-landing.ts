@@ -211,11 +211,32 @@ async function main() {
     .setKey(APPWRITE_API_KEY);
   const db = new Databases(client);
 
-  const slug = await freeSlug(db, "sarconx");
   const now = new Date().toISOString();
+  const name = "SarconX — Landing Consulenza";
 
+  // Idempotente: se esiste già una landing con questo nome, aggiorna.
+  const existing = await db.listDocuments(DB_ID, COLLECTION, [
+    Query.equal("name", name),
+    Query.limit(1),
+  ]);
+
+  if (existing.total > 0) {
+    const doc = existing.documents[0];
+    await db.updateDocument(DB_ID, COLLECTION, doc.$id, {
+      config: JSON.stringify(buildConfig()),
+      metaTitle: "SarconX — Siti, Web App e Automazioni che fanno crescere il tuo business",
+      metaDescription:
+        "Trasformiamo il tuo business con siti che convertono, web app su misura e automazioni AI. Richiedi una consulenza gratuita.",
+      updatedAt: now,
+    });
+    console.log(`OK — Landing aggiornata: ${doc.$id}`);
+    console.log(`Pubblica su: /l/${doc.slug}`);
+    return;
+  }
+
+  const slug = await freeSlug(db, "sarconx");
   const doc = await db.createDocument(DB_ID, COLLECTION, ID.unique(), {
-    name: "SarconX — Landing Consulenza",
+    name,
     slug,
     status: "published",
     templateId: null,

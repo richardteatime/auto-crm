@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getLandingPage, updateLandingPage } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import type { AssetStatus } from "@/lib/capture/types";
 
-const STATUSES: AssetStatus[] = ["draft", "published", "archived"];
+const BodySchema = z.object({
+  status: z.enum(["draft", "published", "archived"]).optional(),
+});
 
 export async function POST(
   request: NextRequest,
@@ -21,7 +24,8 @@ export async function POST(
   let status: AssetStatus = "published";
   try {
     const body = await request.json();
-    if (body?.status && STATUSES.includes(body.status)) status = body.status;
+    const parsed = BodySchema.safeParse(body);
+    if (parsed.success && parsed.data.status) status = parsed.data.status;
   } catch {
     // No body → default to publish.
   }

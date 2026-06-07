@@ -51,8 +51,15 @@ function toIso(d: Date | string | null | undefined): string | undefined {
   return new Date(d).toISOString();
 }
 
-export async function listRevenues(includeDeleted = false): Promise<Revenue[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listRevenues(
+  includeDeleted = false,
+  pagination?: { offset?: number; limit?: number },
+): Promise<Revenue[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
   if (!includeDeleted) {
     queries.push(Query.isNull("deletedAt"));
   }

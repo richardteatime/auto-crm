@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getBookingLinkBySlug } from "@/lib/db";
 import { availableSlotsForDate } from "@/lib/capture/booking-slots";
+import { corsHeaders } from "@/lib/cors";
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+const QuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS });
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(request, "GET, OPTIONS") });
 }
 
 export async function GET(
@@ -19,24 +17,25 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const date = request.nextUrl.searchParams.get("date") ?? "";
-
-  if (!DATE_RE.test(date)) {
+  const query = Object.fromEntries(request.nextUrl.searchParams.entries());
+  const parsedQuery = QuerySchema.safeParse(query);
+  if (!parsedQuery.success) {
     return NextResponse.json(
-      { error: "Parametro 'date' non valido (atteso YYYY-MM-DD)" },
-      { status: 400, headers: CORS },
+      { error: "Parametri non validi", issues: parsedQuery.error.issues },
+      { status: 400, headers: corsHeaders(request, "GET, OPTIONS") },
     );
   }
+  const { date } = parsedQuery.data;
 
   const link = await getBookingLinkBySlug(slug);
   if (!link || link.status !== "active") {
-    return NextResponse.json({ error: "Link non trovato" }, { status: 404, headers: CORS });
+    return NextResponse.json({ error: "Link non trovato" }, { status: 404, headers: corsHeaders(request, "GET, OPTIONS") });
   }
 
   const slots = await availableSlotsForDate(link, date);
 
   return NextResponse.json(
     { date, durationMinutes: link.durationMinutes, slots },
-    { headers: CORS },
+    { headers: corsHeaders(request, "GET, OPTIONS") },
   );
 }

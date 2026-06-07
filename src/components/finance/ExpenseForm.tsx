@@ -106,7 +106,7 @@ export function ExpenseForm({ open, onClose, initialData, onSaved }: ExpenseForm
         createdBy: "Team",
       });
     }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, initialData, reset]);
 
   const onSubmit = async (data: FormData) => {
     const payload = { ...data, type, category };

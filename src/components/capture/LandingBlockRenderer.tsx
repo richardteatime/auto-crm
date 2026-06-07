@@ -3,6 +3,7 @@
 // always faithful to what visitors see. No "use client" — it only embeds the
 // PublicLeadForm island where a form block needs interactivity.
 
+import Image from "next/image";
 import { PublicLeadForm } from "@/components/capture/PublicLeadForm";
 import { LandingEmbeddedForm } from "@/components/capture/LandingEmbeddedForm";
 import { Check, Star, X } from "lucide-react";
@@ -266,12 +267,14 @@ function Logos({ block, maxWidth }: { block: LogosBlock; maxWidth: number }) {
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5">
           {block.items.map((item, i) => (
             item.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 key={i}
                 src={item.imageUrl}
                 alt={item.name}
+                width={144}
+                height={32}
                 className="h-8 max-w-36 object-contain grayscale opacity-55"
+                unoptimized
               />
             ) : (
               <span key={i} className="font-serif text-2xl font-bold tracking-wide text-gray-500 opacity-65">
@@ -333,8 +336,7 @@ function Reviews({ block, maxWidth }: { block: ReviewsBlock; maxWidth: number })
               <blockquote className="mt-4 text-sm leading-6 text-gray-700">&ldquo;{item.quote}&rdquo;</blockquote>
               <figcaption className="mt-5 flex items-center gap-3 text-sm font-semibold">
                 {item.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
+                  <Image src={item.avatarUrl} alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" unoptimized />
                 ) : (
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs text-gray-600">
                     {item.author.charAt(0).toUpperCase()}
@@ -527,12 +529,14 @@ function ImageSection({ block, maxWidth }: { block: ImageBlock; maxWidth: number
   return (
     <section className="py-8">
       <Container maxWidth={maxWidth}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={block.url}
           alt={block.alt}
+          width={800}
+          height={450}
           className="mx-auto rounded-lg"
-          style={{ maxWidth: block.maxWidth, width: "100%" }}
+          style={{ maxWidth: block.maxWidth, width: "100%", height: "auto" }}
+          unoptimized
         />
       </Container>
     </section>

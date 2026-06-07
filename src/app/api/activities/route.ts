@@ -1,20 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listActivities, createActivity } from "@/lib/db";
 import { VALID_ACTIVITY_TYPES } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth";
 import { notifyAssignment } from "@/lib/notify";
+
+const QuerySchema = z.object({
+  contactId: z.string().optional(),
+  dealId: z.string().optional(),
+  assignedTo: z.string().optional(),
+});
+
+const BodySchema = z.object({
+  type: z.string().min(1),
+  description: z.string().min(1),
+  contactId: z.string().min(1),
+  dealId: z.string().optional().nullable(),
+  scheduledAt: z.string().datetime().optional().nullable(),
+  startAt: z.string().datetime().optional().nullable(),
+  endAt: z.string().datetime().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  attachments: z.array(z.record(z.string(), z.unknown())).optional(),
+  assignedTo: z.string().optional().nullable(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
-  const contactId = searchParams.get("contactId") || undefined;
-  const dealId = searchParams.get("dealId") || undefined;
-  const assignedTo = searchParams.get("assignedTo") || undefined;
+  const queryObj = Object.fromEntries(searchParams.entries());
+  const parsedQuery = QuerySchema.safeParse(queryObj);
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Parametri non validi", issues: parsedQuery.error.issues },
+      { status: 400 }
+    );
+  }
 
   try {
-    const results = await listActivities({ contactId, dealId, assignedTo });
+    const results = await listActivities({
+      contactId: parsedQuery.data.contactId,
+      dealId: parsedQuery.data.dealId,
+      assignedTo: parsedQuery.data.assignedTo,
+    });
     return NextResponse.json(results);
   } catch {
     return NextResponse.json(
@@ -35,16 +64,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { type, description, contactId, dealId, scheduledAt, startAt, endAt, notes, attachments, assignedTo } = body;
-
-  if (!type || !description || !contactId) {
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Tipo, descrizione e contatto sono obbligatori" },
+      { error: "Dati non validi", issues: parsed.error.issues },
       { status: 400 }
     );
   }
 
-  if (!VALID_ACTIVITY_TYPES.includes(type)) {
+  if (!VALID_ACTIVITY_TYPES.includes(parsed.data.type as (typeof VALID_ACTIVITY_TYPES)[number])) {
     return NextResponse.json(
       { error: "Tipo di attività non valido" },
       { status: 400 }
@@ -53,27 +81,27 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await createActivity({
-      type,
-      description,
-      contactId,
-      dealId: dealId || null,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      startAt: startAt ? new Date(startAt) : null,
-      endAt: endAt ? new Date(endAt) : null,
-      notes: notes || null,
-      attachments: attachments ? JSON.stringify(attachments) : null,
+      type: parsed.data.type as (typeof VALID_ACTIVITY_TYPES)[number],
+      description: parsed.data.description,
+      contactId: parsed.data.contactId,
+      dealId: parsed.data.dealId ?? null,
+      scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null,
+      startAt: parsed.data.startAt ? new Date(parsed.data.startAt) : null,
+      endAt: parsed.data.endAt ? new Date(parsed.data.endAt) : null,
+      notes: parsed.data.notes ?? null,
+      attachments: parsed.data.attachments ? JSON.stringify(parsed.data.attachments) : null,
       completedAt: null,
       isCompleted: false,
-      assignedTo: assignedTo || null,
+      assignedTo: parsed.data.assignedTo ?? null,
     });
 
-    if (assignedTo) {
+    if (parsed.data.assignedTo) {
       await notifyAssignment({
-        assignedToUserId: assignedTo,
+        assignedToUserId: parsed.data.assignedTo,
         fromUserId: auth.user.id,
         fromUserName: auth.user.name || auth.user.email,
         type: "activity_assigned",
-        title: `Nuova attività assegnata: ${description}`,
+        title: `Nuova attività assegnata: ${parsed.data.description}`,
         body: `Assegnata da ${auth.user.name || auth.user.email}`,
         relatedId: result.id,
       });

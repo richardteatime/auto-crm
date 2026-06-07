@@ -5,6 +5,7 @@
 // placeholder fields) so the canvas is safe to click for selection. The
 // canonical, interactive render lives in LandingBlockRenderer (server, /l/[slug]).
 
+import Image from "next/image";
 import { Check, Star, X } from "lucide-react";
 import { assertNever, type LandingBlock } from "@/lib/capture/types";
 
@@ -128,12 +129,14 @@ export function LandingBlockPreview({
       return (
         <section className="px-8 py-6">
           {block.url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={block.url}
               alt={block.alt}
+              width={800}
+              height={450}
               className="mx-auto rounded-lg"
-              style={{ maxWidth: block.maxWidth, width: "100%" }}
+              style={{ maxWidth: block.maxWidth, width: "100%", height: "auto" }}
+              unoptimized
             />
           ) : (
             <div className="mx-auto flex h-40 max-w-md items-center justify-center rounded-lg border border-dashed bg-gray-50 text-sm text-gray-400">
@@ -176,8 +179,7 @@ export function LandingBlockPreview({
           <div className="flex flex-wrap items-center justify-center gap-7">
             {block.items.map((item, i) => (
               item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={item.imageUrl} alt={item.name} className="h-6 max-w-28 object-contain grayscale opacity-55" />
+                <Image key={i} src={item.imageUrl} alt={item.name} width={112} height={24} className="h-6 max-w-28 object-contain grayscale opacity-55" unoptimized />
               ) : (
                 <span key={i} className="font-serif text-xl font-bold text-gray-500 opacity-65">{item.name}</span>
               )

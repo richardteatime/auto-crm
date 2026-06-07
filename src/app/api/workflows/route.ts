@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listWorkflows, createWorkflow } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  triggerType: z.string().optional(),
+  triggerConfig: z.string().optional(),
+  nodes: z.string().optional(),
+  edges: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -28,19 +38,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name) {
-    return NextResponse.json({ error: "Il nome è obbligatorio" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
 
   try {
     const workflow = await createWorkflow({
-      name,
-      description: typeof body.description === "string" ? body.description.trim() : null,
-      triggerType: typeof body.triggerType === "string" ? body.triggerType : undefined,
-      triggerConfig: typeof body.triggerConfig === "string" ? body.triggerConfig : undefined,
-      nodes: typeof body.nodes === "string" ? body.nodes : undefined,
-      edges: typeof body.edges === "string" ? body.edges : undefined,
+      name: parsed.data.name.trim(),
+      description: parsed.data.description?.trim() ?? null,
+      triggerType: parsed.data.triggerType,
+      triggerConfig: parsed.data.triggerConfig,
+      nodes: parsed.data.nodes,
+      edges: parsed.data.edges,
       createdBy: auth.user.id,
     });
     return NextResponse.json(workflow, { status: 201 });

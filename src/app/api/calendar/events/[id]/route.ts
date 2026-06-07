@@ -1,9 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from "@/lib/db/calendar";
 import { requireAuth } from "@/lib/auth";
 import { notifyAssignment } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+const BodySchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional().nullable(),
+  startAt: z.string().datetime().optional(),
+  endAt: z.string().datetime().optional(),
+  allDay: z.boolean().optional(),
+  type: z.enum(["activity", "meeting", "call", "travel", "out_of_office", "personal", "other"]).optional(),
+  assignedTo: z.array(z.string()).optional(),
+  contactId: z.string().optional().nullable(),
+  dealId: z.string().optional().nullable(),
+  projectId: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  color: z.string().optional().nullable(),
+  isPrivate: z.boolean().optional(),
+}).passthrough();
 
 export async function GET(request: NextRequest, { params }: Ctx) {
   const auth = await requireAuth(request);
@@ -20,10 +37,24 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   if (auth.error) return auth.error;
 
   const { id } = await params;
+  let body;
   try {
-    const body = await request.json();
-    const assignedTo: string[] | undefined = body.assignedTo !== undefined
-      ? (Array.isArray(body.assignedTo) ? body.assignedTo : [])
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
+  }
+
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const assignedTo: string[] | undefined = parsed.data.assignedTo !== undefined
+      ? parsed.data.assignedTo
       : undefined;
     // Detect assignedTo changes before updating
     let previousAssignedTo: string[] = [];
@@ -34,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 
     const event = await updateCalendarEvent(
       id,
-      assignedTo !== undefined ? { ...body, assignedTo } : body,
+      assignedTo !== undefined ? { ...parsed.data, assignedTo } : parsed.data,
     );
 
     if (assignedTo !== undefined) {

@@ -15,9 +15,12 @@ function fromDoc(doc: Models.Document): LandingTemplate {
   };
 }
 
-export async function listLandingTemplates(): Promise<LandingTemplate[]> {
+export async function listLandingTemplates(
+  pagination?: { offset?: number; limit?: number },
+): Promise<LandingTemplate[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.landingTemplates, [
-    Query.limit(100),
+    Query.limit(pagination?.limit ?? 100),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderAsc("name"),
   ]);
   return res.documents.map(fromDoc);

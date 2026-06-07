@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn, toMs } from "@/lib/utils";
@@ -32,13 +32,15 @@ interface TimelineProps {
 }
 
 export function ActivityTimeline({ activities, onEdit }: TimelineProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [fallbackNow] = useState(() => Date.now());
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setCurrentDate(new Date()), []);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const weekStart = currentDate ? startOfWeek(currentDate, { weekStartsOn: 1 }) : new Date(0);
+  const weekEnd = currentDate ? endOfWeek(currentDate, { weekStartsOn: 1 }) : new Date(0);
+  const days = currentDate ? eachDayOfInterval({ start: weekStart, end: weekEnd }) : [];
 
   const { bars, minMs, maxMs } = useMemo(() => {
     const items = activities
@@ -65,6 +67,10 @@ export function ActivityTimeline({ activities, onEdit }: TimelineProps) {
   }, [activities, fallbackNow]);
 
   const totalMs = Math.max(maxMs - minMs, 86400000);
+
+  if (!currentDate) {
+    return <div className="h-[200px] animate-pulse bg-muted rounded" />;
+  }
 
   return (
     <div className="space-y-4">

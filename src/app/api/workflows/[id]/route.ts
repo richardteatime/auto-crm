@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getWorkflow, updateWorkflow, deleteWorkflow } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
+  status: z.enum(["draft", "active", "paused", "archived"]).optional(),
+  triggerType: z.string().optional(),
+  triggerConfig: z.string().optional(),
+  nodes: z.string().optional(),
+  edges: z.string().optional(),
+});
 
 export async function GET(
   request: NextRequest,
@@ -39,6 +50,14 @@ export async function PUT(
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
   try {
     const workflow = await getWorkflow(id);
     if (!workflow) {
@@ -46,13 +65,13 @@ export async function PUT(
     }
 
     const updateData: Parameters<typeof updateWorkflow>[1] = {};
-    if (typeof body.name === "string") updateData.name = body.name.trim();
-    if (typeof body.description === "string" || body.description === null) updateData.description = body.description;
-    if (typeof body.status === "string") updateData.status = body.status;
-    if (typeof body.triggerType === "string") updateData.triggerType = body.triggerType;
-    if (typeof body.triggerConfig === "string") updateData.triggerConfig = body.triggerConfig;
-    if (typeof body.nodes === "string") updateData.nodes = body.nodes;
-    if (typeof body.edges === "string") updateData.edges = body.edges;
+    if (parsed.data.name !== undefined) updateData.name = parsed.data.name.trim();
+    if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+    if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+    if (parsed.data.triggerType !== undefined) updateData.triggerType = parsed.data.triggerType;
+    if (parsed.data.triggerConfig !== undefined) updateData.triggerConfig = parsed.data.triggerConfig;
+    if (parsed.data.nodes !== undefined) updateData.nodes = parsed.data.nodes;
+    if (parsed.data.edges !== undefined) updateData.edges = parsed.data.edges;
 
     const updated = await updateWorkflow(id, updateData);
     return NextResponse.json(updated);

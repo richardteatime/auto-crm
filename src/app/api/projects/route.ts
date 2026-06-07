@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listProjects, createProject } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { notifyAssignment } from "@/lib/notify";
+
+const BodySchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional().nullable(),
+  status: z.enum(["aperto", "in_lavorazione", "bloccato", "in_pausa", "revisione_cto", "consegnato"]).optional(),
+  priority: z.string().optional(),
+  assignedTo: z.array(z.string()).optional(),
+  startDate: z.string().datetime().optional().nullable(),
+  dueDate: z.string().datetime().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  contactId: z.string().optional().nullable(),
+  dealId: z.string().optional().nullable(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -19,13 +33,24 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
+  let body;
   try {
-    const body = await request.json();
-    if (!body.title?.trim()) {
-      return NextResponse.json({ error: "title obbligatorio" }, { status: 400 });
-    }
-    const assignedTo: string[] = Array.isArray(body.assignedTo) ? body.assignedTo : [];
-    const project = await createProject({ ...body, assignedTo });
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
+  }
+
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const assignedTo: string[] = parsed.data.assignedTo ?? [];
+    const project = await createProject({ ...parsed.data, assignedTo });
 
     for (const userId of assignedTo) {
       await notifyAssignment({
@@ -33,7 +58,7 @@ export async function POST(request: NextRequest) {
         fromUserId: auth.user.id,
         fromUserName: auth.user.name || auth.user.email,
         type: "project_assigned",
-        title: `Nuovo progetto assegnato: ${body.title}`,
+        title: `Nuovo progetto assegnato: ${parsed.data.title}`,
         body: `Assegnato da ${auth.user.name || auth.user.email}`,
         relatedId: project.id,
       });

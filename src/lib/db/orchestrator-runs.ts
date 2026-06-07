@@ -38,13 +38,17 @@ function fromDoc(doc: Models.Document): OrchestratorRun {
 // CRUD
 // ---------------------------------------------------------------------------
 
-export async function listOrchestratorRuns(filters?: {
-  status?: RunStatus;
-  senderPhone?: string;
-  limit?: number;
-}): Promise<OrchestratorRun[]> {
+export async function listOrchestratorRuns(
+  filters?: {
+    status?: RunStatus;
+    senderPhone?: string;
+    limit?: number;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<OrchestratorRun[]> {
   const queries: string[] = [
-    Query.limit(filters?.limit ?? 200),
+    Query.limit(pagination?.limit ?? filters?.limit ?? 200),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ];
 

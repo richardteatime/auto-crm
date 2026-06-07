@@ -16,12 +16,18 @@ function fromDoc<T>(doc: Models.Document): T {
 
 export async function listPipelineMovements(
   leadId: string,
+  pagination?: { offset?: number; limit?: number },
 ): Promise<PipelineMovement[]> {
   try {
     const res = await databases.listDocuments(
       DB_ID,
       COLLECTIONS.pipelineMovements,
-      [Query.equal("leadId", leadId), Query.orderDesc("$createdAt"), Query.limit(200)],
+      [
+        Query.equal("leadId", leadId),
+        Query.orderDesc("$createdAt"),
+        Query.limit(pagination?.limit ?? 200),
+        Query.offset(pagination?.offset ?? 0),
+      ],
     );
     return res.documents.map((d) => fromDoc<PipelineMovement>(d));
   } catch {

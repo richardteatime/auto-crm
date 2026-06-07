@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
+import { z } from "zod";
 import {
   getBookingLinkBySlug,
   createCalendarEvent,
@@ -15,23 +16,27 @@ import { clientIp, track } from "@/lib/capture/analytics";
 import { rateLimit } from "@/lib/capture/rate-limit";
 import { sendEmail } from "@/lib/leads/automation/adapters/email";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
+import { corsHeaders } from "@/lib/cors";
 
-const CORS = { "Access-Control-Allow-Origin": "*" };
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BodySchema = z.object({
+  guestName: z.string().optional(),
+  name: z.string().optional(),
+  guestEmail: z.string().email().optional(),
+  email: z.string().email().optional(),
+  guestPhone: z.string().optional(),
+  phone: z.string().optional(),
+  notes: z.string().optional(),
+  message: z.string().optional(),
+  start: z.string().min(1),
+  landingPageId: z.string().optional(),
+  funnelId: z.string().optional(),
+  sessionId: z.string().optional(),
+});
 
-export function OPTIONS() {
+export function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
+    headers: corsHeaders(request),
   });
-}
-
-function str(body: Record<string, unknown>, key: string): string | null {
-  const v = body[key];
-  return typeof v === "string" && v.trim().length ? v.trim() : null;
 }
 
 function reservationId(bookingLinkId: string, startIso: string): string {
@@ -58,53 +63,63 @@ export async function POST(
 ) {
   const { slug } = await params;
   const ip = clientIp(request.headers) ?? "unknown";
-  if (!rateLimit(`booking:${ip}`)) {
+  if (!(await rateLimit(`booking:${ip}`))) {
     return NextResponse.json(
       { success: false, error: "Troppe richieste. Riprova più tardi." },
-      { status: 429, headers: CORS },
+      { status: 429, headers: corsHeaders(request) },
     );
   }
 
-  let body: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json(
       { success: false, error: "JSON invalido" },
-      { status: 400, headers: CORS },
+      { status: 400, headers: corsHeaders(request) },
     );
   }
+
+  const parsed = BodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400, headers: corsHeaders(request) },
+    );
+  }
+
+  const body = parsed.data;
 
   const link = await getBookingLinkBySlug(slug);
   if (!link || link.status !== "active") {
     return NextResponse.json(
       { success: false, error: "Link non trovato" },
-      { status: 404, headers: CORS },
+      { status: 404, headers: corsHeaders(request) },
     );
   }
 
-  const guestName = str(body, "guestName") ?? str(body, "name");
-  const guestEmail = str(body, "guestEmail") ?? str(body, "email");
-  const guestPhone = str(body, "guestPhone") ?? str(body, "phone");
-  const notes = str(body, "notes") ?? str(body, "message");
-  const startRaw = str(body, "start");
+  const guestName = body.guestName?.trim() || body.name?.trim() || null;
+  const guestEmail = body.guestEmail?.trim() || body.email?.trim() || null;
+  const guestPhone = body.guestPhone?.trim() || body.phone?.trim() || null;
+  const notes = body.notes?.trim() || body.message?.trim() || null;
+  const startRaw = body.start;
 
   if (!guestName) {
     return NextResponse.json(
       { success: false, error: "Il nome è obbligatorio" },
-      { status: 400, headers: CORS },
+      { status: 400, headers: corsHeaders(request) },
     );
   }
-  if (!guestEmail || !EMAIL_RE.test(guestEmail)) {
+  if (!guestEmail) {
     return NextResponse.json(
       { success: false, error: "Email non valida" },
-      { status: 400, headers: CORS },
+      { status: 400, headers: corsHeaders(request) },
     );
   }
   if (!startRaw) {
     return NextResponse.json(
       { success: false, error: "Orario non selezionato" },
-      { status: 400, headers: CORS },
+      { status: 400, headers: corsHeaders(request) },
     );
   }
 
@@ -112,7 +127,7 @@ export async function POST(
   if (Number.isNaN(startMs)) {
     return NextResponse.json(
       { success: false, error: "Orario non valido" },
-      { status: 400, headers: CORS },
+      { status: 400, headers: corsHeaders(request) },
     );
   }
   const startIso = new Date(startMs).toISOString();
@@ -124,7 +139,7 @@ export async function POST(
   if (!slots.some((s) => s.start === startIso)) {
     return NextResponse.json(
       { success: false, error: "Questo orario non è più disponibile. Scegline un altro." },
-      { status: 409, headers: CORS },
+      { status: 409, headers: corsHeaders(request) },
     );
   }
 
@@ -137,7 +152,7 @@ export async function POST(
   if (parseBookingAssignees(link.assignedTo).length > 0 && !selectedAssignee) {
     return NextResponse.json(
       { success: false, error: "Questo orario non è più disponibile. Scegline un altro." },
-      { status: 409, headers: CORS },
+      { status: 409, headers: corsHeaders(request) },
     );
   }
 
@@ -151,14 +166,14 @@ export async function POST(
         message: notes,
         source: "booking",
         bookingLinkId: link.id,
-        landingPageId: str(body, "landingPageId"),
-        funnelId: str(body, "funnelId"),
+        landingPageId: body.landingPageId || null,
+        funnelId: body.funnelId || null,
       },
       {
         ip,
         userAgent: request.headers.get("user-agent"),
         referrer: request.headers.get("referer"),
-        sessionId: str(body, "sessionId"),
+        sessionId: body.sessionId || null,
       },
     );
 
@@ -184,7 +199,7 @@ export async function POST(
       ) {
         return NextResponse.json(
           { success: false, error: "Questo orario non Ã¨ piÃ¹ disponibile. Scegline un altro." },
-          { status: 409, headers: CORS },
+          { status: 409, headers: corsHeaders(request) },
         );
       }
       throw error;
@@ -219,7 +234,7 @@ export async function POST(
         ip,
         userAgent: request.headers.get("user-agent"),
         referrer: request.headers.get("referer"),
-        sessionId: str(body, "sessionId"),
+        sessionId: body.sessionId || null,
       }),
       sendEmail({
         to: guestEmail,
@@ -237,7 +252,7 @@ export async function POST(
         : []),
     ]);
 
-    triggerWorkflows("booking_created", {
+    await triggerWorkflows("booking_created", {
       bookingLinkId: link.id,
       appointmentId,
       contactId: lead.contactId,
@@ -245,7 +260,7 @@ export async function POST(
       guestName,
       startAt: startIso,
       endAt: endIso,
-    });
+    }).catch(() => {});
 
     return NextResponse.json(
       {
@@ -254,12 +269,12 @@ export async function POST(
         successMessage: link.successMessage,
         redirectUrl: link.redirectUrl,
       },
-      { status: 201, headers: CORS },
+      { status: 201, headers: corsHeaders(request) },
     );
   } catch {
     return NextResponse.json(
       { success: false, error: "Errore durante la prenotazione. Riprova." },
-      { status: 500, headers: CORS },
+      { status: 500, headers: corsHeaders(request) },
     );
   }
 }

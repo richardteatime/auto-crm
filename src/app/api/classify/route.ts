@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getContact, updateContact } from "@/lib/db/contacts";
 import { requireAuth } from "@/lib/auth";
 import { listActivities } from "@/lib/db/activities";
 import { classifyLead, isAIEnabled } from "@/lib/claude";
 import type { Temperature } from "@/types";
 import { VALID_ACTIVITY_TYPES } from "@/lib/utils";
+
+const BodySchema = z.object({
+  contactId: z.string().min(1),
+});
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -16,14 +21,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
-  const { contactId } = body;
 
-  if (!contactId) {
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "contactId è obbligatorio" },
+      { error: "Dati non validi", issues: parsed.error.issues },
       { status: 400 }
     );
   }
+
+  const { contactId } = parsed.data;
 
   const contact = await getContact(contactId);
 

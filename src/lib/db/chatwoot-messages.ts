@@ -21,14 +21,18 @@ function fromDoc(doc: Models.Document) {
 // CRUD
 // ---------------------------------------------------------------------------
 
-export async function listChatwootMessages(filters?: {
-  conversationId?: number;
-  senderPhone?: string;
-  processed?: boolean;
-  limit?: number;
-}): Promise<unknown[]> {
+export async function listChatwootMessages(
+  filters?: {
+    conversationId?: number;
+    senderPhone?: string;
+    processed?: boolean;
+    limit?: number;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<unknown[]> {
   const queries: string[] = [
-    Query.limit(filters?.limit ?? 200),
+    Query.limit(pagination?.limit ?? filters?.limit ?? 200),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ];
 

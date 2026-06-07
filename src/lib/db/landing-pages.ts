@@ -34,9 +34,12 @@ export async function landingSlugExists(slug: string): Promise<boolean> {
   return res.documents.length > 0;
 }
 
-export async function listLandingPages(): Promise<LandingPage[]> {
+export async function listLandingPages(
+  pagination?: { offset?: number; limit?: number },
+): Promise<LandingPage[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.landingPages, [
-    Query.limit(500),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ]);
   return res.documents.map(fromDoc);

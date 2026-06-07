@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getDeal } from "@/lib/db/deals";
 import { listQuotes, createQuote } from "@/lib/db/quotes";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  title: z.string().min(1),
+  items: z.array(z.record(z.string(), z.unknown())).optional(),
+  notes: z.string().optional().nullable(),
+  vatRate: z.number().optional(),
+  validUntil: z.string().datetime().optional().nullable(),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -38,26 +47,22 @@ export async function POST(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  const { title, items, notes, vatRate, validUntil } = body as {
-    title?: string;
-    items?: unknown[];
-    notes?: string;
-    vatRate?: number;
-    validUntil?: string | null;
-  };
-
-  if (!title?.trim()) {
-    return NextResponse.json({ error: "Il titolo è obbligatorio" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
   }
 
   try {
     const quote = await createQuote({
       dealId: id,
-      title: title.trim(),
-      items: items ? JSON.stringify(items) : "[]",
-      notes: typeof notes === "string" ? notes.trim() : undefined,
-      vatRate: typeof vatRate === "number" ? vatRate : 22,
-      validUntil: typeof validUntil === "string" && validUntil ? new Date(validUntil) : undefined,
+      title: parsed.data.title.trim(),
+      items: parsed.data.items ? JSON.stringify(parsed.data.items) : "[]",
+      notes: parsed.data.notes?.trim() ?? undefined,
+      vatRate: parsed.data.vatRate ?? 22,
+      validUntil: parsed.data.validUntil ? new Date(parsed.data.validUntil) : undefined,
     });
 
     return NextResponse.json(quote, { status: 201 });

@@ -18,10 +18,14 @@ function fromDoc(doc: Models.Document): WorkflowRunLog {
   };
 }
 
-export async function listWorkflowRunLogs(runId: string): Promise<WorkflowRunLog[]> {
+export async function listWorkflowRunLogs(
+  runId: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<WorkflowRunLog[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.workflowRunLogs, [
     Query.equal("runId", runId),
-    Query.limit(500),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderAsc("executedAt"),
   ]);
   return res.documents.map(fromDoc);

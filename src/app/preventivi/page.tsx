@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import dynamic from "next/dynamic";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,16 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
 import {
   FileText,
   TrendingUp,
@@ -38,6 +29,16 @@ import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { ReportDialog } from "@/components/shared/ReportDialog";
 import { QuoteForm, type QuoteInitialData } from "@/components/quotes/QuoteForm";
+
+const QuoteCharts = dynamic(() => import("@/components/quotes/QuoteCharts").then((m) => m.QuoteCharts), {
+  ssr: false,
+  loading: () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="h-[264px] bg-muted rounded-md animate-pulse" />
+      <div className="h-[264px] bg-muted rounded-md animate-pulse" />
+    </div>
+  ),
+});
 
 interface QuoteRow {
   id: string;
@@ -313,70 +314,7 @@ export default function PreventiviPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Preventivi per stato</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                <Tooltip
-                  formatter={(v) => [`${v}`, "Preventivi"]}
-                  contentStyle={{
-                    borderRadius: "8px",
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--card)",
-                  }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {chartData.map((d, i) => (
-                    <Cell key={i} fill={d.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Valore totale per stato</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(v) =>
-                    v >= 100000
-                      ? `€${(v / 100000).toFixed(0)}k`
-                      : `€${(v / 100).toFixed(0)}`
-                  }
-                />
-                <Tooltip
-                  formatter={(v) => [formatCurrency(v as number), "Valore"]}
-                  contentStyle={{
-                    borderRadius: "8px",
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--card)",
-                  }}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {chartData.map((d, i) => (
-                    <Cell key={i} fill={d.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+      <QuoteCharts chartData={chartData} />
 
       {/* Table */}
       <Card>

@@ -19,12 +19,19 @@ function fromDoc(doc: Models.Document): ProjectArtifact {
   };
 }
 
-export async function listProjectArtifacts(filters?: {
-  runId?: string;
-  projectId?: string;
-  artifactType?: ProjectArtifact["artifactType"];
-}): Promise<ProjectArtifact[]> {
-  const queries: string[] = [Query.limit(200), Query.orderDesc("$createdAt")];
+export async function listProjectArtifacts(
+  filters?: {
+    runId?: string;
+    projectId?: string;
+    artifactType?: ProjectArtifact["artifactType"];
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<ProjectArtifact[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 200),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.runId) {
     queries.push(Query.equal("runId", filters.runId));

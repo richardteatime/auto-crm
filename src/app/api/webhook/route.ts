@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createContact } from "@/lib/db/contacts";
 import { createActivity } from "@/lib/db/activities";
 import { getSetting } from "@/lib/db/settings";
@@ -8,6 +9,8 @@ import { triggerWorkflows } from "@/lib/workflows/trigger";
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const WEBHOOK_RATE_LIMIT = 30;
 const WEBHOOK_WINDOW_MS = 60_000;
+
+const BodySchema = z.record(z.string(), z.unknown());
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -118,13 +121,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let payload: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    payload = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
+  const parsed = BodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const payload = parsed.data;
   const fields = extractFields(payload);
 
   if (!fields.name) {
@@ -156,22 +168,30 @@ export async function POST(request: NextRequest) {
       contactId: contact.id,
     });
 
-    triggerWorkflows("webhook", {
-      contactId: contact.id,
-      name: contact.name,
-      email: contact.email,
-      source: "webhook",
-      rawPayload: payload,
-    });
+    await triggerWorkflows(
+      "webhook",
+      {
+        contactId: contact.id,
+        name: contact.name,
+        email: contact.email,
+        source: "webhook",
+        rawPayload: payload,
+      },
+      `webhook:${contact.id}`,
+    );
 
-    triggerWorkflows("contact_created", {
-      contactId: contact.id,
-      name: contact.name,
-      email: contact.email,
-      phone: contact.phone,
-      company: contact.company,
-      source: contact.source,
-    });
+    await triggerWorkflows(
+      "contact_created",
+      {
+        contactId: contact.id,
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        company: contact.company,
+        source: contact.source,
+      },
+      `contact_created:${contact.id}`,
+    );
 
     return NextResponse.json(
       {
@@ -186,10 +206,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("[webhook] Errore nella creazione del contatto:", error);
     return NextResponse.json(
-      {
-        error: `Errore nella creazione del contatto: ${error instanceof Error ? error.message : "sconosciuto"}`,
-      },
+      { error: "Errore interno nella creazione del contatto" },
       { status: 500 }
     );
   }

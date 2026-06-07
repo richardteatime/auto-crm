@@ -5,7 +5,12 @@ import {
   listFunnels,
   listLandingPages,
 } from "@/lib/db";
-import { CaptureAnalyticsDashboard } from "@/components/capture/CaptureAnalyticsDashboard";
+import nextDynamic from "next/dynamic";
+
+const CaptureAnalyticsDashboard = nextDynamic(
+  () => import("@/components/capture/CaptureAnalyticsDashboard").then((m) => m.CaptureAnalyticsDashboard),
+  { ssr: false },
+);
 
 export const dynamic = "force-dynamic";
 

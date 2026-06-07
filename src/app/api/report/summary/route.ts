@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listContacts } from "@/lib/db/contacts";
 import { requireAuth } from "@/lib/auth";
 import { listDeals } from "@/lib/db/deals";
@@ -7,6 +8,12 @@ import { listQuotes } from "@/lib/db/quotes";
 import { listExpenses } from "@/lib/db/expenses";
 
 export const dynamic = "force-dynamic";
+
+const QuerySchema = z.object({
+  section: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+});
 
 function getTs(val: Date | number | string | null | undefined): number {
   if (!val) return 0;
@@ -34,10 +41,19 @@ export async function GET(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
-  const section = searchParams.get("section") || "contacts";
+  const queryObj = Object.fromEntries(searchParams.entries());
+  const parsedQuery = QuerySchema.safeParse(queryObj);
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Parametri non validi", issues: parsedQuery.error.issues },
+      { status: 400 }
+    );
+  }
+
+  const section = parsedQuery.data.section || "contacts";
   const { fromMs, maxMs } = parsePeriod(
-    searchParams.get("from"),
-    searchParams.get("to")
+    parsedQuery.data.from ?? null,
+    parsedQuery.data.to ?? null
   );
 
   if (section === "contacts") {

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { getLead, listLeadQuotes, createLeadQuote } from "@/lib/db";
 import { buildQuoteDraft } from "@/lib/leads/quotes";
+
+const BodySchema = z.object({
+  regenerate: z.boolean().optional(),
+});
 
 // POST /api/leads/[id]/generate-quote  { regenerate?: boolean }
 // Builds a DRAFT quote from the lead's category + collected data and persists
@@ -18,11 +23,19 @@ export async function POST(
 
   const { id } = await params;
 
-  let body: { regenerate?: boolean } = {};
+  let body = {};
   try {
     body = await request.json();
   } catch {
     // empty/invalid body is fine — defaults apply
+  }
+
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
   }
 
   const lead = await getLead(id);
@@ -31,7 +44,7 @@ export async function POST(
   }
 
   try {
-    if (!body.regenerate) {
+    if (!parsed.data.regenerate) {
       const existing = await listLeadQuotes(id);
       const current = existing.find((q) => q.status === "draft");
       if (current) {

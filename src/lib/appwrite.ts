@@ -60,19 +60,27 @@ export const COLLECTIONS = {
 
 // ---------------------------------------------------------------------------
 // Patch: remove SDK v24 headers that Appwrite 1.7.4 doesn't understand.
-// SDK v24 sends "x-appwrite-response-format" and serializes queries as
-// JSON objects. Appwrite 1.7.4 only accepts the legacy string format.
+// Instead of polluting globalThis.fetch (which intercepts OpenAI, Telegram,
+// Resend, etc.), we patch the Client *instance* call() method so the scope
+// is strictly limited to Appwrite requests.
 // ---------------------------------------------------------------------------
-const originalFetch = globalThis.fetch;
-globalThis.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
-  if (init?.headers) {
-    const h = init.headers as Record<string, string>;
+function patchClientForV17Compat(client: Client) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const originalCall = (client as any).call.bind(client);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (client as any).call = async function (
+    method: string,
+    url: URL,
+    headers: Record<string, string> = {},
+    params: Record<string, unknown> = {},
+    responseType = "json",
+  ) {
+    const h = { ...headers };
     delete h["x-appwrite-response-format"];
-    // Also strip x-appwrite-version if present
     delete h["x-appwrite-version"];
-  }
-  return originalFetch(input, init);
-} as typeof globalThis.fetch;
+    return originalCall(method, url, h, params, responseType);
+  };
+}
 
 function createServerClient() {
   const client = new Client()
@@ -80,6 +88,7 @@ function createServerClient() {
     .setProject(APPWRITE_PROJECT_ID)
     .setKey(APPWRITE_API_KEY);
 
+  patchClientForV17Compat(client);
   return client;
 }
 

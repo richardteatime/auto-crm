@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   normalizeTelegramCallbackQuery,
   normalizeTelegramUpdate,
@@ -28,6 +29,8 @@ import { checkInternalCommandPermission } from "@/lib/orchestrator/permissions";
 import { runCrmCommand } from "@/lib/orchestrator/command-runner";
 import { logWorkflowEvent } from "@/lib/orchestrator/logger";
 import { transcribeAudio } from "@/lib/audio/transcription";
+
+const BodySchema = z.record(z.string(), z.unknown());
 
 function verifyTelegramSecret(request: NextRequest): boolean {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET || "";
@@ -244,6 +247,7 @@ async function handleTelegramCallback(update: TelegramUpdate) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[telegram/webhook] Callback error:", errorMessage);
     await logWorkflowEvent({
       eventType: "error",
       message: `Telegram callback error: ${errorMessage}`,
@@ -258,7 +262,7 @@ async function handleTelegramCallback(update: TelegramUpdate) {
     await markTelegramMessageProcessed(saved.id, null);
 
     return NextResponse.json(
-      { success: false, updateId: normalized.updateId, error: errorMessage },
+      { success: false, updateId: normalized.updateId, error: "Errore interno" },
       { status: 500 },
     );
   }
@@ -272,12 +276,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let update: TelegramUpdate;
+  let rawBody: unknown;
   try {
-    update = await request.json() as TelegramUpdate;
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
+
+  const parsed = BodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const update = rawBody as TelegramUpdate;
 
   if (update.callback_query) {
     return handleTelegramCallback(update);
@@ -362,6 +376,7 @@ export async function POST(request: NextRequest) {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("[telegram/webhook] Audio transcription error:", errorMessage);
       await logWorkflowEvent({
         eventType: "error",
         message: `Telegram audio transcription error: ${errorMessage}`,
@@ -377,12 +392,12 @@ export async function POST(request: NextRequest) {
 
       await sendTrackedTelegramReply(
         normalized.chatId,
-        `Non sono riuscito a trascrivere l'audio: ${errorMessage}`,
+        "Non sono riuscito a trascrivere l'audio. Riprova più tardi.",
       );
       await markTelegramMessageProcessed(saved.id, null);
 
       return NextResponse.json(
-        { success: false, updateId: normalized.updateId, error: errorMessage },
+        { success: false, updateId: normalized.updateId, error: "Errore interno" },
         { status: 500 },
       );
     }
@@ -444,6 +459,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[telegram/webhook] Command error:", errorMessage);
     await logWorkflowEvent({
       eventType: "error",
       message: `Telegram command error: ${errorMessage}`,
@@ -458,7 +474,7 @@ export async function POST(request: NextRequest) {
     await markTelegramMessageProcessed(saved.id, null);
 
     return NextResponse.json(
-      { success: false, updateId: normalized.updateId, error: errorMessage },
+      { success: false, updateId: normalized.updateId, error: "Errore interno" },
       { status: 500 },
     );
   }

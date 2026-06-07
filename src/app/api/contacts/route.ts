@@ -1,20 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listContacts, createContact } from "@/lib/db";
-import { isValidEmail } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
+
+const QuerySchema = z.object({
+  search: z.string().optional(),
+  temperature: z.string().optional(),
+  source: z.string().optional(),
+});
+
+const BodySchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  company: z.string().optional().nullable(),
+  vatNumber: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  source: z.string().optional(),
+  temperature: z.string().optional(),
+  notes: z.string().optional().nullable(),
+});
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);
-  const search = searchParams.get("search") || undefined;
-  const temperature = searchParams.get("temperature") || undefined;
-  const source = searchParams.get("source") || undefined;
+  const queryObj = Object.fromEntries(searchParams.entries());
+  const parsedQuery = QuerySchema.safeParse(queryObj);
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Parametri non validi", issues: parsedQuery.error.issues },
+      { status: 400 }
+    );
+  }
 
   try {
-    const results = await listContacts({ search, temperature, source });
+    const results = await listContacts({
+      search: parsedQuery.data.search,
+      temperature: parsedQuery.data.temperature,
+      source: parsedQuery.data.source,
+    });
     return NextResponse.json(results);
   } catch {
     return NextResponse.json(
@@ -35,44 +62,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const { name, email, phone, company, vatNumber, address, source, temperature, notes } =
-    body;
-
-  if (!name || typeof name !== "string" || name.trim().length === 0) {
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Il nome è obbligatorio" },
-      { status: 400 }
-    );
-  }
-
-  if (email && !isValidEmail(email)) {
-    return NextResponse.json(
-      { error: "Formato email non valido" },
+      { error: "Dati non validi", issues: parsed.error.issues },
       { status: 400 }
     );
   }
 
   try {
     const result = await createContact({
-      name: name.trim(),
-      email: email || null,
-      phone: phone || null,
-      company: company || null,
-      vatNumber: vatNumber || null,
-      address: address || null,
-      source: source || "otro",
-      temperature: temperature || "cold",
-      notes: notes || null,
+      name: parsed.data.name.trim(),
+      email: parsed.data.email ?? null,
+      phone: parsed.data.phone ?? null,
+      company: parsed.data.company ?? null,
+      vatNumber: parsed.data.vatNumber ?? null,
+      address: parsed.data.address ?? null,
+      source: parsed.data.source || "otro",
+      temperature: parsed.data.temperature || "cold",
+      notes: parsed.data.notes ?? null,
     });
 
-    triggerWorkflows("contact_created", {
+    await triggerWorkflows("contact_created", {
       contactId: result.id,
       name: result.name,
       email: result.email,
       phone: result.phone,
       company: result.company,
       source: result.source,
-    });
+    }).catch(() => {});
 
     return NextResponse.json(result, { status: 201 });
   } catch {

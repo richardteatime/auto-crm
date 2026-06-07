@@ -72,7 +72,17 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
       });
       if (!res.ok) throw new Error();
       const result = await res.json();
-      toast.success(`Test completato: ${result.status}`);
+      if (result.status === "failed") {
+        const errMsg = result.error || "Sconosciuto";
+        const traceInfo = Array.isArray(result.trace)
+          ? result.trace.map((t: { nodeId: string; nodeType: string; status: string; error?: string }) =>
+              `${t.nodeType} → ${t.status}${t.error ? ` (${t.error})` : ""}`
+            ).join(" | ")
+          : "";
+        toast.error(`Test fallito: ${errMsg}${traceInfo ? ` — Trace: ${traceInfo}` : ""}`);
+      } else {
+        toast.success(`Test completato: ${result.status}`);
+      }
     } catch {
       toast.error("Errore nel test");
     } finally {

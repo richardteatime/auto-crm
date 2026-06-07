@@ -54,12 +54,16 @@ export async function getTelegramMessageByUpdateId(
   return doc ? fromDoc(doc) : null;
 }
 
-export async function listTelegramMessages(filters?: {
-  chatId?: string;
-  limit?: number;
-}): Promise<TelegramMessageRecord[]> {
+export async function listTelegramMessages(
+  filters?: {
+    chatId?: string;
+    limit?: number;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<TelegramMessageRecord[]> {
   const queries: string[] = [
-    Query.limit(filters?.limit ?? 20),
+    Query.limit(pagination?.limit ?? filters?.limit ?? 20),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ];
   if (filters?.chatId) {

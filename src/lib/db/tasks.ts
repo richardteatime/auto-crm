@@ -19,11 +19,18 @@ function toIso(d: Date | string | null | undefined): string | undefined {
   return new Date(d).toISOString();
 }
 
-export async function listTasks(filters?: {
-  assignedTo?: string;
-  done?: boolean;
-}): Promise<Task[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listTasks(
+  filters?: {
+    assignedTo?: string;
+    done?: boolean;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<Task[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.assignedTo) {
     queries.push(Query.equal("assignedTo", filters.assignedTo));

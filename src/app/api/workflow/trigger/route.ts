@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { listActiveWorkflowsByTrigger } from "@/lib/db";
 import { WorkflowExecutor } from "@/lib/workflows/executor";
 
+const BodySchema = z.object({
+  triggerType: z.string().min(1),
+  payload: z.record(z.string(), z.unknown()).optional(),
+});
+
 export async function POST(request: NextRequest) {
+  const secret = request.headers.get("x-workflow-trigger-secret");
+  const expected = process.env.WORKFLOW_TRIGGER_SECRET;
+  if (!expected || secret !== expected) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -10,12 +22,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const triggerType = typeof body.triggerType === "string" ? body.triggerType : "";
-  const payload = body.payload ?? {};
-
-  if (!triggerType) {
-    return NextResponse.json({ error: "triggerType è obbligatorio" }, { status: 400 });
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
   }
+
+  const triggerType = parsed.data.triggerType;
+  const payload = parsed.data.payload ?? {};
 
   try {
     const workflows = await listActiveWorkflowsByTrigger(triggerType);

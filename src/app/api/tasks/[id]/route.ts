@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getTask, updateTask, deleteTask } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  assignedTo: z.string().optional(),
+  done: z.boolean().optional(),
+  dueAt: z.string().datetime().optional(),
+});
 
 export async function PUT(
   request: NextRequest,
@@ -18,6 +27,14 @@ export async function PUT(
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 }
+    );
+  }
+
   try {
     const existing = await getTask(id);
     if (!existing) {
@@ -28,11 +45,11 @@ export async function PUT(
     }
 
     const updateData: Record<string, unknown> = {};
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.assignedTo !== undefined) updateData.assignedTo = body.assignedTo;
-    if (body.done !== undefined) updateData.done = body.done;
-    if (body.dueAt !== undefined) updateData.dueAt = body.dueAt;
+    if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
+    if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+    if (parsed.data.assignedTo !== undefined) updateData.assignedTo = parsed.data.assignedTo;
+    if (parsed.data.done !== undefined) updateData.done = parsed.data.done;
+    if (parsed.data.dueAt !== undefined) updateData.dueAt = parsed.data.dueAt;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(existing);

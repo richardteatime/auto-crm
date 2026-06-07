@@ -1,33 +1,40 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
-import type { Contact, ContactWithDeals, Deal, Activity } from "@/types";
+import type { Contact, ContactWithDeals } from "@/types";
 import { normalizeContactSource } from "./contact-source";
+import { parseDoc } from "./parse-doc";
+import { ContactSchema, DealSchema, ActivitySchema } from "./schemas";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
-  return {
-    ...rest,
-    id: $id,
-    createdAt: new Date($createdAt),
-    updatedAt: new Date($updatedAt),
-  } as T;
+function isConflictError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  const code = (error as { code?: unknown }).code;
+  return (
+    msg.includes("duplicate") ||
+    msg.includes("already exists") ||
+    msg.includes("conflict") ||
+    (typeof code === "number" && code === 409)
+  );
 }
 
 // ---------------------------------------------------------------------------
 // listContacts
 // ---------------------------------------------------------------------------
 
-export async function listContacts(filters?: {
-  search?: string;
-  temperature?: string;
-  source?: string;
-}): Promise<Contact[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("$createdAt")];
+export async function listContacts(
+  filters?: {
+    search?: string;
+    temperature?: string;
+    source?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<Contact[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.temperature) {
     queries.push(Query.equal("temperature", filters.temperature));
@@ -40,7 +47,7 @@ export async function listContacts(filters?: {
   }
 
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.contacts, queries);
-  return res.documents.map((d) => fromDoc<Contact>(d));
+  return res.documents.map((d) => parseDoc(ContactSchema, d));
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +57,7 @@ export async function listContacts(filters?: {
 export async function getContact(id: string): Promise<Contact | null> {
   try {
     const doc = await databases.getDocument(DB_ID, COLLECTIONS.contacts, id);
-    return fromDoc<Contact>(doc);
+    return parseDoc(ContactSchema, doc);
   } catch {
     return null;
   }
@@ -70,7 +77,7 @@ export async function findContactByEmailOrPhone(criteria: {
         ...queries,
         Query.limit(1),
       ]);
-      if (res.documents.length > 0) return fromDoc<Contact>(res.documents[0]);
+      if (res.documents.length > 0) return parseDoc(ContactSchema, res.documents[0]);
     } catch {
       // Keep trying the remaining identity keys.
     }
@@ -94,25 +101,36 @@ export async function createContact(data: {
   notes?: string | null;
 }): Promise<Contact> {
   const now = new Date().toISOString();
-  const doc = await databases.createDocument(
-    DB_ID,
-    COLLECTIONS.contacts,
-    ID.unique(),
-    {
-      name: data.name,
-      email: data.email ?? null,
-      phone: data.phone ?? null,
-      company: data.company ?? null,
-      vatNumber: data.vatNumber ?? null,
-      address: data.address ?? null,
-      source: normalizeContactSource(data.source),
-      temperature: data.temperature ?? "cold",
-      notes: data.notes ?? null,
-      createdAt: now,
-      updatedAt: now,
-    },
-  );
-  return fromDoc<Contact>(doc);
+  try {
+    const doc = await databases.createDocument(
+      DB_ID,
+      COLLECTIONS.contacts,
+      ID.unique(),
+      {
+        name: data.name,
+        email: data.email ?? null,
+        phone: data.phone ?? null,
+        company: data.company ?? null,
+        vatNumber: data.vatNumber ?? null,
+        address: data.address ?? null,
+        source: normalizeContactSource(data.source),
+        temperature: data.temperature ?? "cold",
+        notes: data.notes ?? null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    );
+    return parseDoc(ContactSchema, doc);
+  } catch (error: unknown) {
+    if (isConflictError(error)) {
+      const existing = await findContactByEmailOrPhone({
+        email: data.email,
+        phone: data.phone,
+      });
+      if (existing) return existing;
+    }
+    throw error;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -148,7 +166,24 @@ export async function updateContact(
     id,
     cleanData,
   );
-  return fromDoc<Contact>(doc);
+
+  // Sync denormalized contact fields to related deals
+  if (data.name !== undefined || data.temperature !== undefined) {
+    try {
+      const { listDeals, updateDeal } = await import("./deals");
+      const deals = await listDeals({ contactId: id });
+      for (const deal of deals) {
+        await updateDeal(deal.id, {
+          contactName: data.name ?? deal.contactName,
+          contactTemperature: data.temperature ?? deal.contactTemperature,
+        } as unknown as Parameters<typeof updateDeal>[1]);
+      }
+    } catch {
+      // non-blocking: sync failure should not break contact update
+    }
+  }
+
+  return parseDoc(ContactSchema, doc);
 }
 
 // ---------------------------------------------------------------------------
@@ -183,8 +218,8 @@ export async function getContactWithRelations(
 
     return {
       ...contact,
-      deals: dealsRes.documents.map((d) => fromDoc<Deal>(d)),
-      activities: activitiesRes.documents.map((d) => fromDoc<Activity>(d)),
+      deals: dealsRes.documents.map((d) => parseDoc(DealSchema, d)),
+      activities: activitiesRes.documents.map((d) => parseDoc(ActivitySchema, d)),
     };
   } catch {
     // If related collections fail, return contact with empty relations

@@ -39,13 +39,20 @@ function normalizeExpense(expense: Expense): Expense {
 // listExpenses
 // ---------------------------------------------------------------------------
 
-export async function listExpenses(filters?: {
-  startDate?: Date | string | number;
-  endDate?: Date | string | number;
-  type?: string;
-  category?: string;
-}): Promise<Expense[]> {
-  const queries: string[] = [Query.orderDesc("date"), Query.limit(500)];
+export async function listExpenses(
+  filters?: {
+    startDate?: Date | string | number;
+    endDate?: Date | string | number;
+    type?: string;
+    category?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<Expense[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("date"),
+  ];
 
   if (filters?.startDate) {
     queries.push(Query.greaterThanEqual("date", toIsoDate(filters.startDate)!));

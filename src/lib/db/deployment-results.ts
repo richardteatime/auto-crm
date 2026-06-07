@@ -21,12 +21,19 @@ function fromDoc(doc: Models.Document): DeploymentResult {
   };
 }
 
-export async function listDeploymentResults(filters?: {
-  runId?: string;
-  projectId?: string;
-  environment?: DeploymentResult["environment"];
-}): Promise<DeploymentResult[]> {
-  const queries: string[] = [Query.limit(200), Query.orderDesc("$createdAt")];
+export async function listDeploymentResults(
+  filters?: {
+    runId?: string;
+    projectId?: string;
+    environment?: DeploymentResult["environment"];
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<DeploymentResult[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 200),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("$createdAt"),
+  ];
 
   if (filters?.runId) {
     queries.push(Query.equal("runId", filters.runId));

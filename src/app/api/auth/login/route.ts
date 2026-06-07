@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSession, setSessionCookie } from "@/lib/auth";
+
+const BodySchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
-
-    if (!email || !password) {
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: "Email e password sono obbligatorie" },
-        { status: 400 }
+        { success: false, error: "Dati non validi", issues: parsed.error.issues },
+        { status: 400 },
       );
     }
+
+    const { email, password } = parsed.data;
 
     const { userId, sessionId } = await createSession(email, password);
 

@@ -48,9 +48,12 @@ function toIso(d: Date | string | null | undefined): string | undefined {
 // Projects
 // ---------------------------------------------------------------------------
 
-export async function listProjects(): Promise<Project[]> {
+export async function listProjects(
+  pagination?: { offset?: number; limit?: number },
+): Promise<Project[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.projects, [
-    Query.limit(500),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ]);
   return res.documents.map((d) => fromDoc<Project>(d));
@@ -132,10 +135,14 @@ export async function deleteProject(id: string): Promise<void> {
 // Project Logs
 // ---------------------------------------------------------------------------
 
-export async function listProjectLogs(projectId: string): Promise<ProjectLog[]> {
+export async function listProjectLogs(
+  projectId: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<ProjectLog[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.projectLogs, [
     Query.equal("projectId", projectId),
-    Query.limit(200),
+    Query.limit(pagination?.limit ?? 200),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ]);
   return res.documents.map((d) => fromDoc<ProjectLog>(d));

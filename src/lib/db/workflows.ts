@@ -1,36 +1,24 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { Workflow, WorkflowStatus } from "@/lib/workflows/types";
+import { parseDoc } from "./parse-doc";
+import { WorkflowSchema } from "./schemas";
 
-function fromDoc(doc: Models.Document): Workflow {
-  const { $id, $createdAt, $updatedAt, ...rest } = doc;
-  return {
-    id: $id,
-    name: rest.name ?? "",
-    description: rest.description ?? null,
-    status: (rest.status ?? "draft") as WorkflowStatus,
-    triggerType: rest.triggerType ?? "",
-    triggerConfig: rest.triggerConfig ?? "{}",
-    nodes: rest.nodes ?? "[]",
-    edges: rest.edges ?? "[]",
-    createdBy: rest.createdBy ?? null,
-    createdAt: new Date($createdAt),
-    updatedAt: new Date($updatedAt),
-  };
-}
-
-export async function listWorkflows(): Promise<Workflow[]> {
+export async function listWorkflows(
+  pagination?: { offset?: number; limit?: number },
+): Promise<Workflow[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.workflows, [
-    Query.limit(500),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
     Query.orderDesc("$createdAt"),
   ]);
-  return res.documents.map(fromDoc);
+  return res.documents.map((d) => parseDoc(WorkflowSchema, d));
 }
 
 export async function getWorkflow(id: string): Promise<Workflow | null> {
   try {
-    return fromDoc(await databases.getDocument(DB_ID, COLLECTIONS.workflows, id));
+    return parseDoc(WorkflowSchema,await databases.getDocument(DB_ID, COLLECTIONS.workflows, id));
   } catch {
     return null;
   }
@@ -58,7 +46,7 @@ export async function createWorkflow(data: {
     createdAt: now,
     updatedAt: now,
   });
-  return fromDoc(doc);
+  return parseDoc(WorkflowSchema,doc);
 }
 
 export async function updateWorkflow(
@@ -75,18 +63,22 @@ export async function updateWorkflow(
 ): Promise<Workflow> {
   const payload: Record<string, unknown> = { ...data, updatedAt: new Date().toISOString() };
   const doc = await databases.updateDocument(DB_ID, COLLECTIONS.workflows, id, payload);
-  return fromDoc(doc);
+  return parseDoc(WorkflowSchema,doc);
 }
 
 export async function deleteWorkflow(id: string): Promise<void> {
   await databases.deleteDocument(DB_ID, COLLECTIONS.workflows, id);
 }
 
-export async function listActiveWorkflowsByTrigger(triggerType: string): Promise<Workflow[]> {
+export async function listActiveWorkflowsByTrigger(
+  triggerType: string,
+  pagination?: { offset?: number; limit?: number },
+): Promise<Workflow[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.workflows, [
     Query.equal("status", "active"),
     Query.equal("triggerType", triggerType),
-    Query.limit(500),
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
   ]);
-  return res.documents.map(fromDoc);
+  return res.documents.map((d) => parseDoc(WorkflowSchema, d));
 }

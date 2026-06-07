@@ -1,4 +1,9 @@
-import { FinanceDashboard } from "./FinanceDashboard";
+import nextDynamic from "next/dynamic";
+
+const FinanceDashboard = nextDynamic(
+  () => import("./FinanceDashboard").then((m) => m.FinanceDashboard),
+  { ssr: false },
+);
 
 export const dynamic = "force-dynamic";
 

@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   getContactWithRelations,
   getContact,
   updateContact,
   deleteContact,
 } from "@/lib/db";
-import { isValidEmail } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth";
+
+const BodySchema = z.object({
+  name: z.string().optional(),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  company: z.string().optional().nullable(),
+  vatNumber: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  source: z.string().optional(),
+  temperature: z.string().optional(),
+  notes: z.string().optional().nullable(),
+});
 
 export async function GET(
   _request: NextRequest,
@@ -61,23 +73,24 @@ export async function PUT(
       );
     }
 
-    if (body.email && !isValidEmail(body.email)) {
+    const parsed = BodySchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Formato email non valido" },
+        { error: "Dati non validi", issues: parsed.error.issues },
         { status: 400 }
       );
     }
 
     const updateData: Record<string, unknown> = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.email !== undefined) updateData.email = body.email || null;
-    if (body.phone !== undefined) updateData.phone = body.phone;
-    if (body.company !== undefined) updateData.company = body.company;
-    if (body.vatNumber !== undefined) updateData.vatNumber = body.vatNumber;
-    if (body.address !== undefined) updateData.address = body.address;
-    if (body.source !== undefined) updateData.source = body.source;
-    if (body.temperature !== undefined) updateData.temperature = body.temperature;
-    if (body.notes !== undefined) updateData.notes = body.notes;
+    if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
+    if (parsed.data.email !== undefined) updateData.email = parsed.data.email || null;
+    if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone;
+    if (parsed.data.company !== undefined) updateData.company = parsed.data.company;
+    if (parsed.data.vatNumber !== undefined) updateData.vatNumber = parsed.data.vatNumber;
+    if (parsed.data.address !== undefined) updateData.address = parsed.data.address;
+    if (parsed.data.source !== undefined) updateData.source = parsed.data.source;
+    if (parsed.data.temperature !== undefined) updateData.temperature = parsed.data.temperature;
+    if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(existing);

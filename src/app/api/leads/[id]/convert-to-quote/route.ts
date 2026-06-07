@@ -75,6 +75,7 @@ export async function POST(
         `Preventivo ${CATEGORY_LABELS[draft.category] ?? draft.category}`,
       items: JSON.stringify(dbItems),
       notes: lead.message?.trim() ? `Richiesta cliente: ${lead.message.trim()}` : null,
+      generatedText: draft.generatedText,
       vatRate: 22,
     });
 

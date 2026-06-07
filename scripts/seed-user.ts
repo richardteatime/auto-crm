@@ -1,4 +1,4 @@
-import { Client, Users } from "node-appwrite";
+import { Client, Users, Query } from "node-appwrite";
 import "dotenv/config";
 
 const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
@@ -21,10 +21,24 @@ const client = new Client()
 
 const users = new Users(client);
 
-try {
-  const { $id } = await users.create("unique()", email, password, name);
-  console.log(`User created: id=${$id}, email=${email}, name=${name}`);
-} catch (e: unknown) {
-  console.error("Failed:", e instanceof Error ? e.message : e);
-  process.exit(1);
+async function main() {
+  try {
+    const list = await users.list([Query.equal("email", email), Query.limit(1)]);
+    if (list.total > 0) {
+      console.log(`User already exists: id=${list.users[0].$id}, email=${email}`);
+      return;
+    }
+  } catch {
+    // ignore list error, try create anyway
+  }
+
+  try {
+    const { $id } = await users.create("unique()", email, password, name);
+    console.log(`User created: id=${$id}, email=${email}, name=${name}`);
+  } catch (e: unknown) {
+    console.error("Failed:", e instanceof Error ? e.message : e);
+    process.exit(1);
+  }
 }
+
+main();

@@ -8,6 +8,38 @@ export const dynamic = "force-dynamic";
 
 const BUCKET_ID = "uploads";
 
+// Server-side magic-bytes validation so the client cannot spoof MIME types.
+function detectMimeType(buffer: Buffer): string | null {
+  if (buffer.length < 4) return null;
+  const h = buffer.slice(0, 8);
+  const hex = h.toString("hex").toLowerCase();
+
+  if (hex.startsWith("ffd8ff")) return "image/jpeg";
+  if (hex.startsWith("89504e47")) return "image/png";
+  if (hex.startsWith("47494638")) return "image/gif";
+  if (hex.startsWith("52494646") && buffer.length >= 12) {
+    const webp = buffer.slice(8, 12).toString("ascii").toLowerCase();
+    if (webp === "webp") return "image/webp";
+  }
+  if (hex.startsWith("25504446")) return "application/pdf";
+  if (hex.startsWith("d0cf11e0")) return "application/msword"; // old Word/Excel
+  if (hex.startsWith("504b0304")) return "application/zip"; // docx/xlsx
+  if (hex.slice(8, 16) === "66747970") return "video/mp4"; // 'ftyp' at offset 4
+
+  // Plain text heuristic: valid UTF-8 and no null bytes in first 512 bytes
+  const preview = buffer.slice(0, 512);
+  if (!preview.includes(0)) {
+    try {
+      preview.toString("utf-8");
+      return "text/plain";
+    } catch {
+      // not valid UTF-8
+    }
+  }
+
+  return null;
+}
+
 const ALLOWED_TYPES = [
   "image/jpeg",
   "image/png",
@@ -47,6 +79,14 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const detected = detectMimeType(buffer);
+    if (detected && detected !== file.type) {
+      return NextResponse.json(
+        { error: "Tipo di file non valido: il contenuto non corrisponde all'estensione" },
+        { status: 400 },
+      );
+    }
+
     const inputFile = InputFile.fromBuffer(buffer, file.name);
 
     const uploaded = await storage.createFile(BUCKET_ID, ID.unique(), inputFile);
@@ -64,7 +104,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[UPLOAD ERROR]", error);
     return NextResponse.json(
-      { error: `Errore upload: ${error instanceof Error ? error.message : "sconosciuto"}` },
+      { error: "Errore durante l'upload. Riprova più tardi." },
       { status: 500 }
     );
   }

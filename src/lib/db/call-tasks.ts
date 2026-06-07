@@ -1,32 +1,29 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
-import { ID, type Models } from "node-appwrite";
+import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { CallTask, CallTaskStatus, CallOutcome } from "@/lib/leads/types";
+import { parseDoc } from "./parse-doc";
+import { CallTaskSchema } from "./schemas";
 
 function toIso(d: Date | string | null | undefined): string | undefined {
   if (!d) return undefined;
   return d instanceof Date ? d.toISOString() : new Date(d).toISOString();
 }
 
-function fromDoc<T>(doc: Models.Document): T {
-  const { $id, $createdAt, $updatedAt, createdAt, updatedAt, ...rest } = doc;
-  void createdAt;
-  void updatedAt;
-  return {
-    id: $id,
-    createdAt: new Date($createdAt),
-    updatedAt: new Date($updatedAt),
-    ...rest,
-  } as T;
-}
-
-export async function listCallTasks(filters?: {
-  leadId?: string;
-  assignedTo?: string;
-  status?: CallTaskStatus;
-}): Promise<CallTask[]> {
+export async function listCallTasks(
+  filters?: {
+    leadId?: string;
+    assignedTo?: string;
+    status?: CallTaskStatus;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<CallTask[]> {
   try {
-    const queries: string[] = [Query.limit(200), Query.orderDesc("$createdAt")];
+    const queries: string[] = [
+      Query.limit(pagination?.limit ?? 200),
+      Query.offset(pagination?.offset ?? 0),
+      Query.orderDesc("$createdAt"),
+    ];
     if (filters?.leadId) queries.push(Query.equal("leadId", filters.leadId));
     if (filters?.assignedTo) {
       queries.push(Query.equal("assignedTo", filters.assignedTo));
@@ -37,7 +34,7 @@ export async function listCallTasks(filters?: {
       COLLECTIONS.callTasks,
       queries,
     );
-    return res.documents.map((d) => fromDoc<CallTask>(d));
+    return res.documents.map((d) => parseDoc(CallTaskSchema,d));
   } catch {
     return [];
   }
@@ -46,7 +43,7 @@ export async function listCallTasks(filters?: {
 export async function getCallTask(id: string): Promise<CallTask | null> {
   try {
     const doc = await databases.getDocument(DB_ID, COLLECTIONS.callTasks, id);
-    return fromDoc<CallTask>(doc);
+    return parseDoc(CallTaskSchema,doc);
   } catch {
     return null;
   }
@@ -78,7 +75,7 @@ export async function createCallTask(data: {
       updatedAt: now,
     },
   );
-  return fromDoc<CallTask>(doc);
+  return parseDoc(CallTaskSchema,doc);
 }
 
 export async function updateCallTask(
@@ -110,13 +107,14 @@ export async function updateCallTask(
     id,
     payload,
   );
-  return fromDoc<CallTask>(doc);
+  return parseDoc(CallTaskSchema,doc);
 }
 
 export async function getOpenCallTaskForLead(
   leadId: string,
+  assignedTo?: string,
 ): Promise<CallTask | null> {
-  const tasks = await listCallTasks({ leadId });
+  const tasks = await listCallTasks({ leadId, assignedTo });
   return (
     tasks.find((t) => t.status === "pending" || t.status === "scheduled") ??
     null

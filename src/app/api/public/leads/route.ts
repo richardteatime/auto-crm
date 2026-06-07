@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { ingestLead } from "@/lib/capture/ingest";
 import { clientIp } from "@/lib/capture/analytics";
+
+const BodySchema = z.object({
+  name: z.string().optional().nullable(),
+  firstName: z.string().optional().nullable(),
+  lastName: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  company: z.string().optional().nullable(),
+  website: z.string().optional().nullable(),
+  message: z.string().optional().nullable(),
+  budget: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  landingPageId: z.string().optional().nullable(),
+  formId: z.string().optional().nullable(),
+  funnelId: z.string().optional().nullable(),
+  bookingLinkId: z.string().optional().nullable(),
+  sessionId: z.string().optional().nullable(),
+  data: z.record(z.string(), z.unknown()).optional().nullable(),
+});
 
 // Public, unauthenticated conversion endpoint. Shared by landing pages, forms,
 // funnels and bookings. Rate limited per IP to blunt spam.
@@ -29,59 +49,55 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: Record<string, unknown>;
+  let rawBody;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ success: false, error: "JSON invalido" }, { status: 400 });
   }
 
-  const str = (k: string): string | null => {
-    const v = body[k];
-    return typeof v === "string" && v.trim().length ? v.trim() : null;
-  };
+  const parsed = BodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
 
-  const name = str("name");
-  const email = str("email");
-  const phone = str("phone");
+  const data = parsed.data;
 
   // Need at least one way to identify the lead.
-  if (!name && !email && !phone) {
+  if (!data.name && !data.email && !data.phone) {
     return NextResponse.json(
       { success: false, error: "Inserisci almeno nome, email o telefono." },
       { status: 400 },
     );
   }
 
-  const rawData =
-    body.data && typeof body.data === "object" && !Array.isArray(body.data)
-      ? (body.data as Record<string, unknown>)
-      : null;
-
   try {
     const { lead, duplicate } = await ingestLead(
       {
-        name,
-        firstName: str("firstName"),
-        lastName: str("lastName"),
-        email,
-        phone,
-        company: str("company"),
-        website: str("website"),
-        message: str("message"),
-        budget: str("budget"),
-        source: str("source"),
-        landingPageId: str("landingPageId"),
-        formId: str("formId"),
-        funnelId: str("funnelId"),
-        bookingLinkId: str("bookingLinkId"),
-        rawData,
+        name: data.name || null,
+        firstName: data.firstName || null,
+        lastName: data.lastName || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        company: data.company || null,
+        website: data.website || null,
+        message: data.message || null,
+        budget: data.budget || null,
+        source: data.source || null,
+        landingPageId: data.landingPageId || null,
+        formId: data.formId || null,
+        funnelId: data.funnelId || null,
+        bookingLinkId: data.bookingLinkId || null,
+        rawData: data.data ?? null,
       },
       {
         ip,
         userAgent: request.headers.get("user-agent"),
         referrer: request.headers.get("referer"),
-        sessionId: str("sessionId"),
+        sessionId: data.sessionId || null,
       },
     );
 

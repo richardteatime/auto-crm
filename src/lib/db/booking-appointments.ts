@@ -25,10 +25,17 @@ function fromDoc(doc: Models.Document): BookingAppointment {
   };
 }
 
-export async function listBookingAppointments(filters?: {
-  bookingLinkId?: string;
-}): Promise<BookingAppointment[]> {
-  const queries: string[] = [Query.limit(500), Query.orderDesc("startAt")];
+export async function listBookingAppointments(
+  filters?: {
+    bookingLinkId?: string;
+  },
+  pagination?: { offset?: number; limit?: number },
+): Promise<BookingAppointment[]> {
+  const queries: string[] = [
+    Query.limit(pagination?.limit ?? 500),
+    Query.offset(pagination?.offset ?? 0),
+    Query.orderDesc("startAt"),
+  ];
   if (filters?.bookingLinkId) queries.push(Query.equal("bookingLinkId", filters.bookingLinkId));
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.bookingAppointments, queries);
   return res.documents.map(fromDoc);
@@ -37,11 +44,13 @@ export async function listBookingAppointments(filters?: {
 export async function listAppointmentsInRange(
   startAfter: Date | string,
   endBefore: Date | string,
+  pagination?: { offset?: number; limit?: number },
 ): Promise<BookingAppointment[]> {
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.bookingAppointments, [
     Query.greaterThanEqual("startAt", toIso(startAfter)),
     Query.lessThanEqual("startAt", toIso(endBefore)),
-    Query.limit(1000),
+    Query.limit(pagination?.limit ?? 1000),
+    Query.offset(pagination?.offset ?? 0),
   ]);
   return res.documents.map(fromDoc);
 }

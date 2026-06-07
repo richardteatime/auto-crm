@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   getLandingPage,
   updateLandingPage,
@@ -7,9 +8,16 @@ import {
 } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { slugify } from "@/lib/capture/slug";
-import type { AssetStatus } from "@/lib/capture/types";
-
-const STATUSES: AssetStatus[] = ["draft", "published", "archived"];
+const BodySchema = z.object({
+  name: z.string().min(1).optional(),
+  config: z.string().optional(),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  faviconUrl: z.string().nullable().optional(),
+  ogImageUrl: z.string().nullable().optional(),
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  slug: z.string().optional(),
+});
 
 export async function GET(
   request: NextRequest,
@@ -42,28 +50,30 @@ export async function PUT(
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
   const existing = await getLandingPage(id);
   if (!existing) {
     return NextResponse.json({ error: "Landing page non trovata" }, { status: 404 });
   }
 
   const data: Parameters<typeof updateLandingPage>[1] = {};
-  if (typeof body.name === "string") data.name = body.name.trim();
-  if (typeof body.config === "string") data.config = body.config;
-  if (typeof body.metaTitle === "string") data.metaTitle = body.metaTitle;
-  if (typeof body.metaDescription === "string") data.metaDescription = body.metaDescription;
-  if (body.faviconUrl !== undefined) data.faviconUrl = body.faviconUrl || null;
-  if (body.ogImageUrl !== undefined) data.ogImageUrl = body.ogImageUrl || null;
+  if (parsed.data.name !== undefined) data.name = parsed.data.name.trim();
+  if (parsed.data.config !== undefined) data.config = parsed.data.config;
+  if (parsed.data.metaTitle !== undefined) data.metaTitle = parsed.data.metaTitle;
+  if (parsed.data.metaDescription !== undefined) data.metaDescription = parsed.data.metaDescription;
+  if (parsed.data.faviconUrl !== undefined) data.faviconUrl = parsed.data.faviconUrl;
+  if (parsed.data.ogImageUrl !== undefined) data.ogImageUrl = parsed.data.ogImageUrl;
+  if (parsed.data.status !== undefined) data.status = parsed.data.status;
 
-  if (body.status !== undefined) {
-    if (!STATUSES.includes(body.status)) {
-      return NextResponse.json({ error: "Stato non valido" }, { status: 400 });
-    }
-    data.status = body.status;
-  }
-
-  if (typeof body.slug === "string" && body.slug.trim()) {
-    const slug = slugify(body.slug);
+  if (parsed.data.slug !== undefined && parsed.data.slug.trim()) {
+    const slug = slugify(parsed.data.slug);
     if (slug !== existing.slug && (await landingSlugExists(slug))) {
       return NextResponse.json({ error: "Slug già in uso" }, { status: 409 });
     }

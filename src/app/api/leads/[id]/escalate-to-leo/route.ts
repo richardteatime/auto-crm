@@ -7,6 +7,7 @@ import {
   listCallTasks,
   updateCallTask,
   createCallTask,
+  getOpenCallTaskForLead,
   getBookingLinkBySlug,
   listBookingLinks,
 } from "@/lib/db";
@@ -52,19 +53,27 @@ export async function POST(
     }
 
     // 2) Open Leo's closing call task (idempotent — skip if one is already open).
-    const leoOpen = tasks.find(
+    let leoOpen = tasks.find(
       (t) =>
         t.assignedTo === leoIdentity.id &&
         (t.status === "pending" || t.status === "scheduled"),
     );
     if (!leoOpen) {
-      await createCallTask({
-        leadId: id,
-        assignedTo: leoIdentity.id,
-        assigneeName: leoIdentity.name,
-        status: "pending",
-        notes: `Call di chiusura — lead scremato da ${setterIdentity.name}`,
-      });
+      try {
+        leoOpen = await createCallTask({
+          leadId: id,
+          assignedTo: leoIdentity.id,
+          assigneeName: leoIdentity.name,
+          status: "pending",
+          notes: `Call di chiusura — lead scremato da ${setterIdentity.name}`,
+        });
+      } catch (error: unknown) {
+        // Race condition: another request created the task concurrently.
+        // Fetch the existing open task and continue.
+        const existing = await getOpenCallTaskForLead(id, leoIdentity.id);
+        if (!existing) throw error;
+        leoOpen = existing;
+      }
     }
 
     // 3) Qualify + advance the lead, warm the linked contact.

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import {
   getLead,
@@ -6,14 +7,19 @@ import {
   createCallTask,
   updateCallTask,
 } from "@/lib/db";
-import { fireTrigger, leoIdentity } from "@/lib/leads/automation";
+import { leoIdentity } from "@/lib/leads/automation";
 import { CALL_OUTCOMES, OUTCOME_LABELS, type CallOutcome } from "@/lib/leads/types";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
 
+const BodySchema = z.object({
+  outcome: z.enum(CALL_OUTCOMES as [string, ...string[]]),
+  notes: z.string().optional().nullable(),
+});
+
 // POST /api/leads/[id]/call-outcome  { outcome, notes? }
-// Leo records the result of a call. Persists the outcome on the call task and
-// fires `call_completed`; the post-call routing (move to proposal / lost /
-// follow-up) lives in that automation (Day 6 route_lead_by_outcome).
+// Records the call outcome on the open task and then hands off post-call
+// routing to the visual Workflow Builder (trigger: call_outcome_recorded).
+// The legacy code-engine routing has been disabled to avoid duplicate actions.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -23,21 +29,23 @@ export async function POST(
 
   const { id } = await params;
 
-  let body: { outcome?: string; notes?: string };
+  let body;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
   }
 
-  const outcome = body.outcome;
-  if (!outcome || !CALL_OUTCOMES.includes(outcome as CallOutcome)) {
+  const parsed = BodySchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Esito chiamata non valido", validOutcomes: CALL_OUTCOMES },
+      { error: "Dati non validi", issues: parsed.error.issues },
       { status: 400 },
     );
   }
-  const notes = body.notes ?? null;
+
+  const outcome = parsed.data.outcome;
+  const notes = parsed.data.notes ?? null;
 
   const lead = await getLead(id);
   if (!lead) {
@@ -46,7 +54,12 @@ export async function POST(
 
   try {
     // Upsert the call task → completed with the recorded outcome.
-    let task = await getOpenCallTaskForLead(id);
+    // Prefer the task assigned to the authenticated user to avoid closing the
+    // wrong task when both setter and closer have open tasks.
+    let task = await getOpenCallTaskForLead(id, auth.user.id);
+    if (!task) {
+      task = await getOpenCallTaskForLead(id);
+    }
     if (!task) {
       task = await createCallTask({
         leadId: id,
@@ -63,30 +76,25 @@ export async function POST(
       completedAt: new Date(),
     });
 
-    // Fire post-call automation. Routing by outcome happens inside (Day 6).
-    const automation = await fireTrigger("call_completed", {
-      leadId: id,
-      outcome,
-      notes,
-      callTaskId: completed.id,
-    });
-
-    // Reload to reflect any stage/status changes made by the routing.
+    // Reload to reflect any stage/status changes made by the workflow builder.
     const updatedLead = await getLead(id);
 
-    // Bridge into the visual Workflow builder: the post-call routing can be
-    // seen and edited as a workflow (trigger "Esito Chiamata Registrato").
-    triggerWorkflows("call_outcome_recorded", {
-      leadId: id,
-      outcome,
-      outcomeLabel: OUTCOME_LABELS[outcome as CallOutcome] ?? outcome,
-      assignedTo: completed.assignedTo,
-      assigneeName: completed.assigneeName,
-      callTaskId: completed.id,
-      name: updatedLead?.fullName ?? lead.fullName,
-      email: updatedLead?.email ?? lead.email,
-      phone: updatedLead?.phone ?? lead.phone,
-    });
+    // Hand off post-call routing to the visual Workflow Builder.
+    await triggerWorkflows(
+      "call_outcome_recorded",
+      {
+        leadId: id,
+        outcome,
+        outcomeLabel: OUTCOME_LABELS[outcome as CallOutcome] ?? outcome,
+        assignedTo: completed.assignedTo,
+        assigneeName: completed.assigneeName,
+        callTaskId: completed.id,
+        name: updatedLead?.fullName ?? lead.fullName,
+        email: updatedLead?.email ?? lead.email,
+        phone: updatedLead?.phone ?? lead.phone,
+      },
+      `call_outcome_recorded:${id}:${outcome}`,
+    );
 
     return NextResponse.json({
       success: true,
@@ -95,10 +103,6 @@ export async function POST(
       callTaskId: completed.id,
       pipelineStage: updatedLead?.pipelineStage ?? lead.pipelineStage,
       status: updatedLead?.status ?? lead.status,
-      automation: {
-        matchedRules: automation.matchedRules,
-        runs: automation.runs.length,
-      },
     });
   } catch (error) {
     return NextResponse.json(

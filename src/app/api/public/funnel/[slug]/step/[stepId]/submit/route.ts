@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
   createDeal,
   createFunnelEvent,
@@ -19,6 +20,13 @@ import {
 } from "@/lib/capture/funnels";
 import { rateLimit } from "@/lib/capture/rate-limit";
 import type { FormField } from "@/lib/capture/types";
+
+const BodySchema = z.object({
+  values: z.record(z.string(), z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
+  formId: z.string().optional(),
+  sessionId: z.string().optional(),
+});
 
 function str(body: Record<string, unknown>, key: string): string | null {
   const value = body[key];
@@ -68,19 +76,29 @@ export async function POST(
 ) {
   const { slug, stepId } = await params;
   const ip = clientIp(request.headers) ?? "unknown";
-  if (!rateLimit(`funnel:${ip}`)) {
+  if (!(await rateLimit(`funnel:${ip}`))) {
     return NextResponse.json(
       { success: false, error: "Troppe richieste. Riprova piÃ¹ tardi." },
       { status: 429 },
     );
   }
 
-  let body: Record<string, unknown>;
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ success: false, error: "JSON invalido" }, { status: 400 });
   }
+
+  const parsed = BodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: "Dati non validi", issues: parsed.error.issues },
+      { status: 400 },
+    );
+  }
+
+  const body = parsed.data as Record<string, unknown>;
 
   const funnel = await getFunnelBySlug(slug);
   if (!funnel || funnel.status !== "active") {

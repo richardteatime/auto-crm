@@ -1,7 +1,9 @@
 import { listContacts, listDeals, getStages, listActivities } from "@/lib/db";
 import { KPICards } from "@/components/dashboard/KPICards";
-import { PipelineChart } from "@/components/dashboard/PipelineChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import nextDynamic from "next/dynamic";
+
+const PipelineChart = nextDynamic(() => import("@/components/dashboard/PipelineChart").then((m) => m.PipelineChart), { ssr: false });
 import { NotificationBanner } from "@/components/dashboard/NotificationBanner";
 import type { DashboardStats } from "@/types";
 
