@@ -19,9 +19,9 @@ interface WorkflowToolbarProps {
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
-  active: "bg-green-100 text-green-700",
-  paused: "bg-amber-100 text-amber-700",
-  archived: "bg-gray-100 text-gray-600",
+  active: "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300",
+  paused: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
+  archived: "bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400",
 };
 
 export function WorkflowToolbar({

@@ -17,8 +17,8 @@ import type {
 } from "@/lib/capture/types";
 
 const STATUS_STYLES: Record<BookingLinkStatus, string> = {
-  active: "bg-green-100 text-green-700",
-  paused: "bg-amber-100 text-amber-700",
+  active: "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300",
+  paused: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
   archived: "bg-muted text-muted-foreground",
 };
 const STATUS_LABELS: Record<BookingLinkStatus, string> = {

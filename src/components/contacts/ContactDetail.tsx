@@ -229,14 +229,14 @@ export function ContactDetailClient({
                     href={`https://wa.me/${cleanPhoneForWhatsApp(contact.phone)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1 rounded hover:bg-green-50 cursor-pointer"
+                    className="p-1 rounded hover:bg-green-50 dark:hover:bg-green-950 cursor-pointer"
                     title="Apri WhatsApp"
                   >
                     <MessageCircle className="h-3.5 w-3.5 text-green-600" />
                   </a>
                   <a
                     href={`tel:${contact.phone}`}
-                    className="p-1 rounded hover:bg-blue-50 cursor-pointer"
+                    className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-950 cursor-pointer"
                     title="Chiama"
                   >
                     <Phone className="h-3.5 w-3.5 text-blue-600" />

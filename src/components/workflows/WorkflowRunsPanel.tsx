@@ -12,18 +12,18 @@ interface WorkflowRunsPanelProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  running: "bg-blue-100 text-blue-700",
-  scheduled: "bg-purple-100 text-purple-700",
-  completed: "bg-green-100 text-green-700",
-  failed: "bg-red-100 text-red-700",
-  cancelled: "bg-gray-100 text-gray-600",
+  running: "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300",
+  scheduled: "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300",
+  completed: "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300",
+  failed: "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300",
+  cancelled: "bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400",
 };
 
 const LOG_STATUS_STYLES: Record<string, string> = {
-  ok: "bg-green-100 text-green-700",
-  skipped: "bg-gray-100 text-gray-600",
-  failed: "bg-red-100 text-red-700",
-  pending: "bg-amber-100 text-amber-700",
+  ok: "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300",
+  skipped: "bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400",
+  failed: "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300",
+  pending: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
 };
 
 export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {

@@ -101,7 +101,7 @@ export function RunDetail({ run, events, tasks, artifacts }: RunDetailProps) {
           {run.error && (
             <div className="sm:col-span-2 lg:col-span-4">
               <p className="text-xs text-muted-foreground mb-1">Errore</p>
-              <p className="text-sm font-medium text-red-600 bg-red-50 p-2 rounded border border-red-100">
+              <p className="text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 p-2 rounded border border-red-100 dark:border-red-800">
                 {run.error}
               </p>
             </div>
@@ -180,10 +180,10 @@ export function RunDetail({ run, events, tasks, artifacts }: RunDetailProps) {
                       <p className="text-xs text-muted-foreground truncate">{task.input}</p>
                     )}
                     {task.output && (
-                      <p className="text-xs text-green-700 mt-1">{task.output}</p>
+                      <p className="text-xs text-green-700 dark:text-green-300 mt-1">{task.output}</p>
                     )}
                     {task.error && (
-                      <p className="text-xs text-red-600 mt-1">{task.error}</p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">{task.error}</p>
                     )}
                   </div>
                 </div>

@@ -51,8 +51,8 @@ import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<AssetStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  published: "bg-green-100 text-green-700",
-  archived: "bg-amber-100 text-amber-700",
+  published: "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300",
+  archived: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
 };
 
 function parseConfig(raw: string): LandingConfig {

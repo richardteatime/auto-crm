@@ -30,8 +30,8 @@ import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<FormStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  active: "bg-green-100 text-green-700",
-  archived: "bg-amber-100 text-amber-700",
+  active: "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300",
+  archived: "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
 };
 const STATUS_LABELS: Record<FormStatus, string> = {
   draft: "Bozza", active: "Attivo", archived: "Archiviato",
@@ -401,7 +401,7 @@ export function FormBuilder({ form }: { form: CrmForm }) {
             {tab === "embed" && (
               <div className="space-y-3">
                 {status !== "active" && (
-                  <p className="rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-700">
+                  <p className="rounded-md bg-amber-50 dark:bg-amber-950 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
                     Attiva il form per renderlo accessibile pubblicamente.
                   </p>
                 )}

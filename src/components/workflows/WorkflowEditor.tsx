@@ -134,8 +134,8 @@ export function WorkflowEditor({ workflow }: WorkflowEditorProps) {
                 className={cn(
                   "text-[11px] px-2 py-0.5 rounded-full border",
                   t.status === "failed"
-                    ? "bg-red-50 text-red-700 border-red-200"
-                    : "bg-green-50 text-green-700 border-green-200"
+                    ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                    : "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
                 )}
               >
                 {t.nodeType} → {t.status}

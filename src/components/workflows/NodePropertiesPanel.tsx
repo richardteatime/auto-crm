@@ -330,7 +330,7 @@ export function NodePropertiesPanel({ node, onChange, onDelete }: NodeProperties
         {onDelete && (
           <button
             onClick={() => onDelete(node.id)}
-            className="w-full rounded-md border border-red-200 bg-red-50 px-2 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+            className="w-full rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 px-2 py-2 text-xs font-medium text-red-600 dark:text-red-400 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
           >
             Elimina questo nodo
           </button>

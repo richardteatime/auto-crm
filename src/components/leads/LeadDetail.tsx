@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -284,19 +291,21 @@ export function LeadDetail({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <select
+            <Select
               value={targetStage}
-              onChange={(e) =>
-                setTargetStage(e.target.value as LeadPipelineStage)
-              }
-              className="w-full h-9 rounded-md border bg-transparent px-3 text-sm"
+              onValueChange={(v) => setTargetStage(v as LeadPipelineStage)}
             >
-              {LEAD_PIPELINE_STAGES.map((s) => (
-                <option key={s} value={s}>
-                  {STAGE_LABELS[s]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LEAD_PIPELINE_STAGES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STAGE_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               onClick={moveStage}
               disabled={busy === "move"}
@@ -346,11 +355,11 @@ export function LeadDetail({
 
           {/* Azione principale della setter: passa a Leo e prenota la chiusura */}
           {!isClosingCall && (
-            <div className="space-y-2 rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
-              <p className="text-sm font-medium text-indigo-900">
+            <div className="space-y-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/40 p-3">
+              <p className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
                 Lead qualificato? Passa la palla a {closerName}.
               </p>
-              <p className="text-xs text-indigo-700/80">
+              <p className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
                 Crea la call di chiusura e apre il calendario di {closerName} già
                 compilato col cliente: scegli lo slot e confermi.
               </p>
@@ -368,17 +377,18 @@ export function LeadDetail({
 
           {/* Esito chiamata (per entrambe le call) + chiusura rapida */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
-            <select
-              value={outcome}
-              onChange={(e) => setOutcome(e.target.value as CallOutcome)}
-              className="h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
-              {CALL_OUTCOMES.map((o) => (
-                <option key={o} value={o}>
-                  {OUTCOME_LABELS[o]}
-                </option>
-              ))}
-            </select>
+            <Select value={outcome} onValueChange={(v) => setOutcome(v as CallOutcome)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CALL_OUTCOMES.map((o) => (
+                  <SelectItem key={o} value={o}>
+                    {OUTCOME_LABELS[o]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Textarea
               placeholder="Note chiamata (opzionale)"
               value={callNotes}
@@ -395,7 +405,7 @@ export function LeadDetail({
               variant="outline"
               onClick={() => setStatus("won", "Lead segnato come Vinto")}
               disabled={busy === "status-won"}
-              className="border-green-300 text-green-700 hover:bg-green-50"
+              className="border-green-300 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950"
             >
               {busy === "status-won" ? "..." : "Segna Vinto"}
             </Button>
@@ -403,7 +413,7 @@ export function LeadDetail({
               variant="outline"
               onClick={() => setStatus("lost", "Lead segnato come Perso")}
               disabled={busy === "status-lost"}
-              className="border-red-200 text-red-600 hover:bg-red-50"
+              className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
             >
               {busy === "status-lost" ? "..." : "Segna Perso"}
             </Button>
@@ -458,7 +468,7 @@ export function LeadDetail({
               <pre className="text-xs whitespace-pre-wrap bg-muted p-3 rounded border overflow-x-auto">
                 {latestQuote.generatedText ?? latestQuote.summary ?? "—"}
               </pre>
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded p-2">
+              <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 border border-amber-100 dark:border-amber-900 rounded p-2">
                 Bozza interna — non inviata al cliente senza approvazione manuale.
               </p>
               <p className="text-xs text-muted-foreground">

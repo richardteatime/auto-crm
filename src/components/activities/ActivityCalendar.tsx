@@ -131,7 +131,7 @@ export function ActivityCalendar({ activities, onEdit }: CalendarProps) {
                       onClick={() => onEdit(a)}
                       className={cn(
                         "w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80",
-                        a.isCompleted ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                        a.isCompleted ? "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300" : "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300"
                       )}
                       title={a.description}
                     >
