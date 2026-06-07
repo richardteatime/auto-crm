@@ -4,6 +4,7 @@ import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileNav } from "./MobileNav";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 interface HeaderProps {
   onOpenCommandPalette: () => void;
@@ -37,6 +38,7 @@ export function Header({ onOpenCommandPalette }: HeaderProps) {
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <div className="h-8 w-8 rounded-full bg-muted border" />
       </div>
     </header>
