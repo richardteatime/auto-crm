@@ -70,7 +70,7 @@ export const QuoteSchema = docSchema({
   title: z.string(),
   items: z.string(),
   notes: z.string().nullable(),
-  generatedText: z.string().nullable(),
+  generatedText: z.string().nullable().optional(),
   status: z.enum(["bozza", "inviato", "accettato", "rifiutato"]),
   vatRate: z.number(),
   validUntil: z.string().nullable().optional(),

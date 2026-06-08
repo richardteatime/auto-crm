@@ -15,7 +15,7 @@ export interface Quote {
   title: string;
   items: string; // JSON string
   notes: string | null;
-  generatedText: string | null;
+  generatedText: string | null | undefined;
   status: "bozza" | "inviato" | "accettato" | "rifiutato";
   vatRate: number;
   validUntil: string | null;
