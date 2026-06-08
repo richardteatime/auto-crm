@@ -3,7 +3,7 @@ import { ID } from "node-appwrite";
 import { Query } from "@/lib/query17";
 import type { DealWithContact } from "@/types";
 import { getContact } from "./contacts";
-import { getStage } from "./pipeline";
+import { getStage, getStages } from "./pipeline";
 import { parseDoc } from "./parse-doc";
 import { DealSchema } from "./schemas";
 
@@ -121,7 +121,14 @@ export async function createDeal(data: {
   recurringMonths?: number | null;
   isPaid?: boolean;
 }): Promise<DealWithContact> {
-  const denorm = await resolveDenormFields(data.contactId, data.stageId);
+  // Se non passano uno stage, mettiamo il deal nel primo stage della pipeline.
+  let stageId = data.stageId;
+  if (!stageId) {
+    const stages = await getStages();
+    stageId = stages[0]?.id ?? "";
+  }
+
+  const denorm = await resolveDenormFields(data.contactId, stageId);
 
   const wonAt =
     denorm.stageIsWon ? new Date().toISOString() : undefined;
@@ -134,7 +141,7 @@ export async function createDeal(data: {
   const payload: Record<string, unknown> = {
     title: data.title,
     value: data.value ?? 0,
-    stageId: data.stageId ?? "",
+    stageId,
     contactId: data.contactId,
     expectedClose: toIsoDate(data.expectedClose),
     probability: denorm.stageIsWon ? 100 : (data.probability ?? 0),
