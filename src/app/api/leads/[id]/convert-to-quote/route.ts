@@ -68,6 +68,8 @@ export async function POST(
     }));
 
     // 4. Crea il preventivo vero (status "bozza"), esportabile col PDF A4.
+    // TODO: rimetti generatedText dopo aver eseguito `npm run setup`
+    // (Appwrite rifiuta l'attributo se non esiste nella collection quotes)
     const quote = await createQuote({
       dealId,
       title:
@@ -75,7 +77,6 @@ export async function POST(
         `Preventivo ${CATEGORY_LABELS[draft.category] ?? draft.category}`,
       items: JSON.stringify(dbItems),
       notes: lead.message?.trim() ? `Richiesta cliente: ${lead.message.trim()}` : null,
-      generatedText: draft.generatedText,
       vatRate: 22,
     });
 
