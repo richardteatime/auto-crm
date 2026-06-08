@@ -92,7 +92,87 @@ function createServerClient() {
   return client;
 }
 
+// ---------------------------------------------------------------------------
+// Resilience wrapper: auto-strip unknown attributes on create/update.
+// When Appwrite schema is older than the code, "Unknown attribute" errors
+// are caught, the field is removed, and the request is retried once.
+// ---------------------------------------------------------------------------
+function isUnknownAttributeError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes("unknown attribute") ||
+    msg.includes("invalid document structure")
+  );
+}
+
+function extractAttributeName(error: Error): string | null {
+  const m = error.message.match(/unknown attribute:\s*['"]?([^'"\s]+)['"]?/i);
+  if (m) return m[1];
+  const m2 = error.message.match(/"path":\s*\[[^\]]*"([^"]+)"\]/);
+  if (m2) return m2[1];
+  return null;
+}
+
+function wrapSafeCreateUpdate(databasesInstance: Databases) {
+  const originalCreate = databasesInstance.createDocument.bind(databasesInstance);
+  const originalUpdate = databasesInstance.updateDocument.bind(databasesInstance);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (databasesInstance as any).createDocument = async function (
+    databaseId: string,
+    collectionId: string,
+    documentId: string,
+    data: Record<string, unknown>,
+    permissions?: string[],
+  ) {
+    try {
+      return await originalCreate(databaseId, collectionId, documentId, data, permissions);
+    } catch (error) {
+      if (isUnknownAttributeError(error)) {
+        const attr = extractAttributeName(error as Error);
+        if (attr && attr in data) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { [attr]: _, ...rest } = data;
+          console.warn(
+            `[appwrite-safe] createDocument: removed unknown attribute "${attr}" from ${collectionId}. Run \`npm run setup\` to add it.`,
+          );
+          return originalCreate(databaseId, collectionId, documentId, rest, permissions);
+        }
+      }
+      throw error;
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (databasesInstance as any).updateDocument = async function (
+    databaseId: string,
+    collectionId: string,
+    documentId: string,
+    data: Record<string, unknown>,
+    permissions?: string[],
+  ) {
+    try {
+      return await originalUpdate(databaseId, collectionId, documentId, data, permissions);
+    } catch (error) {
+      if (isUnknownAttributeError(error)) {
+        const attr = extractAttributeName(error as Error);
+        if (attr && attr in data) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { [attr]: _, ...rest } = data;
+          console.warn(
+            `[appwrite-safe] updateDocument: removed unknown attribute "${attr}" from ${collectionId}. Run \`npm run setup\` to add it.`,
+          );
+          return originalUpdate(databaseId, collectionId, documentId, rest, permissions);
+        }
+      }
+      throw error;
+    }
+  };
+}
+
 const client = createServerClient();
 export const databases = new Databases(client);
+wrapSafeCreateUpdate(databases);
 export const users = new Users(client);
 export const storage = new Storage(client);
