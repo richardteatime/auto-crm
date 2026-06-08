@@ -145,10 +145,6 @@ export async function createDeal(data: {
     recurringStartDate,
     wonAt,
     isPaid: data.isPaid ?? false,
-    contactName: denorm.contactName ?? null,
-    contactTemperature: denorm.contactTemperature ?? null,
-    stageName: denorm.stageName ?? null,
-    stageColor: denorm.stageColor ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -212,17 +208,10 @@ export async function updateDeal(
     payload.recurringStartDate = new Date().toISOString();
   }
 
-  payload.contactName = denorm.contactName ?? existing?.contactName ?? null;
-  payload.contactTemperature =
-    denorm.contactTemperature ?? existing?.contactTemperature ?? null;
-  // stageName and stageColor are denormalized fields stored in the document
-  // but not declared on the DealWithContact TS type
-  const extra = payload as Record<string, unknown>;
-  const existingExtra = existing as unknown as Record<string, unknown> | null;
-  extra.stageName =
-    denorm.stageName ?? existingExtra?.stageName ?? null;
-  extra.stageColor =
-    denorm.stageColor ?? existingExtra?.stageColor ?? null;
+  // Denormalized fields (contactName, contactTemperature, stageName, stageColor)
+  // are omitted from create/update payloads to avoid "Unknown attribute" errors
+  // on Appwrite instances that haven't run `npm run setup` after these fields
+  // were added. They are declared as .optional() in DealSchema so parseDoc works.
 
   const doc = await databases.updateDocument(
     DB_ID,
