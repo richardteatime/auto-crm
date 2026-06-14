@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AvailabilityEditor } from "./AvailabilityEditor";
 import { parseAvailability } from "@/lib/capture/availability";
-import { WEEKDAY_KEYS, WEEKDAY_LABELS } from "@/lib/capture/types";
 import type {
-  BookingAppointment, BookingLink, BookingAvailability, BookingLinkStatus, WeekdayKey, DayAvailability,
+  BookingAppointment, BookingLink, BookingAvailability, BookingLinkStatus,
 } from "@/lib/capture/types";
 
 const STATUS_STYLES: Record<BookingLinkStatus, string> = {
@@ -65,14 +65,6 @@ export function BookingLinkEditor({ link, appointments }: { link: BookingLink; a
   useEffect(() => { setOrigin(window.location.origin); }, []);
 
   const touch = () => setDirty(true);
-
-  const updateDay = (key: WeekdayKey, patch: Partial<DayAvailability>) => {
-    setAvailability((prev) => ({
-      ...prev,
-      days: { ...prev.days, [key]: { ...prev.days[key], ...patch } },
-    }));
-    touch();
-  };
 
   const persist = async (nextStatus?: BookingLinkStatus) => {
     setSaving(true);
@@ -154,66 +146,13 @@ export function BookingLinkEditor({ link, appointments }: { link: BookingLink; a
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Availability */}
-        <div className="space-y-3 rounded-lg border p-4">
-          <h2 className="text-sm font-semibold">Disponibilità settimanale</h2>
-          <div className="space-y-2">
-            {WEEKDAY_KEYS.map((key) => {
-              const day = availability.days[key];
-              return (
-                <div key={key} className="flex items-center gap-2">
-                  <label className="flex w-28 items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={day.enabled}
-                      onChange={(e) => updateDay(key, { enabled: e.target.checked })}
-                    />
-                    {WEEKDAY_LABELS[key]}
-                  </label>
-                  <Input
-                    type="time"
-                    className="h-8 w-28"
-                    value={day.start}
-                    disabled={!day.enabled}
-                    onChange={(e) => updateDay(key, { start: e.target.value })}
-                  />
-                  <span className="text-muted-foreground">–</span>
-                  <Input
-                    type="time"
-                    className="h-8 w-28"
-                    value={day.end}
-                    disabled={!day.enabled}
-                    onChange={(e) => updateDay(key, { end: e.target.value })}
-                  />
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-[11px] text-muted-foreground">Gli orari sono interpretati in UTC.</p>
-
-          <div className="grid grid-cols-3 gap-2 pt-2">
-            <Field label="Buffer prima (min)">
-              <Input
-                type="number" min={0} className="h-8"
-                value={availability.bufferBefore}
-                onChange={(e) => { setAvailability((p) => ({ ...p, bufferBefore: Math.max(0, numberOr(e.target.value, 0)) })); touch(); }}
-              />
-            </Field>
-            <Field label="Buffer dopo (min)">
-              <Input
-                type="number" min={0} className="h-8"
-                value={availability.bufferAfter}
-                onChange={(e) => { setAvailability((p) => ({ ...p, bufferAfter: Math.max(0, numberOr(e.target.value, 0)) })); touch(); }}
-              />
-            </Field>
-            <Field label="Max al giorno">
-              <Input
-                type="number" min={0} className="h-8"
-                value={availability.maxPerDay}
-                onChange={(e) => { setAvailability((p) => ({ ...p, maxPerDay: Math.max(0, numberOr(e.target.value, 0)) })); touch(); }}
-              />
-            </Field>
-          </div>
-        </div>
+        <AvailabilityEditor
+          availability={availability}
+          onChange={(next) => {
+            setAvailability(next);
+            touch();
+          }}
+        />
 
         {/* Details */}
         <div className="space-y-3 rounded-lg border p-4">

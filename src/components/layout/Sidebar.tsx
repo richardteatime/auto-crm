@@ -60,6 +60,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: "/landing-pages", label: "Landing Page", icon: LayoutTemplate },
       { href: "/forms", label: "Form", icon: FileInput },
       { href: "/booking-links", label: "Prenotazioni", icon: CalendarClock },
+      { href: "/my-availability", label: "Disponibilità", icon: CalendarClock },
       { href: "/funnels", label: "Funnel", icon: GitFork },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
     ],

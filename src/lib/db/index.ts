@@ -267,6 +267,7 @@ export {
 // Booking Links
 export {
   listBookingLinks,
+  listBookingLinksByAssignee,
   getBookingLink,
   getBookingLinkBySlug,
   createBookingLink,

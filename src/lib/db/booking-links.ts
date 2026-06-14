@@ -43,6 +43,22 @@ export async function listBookingLinks(
   return res.documents.map(fromDoc);
 }
 
+export async function listBookingLinksByAssignee(userId: string): Promise<BookingLink[]> {
+  const res = await databases.listDocuments(DB_ID, COLLECTIONS.bookingLinks, [
+    Query.limit(500),
+    Query.orderDesc("$createdAt"),
+  ]);
+  return res.documents
+    .map(fromDoc)
+    .filter((link) =>
+      link.assignedTo
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .includes(userId),
+    );
+}
+
 export async function getBookingLink(id: string): Promise<BookingLink | null> {
   try {
     return fromDoc(await databases.getDocument(DB_ID, COLLECTIONS.bookingLinks, id));

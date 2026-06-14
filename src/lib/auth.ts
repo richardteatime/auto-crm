@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { getDocumentOwner } from "@/lib/db/ownership";
+import { getBookingLink } from "@/lib/db/booking-links";
 import { isFinanceUser } from "@/lib/finance-auth";
 
 const APPWRITE_ENDPOINT =
@@ -236,6 +237,47 @@ export async function requireAdmin(
   return {
     error: NextResponse.json(
       { success: false, error: "Richiede ruolo admin" },
+      { status: 403 },
+    ),
+  };
+}
+
+/**
+ * Require admin role or that the current user is assigned to the booking link.
+ * Returns `{ user, isAdmin }` so callers can decide whether to allow all fields
+ * (admin) or only availability (assignee).
+ */
+export async function requireAdminOrAssignee(
+  request: NextRequest,
+  linkId: string,
+): Promise<
+  | { user: AuthUser; isAdmin: boolean; error?: never }
+  | { user?: never; error: NextResponse }
+> {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth;
+
+  if (await isAdmin(auth.user.id)) return { user: auth.user, isAdmin: true };
+
+  const link = await getBookingLink(linkId);
+  if (!link) {
+    return {
+      error: NextResponse.json(
+        { success: false, error: "Link non trovato" },
+        { status: 404 },
+      ),
+    };
+  }
+
+  const assignees = link.assignedTo
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (assignees.includes(auth.user.id)) return { user: auth.user, isAdmin: false };
+
+  return {
+    error: NextResponse.json(
+      { success: false, error: "Non autorizzato" },
       { status: 403 },
     ),
   };

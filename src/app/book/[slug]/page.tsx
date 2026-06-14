@@ -45,11 +45,11 @@ export default async function PublicBookingPage({
   const openDays = WEEKDAY_KEYS.filter((k) => availability.days[k]?.enabled);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-slate-900">{link.name}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-foreground">{link.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Durata: {link.durationMinutes} minuti
           </p>
         </div>
@@ -58,6 +58,7 @@ export default async function PublicBookingPage({
           slug={link.slug}
           durationMinutes={link.durationMinutes}
           openDays={openDays}
+          availability={availability}
         />
       </div>
     </main>

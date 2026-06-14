@@ -6,9 +6,10 @@
 // -> POST to the booking endpoint, which re-validates the slot server-side.
 
 import { useCallback, useEffect, useState } from "react";
-import { WEEKDAY_LABELS } from "@/lib/capture/types";
-import type { WeekdayKey, AvailabilitySlot } from "@/lib/capture/types";
+import type { WeekdayKey, AvailabilitySlot, BookingAvailability } from "@/lib/capture/types";
+import { weekdayKeyOf } from "@/lib/capture/availability";
 import { sendPublicAnalytics } from "@/components/capture/PublicAnalyticsTracker";
+import { DayScroller } from "./DayScroller";
 
 const PRIMARY = "#2563eb";
 
@@ -21,6 +22,24 @@ interface Props {
   slug: string;
   durationMinutes: number;
   openDays: WeekdayKey[];
+  availability: BookingAvailability;
+}
+
+function addDays(iso: string, n: number): string {
+  const [y, mo, d] = iso.split("-").map((p) => Number.parseInt(p, 10));
+  const date = new Date(Date.UTC(y, mo - 1, d));
+  date.setUTCDate(date.getUTCDate() + n);
+  return date.toISOString().slice(0, 10);
+}
+
+function firstEnabledDate(availability: BookingAvailability): string | null {
+  const today = todayIso();
+  for (let i = 0; i < 21; i++) {
+    const date = addDays(today, i);
+    const key = weekdayKeyOf(date);
+    if (key && availability.days[key]?.enabled) return date;
+  }
+  return null;
 }
 
 function todayIso(): string {
@@ -49,9 +68,16 @@ const fieldStyle: React.CSSProperties = {
   color: "#0f172a",
 };
 
-export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }: Props) {
+export function PublicBookingWidget({
+  assetId,
+  slug,
+  durationMinutes,
+  availability,
+}: Props) {
   const [date, setDate] = useState<string>("");
-  useEffect(() => setDate(todayIso()), []);
+  useEffect(() => {
+    setDate(firstEnabledDate(availability) ?? todayIso());
+  }, [availability]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selected, setSelected] = useState<Slot | null>(null);
@@ -165,21 +191,15 @@ export function PublicBookingWidget({ assetId, slug, durationMinutes, openDays }
       className="space-y-4 rounded-xl border bg-card p-5"
       style={{ ["--tw-ring-color" as string]: PRIMARY }}
     >
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-muted-foreground">Data</label>
-        <input
-          type="date"
-          className={inputClass}
-          style={fieldStyle}
-          min={todayIso()}
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-muted-foreground">
+          Seleziona un giorno
+        </label>
+        <DayScroller
+          availability={availability}
+          selected={date}
+          onSelect={setDate}
         />
-        {openDays.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Giorni disponibili: {openDays.map((d) => WEEKDAY_LABELS[d]).join(", ")}
-          </p>
-        )}
       </div>
 
       <div className="space-y-1.5">
