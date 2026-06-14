@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { listDeals } from "@/lib/db/deals";
 import { listRevenues } from "@/lib/db/revenues";
-import { requireAuth } from "@/lib/auth";
+import { requireFinanceOrAdmin } from "@/lib/auth";
 import type { DealWithContact } from "@/types";
 import { getStages } from "@/lib/db/pipeline";
 
@@ -37,7 +37,7 @@ const QuerySchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireFinanceOrAdmin(req);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(req.url);

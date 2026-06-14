@@ -8,7 +8,8 @@ import {
   listDeals,
   getStages,
 } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwnerOrAdmin, isAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
 
 const MoveDealSchema = z.object({
@@ -44,9 +45,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   let body;
   try {
     body = await request.json();
@@ -56,6 +54,9 @@ export async function PUT(request: NextRequest) {
 
   const moveParsed = MoveDealSchema.safeParse(body);
   if (moveParsed.success) {
+    const auth = await requireOwnerOrAdmin(request, COLLECTIONS.deals, moveParsed.data.dealId);
+    if (auth.error) return auth.error;
+
     try {
       const existing = await getDeal(moveParsed.data.dealId);
       if (!existing) {
@@ -96,6 +97,12 @@ export async function PUT(request: NextRequest) {
 
   const stagesParsed = ReplaceStagesSchema.safeParse(body);
   if (stagesParsed.success) {
+    const auth = await requireAuth(request);
+    if (auth.error) return auth.error;
+    if (!(await isAdmin(auth.user.id))) {
+      return NextResponse.json({ error: "Richiede ruolo admin" }, { status: 403 });
+    }
+
     try {
       const existingDeals = await listDeals();
       if (existingDeals.length > 0) {

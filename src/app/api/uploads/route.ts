@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { storage } from "@/lib/appwrite";
-import { requireAuth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { ID } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 
@@ -56,7 +56,7 @@ const ALLOWED_TYPES = [
 ];
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
 
   try {

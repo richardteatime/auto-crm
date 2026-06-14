@@ -2,9 +2,8 @@ import { CATEGORY_LABELS, STAGE_LABELS, type Lead } from "../types";
 import { scoreBandLabel } from "../scoring";
 import { buildQuoteDraft, type QuoteDraft } from "../quotes";
 import {
-  createCallTask,
+  createOpenCallTaskIfMissing,
   getCallTask,
-  getOpenCallTaskForLead,
   updateLead,
   createLeadQuote,
   listLeadQuotes,
@@ -46,16 +45,14 @@ async function createLeoCallTask(
   ctx: AutomationContext,
   actionName: string,
 ) {
-  const existing = await getOpenCallTaskForLead(ctx.lead.id);
-  if (existing) return skip(actionName, "open call task already exists");
-
-  const task = await createCallTask({
+  const { task, created } = await createOpenCallTaskIfMissing({
     leadId: ctx.lead.id,
     assignedTo: leoIdentity.id,
     assigneeName: leoIdentity.name,
     status: "pending",
     notes: ctx.lead.message ?? null,
   });
+  if (!created) return skip(actionName, "open call task already exists");
 
   // Mark the lead as "to call" (PLAN: set status 'da chiamare').
   try {
@@ -90,16 +87,14 @@ async function createSetterCallTask(
   if (WORKFLOW_LEAD_CHANNELS.has(ctx.lead.source)) {
     return skip(actionName, `lead da '${ctx.lead.source}': call task gestita dal workflow`);
   }
-  const existing = await getOpenCallTaskForLead(ctx.lead.id);
-  if (existing) return skip(actionName, "open call task already exists");
-
-  const task = await createCallTask({
+  const { task, created } = await createOpenCallTaskIfMissing({
     leadId: ctx.lead.id,
     assignedTo: setterIdentity.id,
     assigneeName: setterIdentity.name,
     status: "pending",
     notes: ctx.lead.message ?? null,
   });
+  if (!created) return skip(actionName, "open call task already exists");
 
   try {
     await updateLead(ctx.lead.id, { status: "to_call" });
@@ -151,16 +146,13 @@ async function routeLeadByOutcome(ctx: AutomationContext) {
         reason: `setter call: ${outcome}`,
         triggeredBy: "automation",
       });
-      const open = await getOpenCallTaskForLead(ctx.lead.id);
-      if (!open) {
-        await createCallTask({
-          leadId: ctx.lead.id,
-          assignedTo: leoIdentity.id,
-          assigneeName: leoIdentity.name,
-          status: "pending",
-          notes: `Call di chiusura — lead scremato da ${setterIdentity.name}`,
-        });
-      }
+      await createOpenCallTaskIfMissing({
+        leadId: ctx.lead.id,
+        assignedTo: leoIdentity.id,
+        assigneeName: leoIdentity.name,
+        status: "pending",
+        notes: `Call di chiusura — lead scremato da ${setterIdentity.name}`,
+      });
       await sendToLeo(
         `Lead caldo da chiudere: ${ctx.lead.fullName}`,
         `<p>${setterIdentity.name} ha qualificato un lead: pronto per la call di chiusura.</p>${leadSummaryHtml(ctx.lead)}`,
@@ -170,7 +162,7 @@ async function routeLeadByOutcome(ctx: AutomationContext) {
 
     if (FOLLOWUP_OUTCOMES.has(outcome)) {
       await updateLead(ctx.lead.id, { status: "working" });
-      await createCallTask({
+      await createOpenCallTaskIfMissing({
         leadId: ctx.lead.id,
         assignedTo: setterIdentity.id,
         assigneeName: setterIdentity.name,
@@ -217,7 +209,7 @@ async function routeLeadByOutcome(ctx: AutomationContext) {
       triggeredBy: "automation",
     });
     await updateLead(ctx.lead.id, { status: "working" });
-    await createCallTask({
+    await createOpenCallTaskIfMissing({
       leadId: ctx.lead.id,
       assignedTo: leoIdentity.id,
       assigneeName: leoIdentity.name,

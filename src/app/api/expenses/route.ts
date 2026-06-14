@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { listExpenses, createExpense } from "@/lib/db/expenses";
-import { requireAuth } from "@/lib/auth";
+import { requireFinanceOrAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +16,10 @@ const BodySchema = z.object({
   description: z.string().min(1),
   amount: z.number().positive(),
   date: z.string().datetime(),
-  createdBy: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireFinanceOrAdmin(req);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(req.url);
@@ -45,7 +44,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireFinanceOrAdmin(req);
   if (auth.error) return auth.error;
 
   let body;
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
     description: parsed.data.description,
     amount: Math.round(parsed.data.amount * 100),
     date: new Date(parsed.data.date),
-    createdBy: parsed.data.createdBy || "Team",
+    createdBy: auth.user.id,
   });
 
   return NextResponse.json(result, { status: 201 });

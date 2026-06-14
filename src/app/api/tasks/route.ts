@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { listTasks, createTask } from "@/lib/db";
+import { listCallTasks, getLead } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import type { Task } from "@/types";
 
 const QuerySchema = z.object({
   assignedTo: z.string().optional(),
@@ -14,6 +16,39 @@ const BodySchema = z.object({
   assignedTo: z.string().optional(),
   dueAt: z.string().datetime().optional().nullable(),
 });
+
+function mapCallTaskToTask(callTask: {
+  id: string;
+  leadId: string;
+  assignedTo: string;
+  assigneeName: string | null;
+  status: string;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  callOutcome: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}, leadName?: string | null): Task {
+  const title = leadName
+    ? `Chiamata — ${leadName}`
+    : `Chiamata lead ${callTask.leadId}`;
+  return {
+    id: callTask.id,
+    title,
+    description: callTask.notes,
+    assignedTo: callTask.assignedTo,
+    createdBy: callTask.assignedTo,
+    done: callTask.status === "completed" || callTask.status === "failed" || callTask.status === "not_interested",
+    dueAt: callTask.scheduledAt ? new Date(callTask.scheduledAt) : null,
+    createdAt: callTask.createdAt,
+    updatedAt: callTask.updatedAt,
+    taskType: "call",
+    leadId: callTask.leadId,
+    callStatus: callTask.status,
+    assigneeName: callTask.assigneeName,
+  };
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -32,8 +67,41 @@ export async function GET(request: NextRequest) {
   const done = parsedQuery.data.done === "true" ? true : parsedQuery.data.done === "false" ? false : undefined;
 
   try {
-    const results = await listTasks({ assignedTo: parsedQuery.data.assignedTo, done });
-    return NextResponse.json(results);
+    const [genericTasks, callTasks] = await Promise.all([
+      listTasks({ assignedTo: parsedQuery.data.assignedTo, done }),
+      listCallTasks({ assignedTo: parsedQuery.data.assignedTo }),
+    ]);
+
+    // Per i call task, recuperiamo i nomi dei lead in batch per fare titoli leggibili
+    const leadIds = [...new Set(callTasks.map((c) => c.leadId).filter(Boolean))];
+    const leadMap = new Map<string, string>();
+    await Promise.all(
+      leadIds.map(async (leadId) => {
+        const lead = await getLead(leadId);
+        if (lead) leadMap.set(leadId, lead.fullName);
+      })
+    );
+
+    const mappedCalls = callTasks.map((c) =>
+      mapCallTaskToTask(c as unknown as {
+        id: string;
+        leadId: string;
+        assignedTo: string;
+        assigneeName: string | null;
+        status: string;
+        scheduledAt: string | null;
+        completedAt: string | null;
+        callOutcome: string | null;
+        notes: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+      }, leadMap.get(c.leadId))
+    );
+
+    const all = [...genericTasks.map((t) => ({ ...t, taskType: "generic" as const })), ...mappedCalls];
+    all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    return NextResponse.json(all);
   } catch {
     return NextResponse.json(
       { error: "Errore nel recupero dei task" },

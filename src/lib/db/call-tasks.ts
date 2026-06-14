@@ -56,12 +56,13 @@ export async function createCallTask(data: {
   status?: CallTaskStatus;
   scheduledAt?: Date | string | null;
   notes?: string | null;
+  id?: string;
 }): Promise<CallTask> {
   const now = new Date().toISOString();
   const doc = await databases.createDocument(
     DB_ID,
     COLLECTIONS.callTasks,
-    ID.unique(),
+    data.id ?? ID.unique(),
     {
       leadId: data.leadId,
       assignedTo: data.assignedTo,
@@ -76,6 +77,41 @@ export async function createCallTask(data: {
     },
   );
   return parseDoc(CallTaskSchema,doc);
+}
+
+// Deterministic id for the "open" call task of a lead/assignee pair.
+// Keeps the name within Appwrite's 36-character document-id limit.
+export function openCallTaskId(leadId: string, assignedTo: string): string {
+  return `ct_${leadId}_${assignedTo}_open`.slice(0, 36);
+}
+
+// Idempotent creation of an open call task. Uses a deterministic document id
+// so concurrent writers cannot create duplicates under Appwrite's createDocument
+// uniqueness guarantee. If the deterministic id is occupied by a closed task,
+// falls back to a unique id so follow-ups remain possible.
+export async function createOpenCallTaskIfMissing(data: {
+  leadId: string;
+  assignedTo: string;
+  assigneeName?: string | null;
+  status?: CallTaskStatus;
+  scheduledAt?: Date | string | null;
+  notes?: string | null;
+}): Promise<{ task: CallTask; created: boolean }> {
+  const deterministicId = openCallTaskId(data.leadId, data.assignedTo);
+  try {
+    const task = await createCallTask({ ...data, id: deterministicId });
+    return { task, created: true };
+  } catch (error) {
+    if (error instanceof Error && /already exists|duplicate/i.test(error.message)) {
+      const existing = await getCallTask(deterministicId);
+      if (existing && (existing.status === "pending" || existing.status === "scheduled")) {
+        return { task: existing, created: false };
+      }
+      const task = await createCallTask(data);
+      return { task, created: true };
+    }
+    throw error;
+  }
 }
 
 export async function updateCallTask(
@@ -108,6 +144,10 @@ export async function updateCallTask(
     payload,
   );
   return parseDoc(CallTaskSchema,doc);
+}
+
+export async function deleteCallTask(id: string): Promise<void> {
+  await databases.deleteDocument(DB_ID, COLLECTIONS.callTasks, id);
 }
 
 export async function getOpenCallTaskForLead(

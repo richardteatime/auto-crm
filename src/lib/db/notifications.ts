@@ -81,6 +81,15 @@ export async function createNotification(data: {
   return fromDoc(doc);
 }
 
+export async function getNotification(id: string): Promise<AppNotification | null> {
+  try {
+    const doc = await databases.getDocument(DB_ID, COLLECTIONS.notifications, id);
+    return fromDoc(doc);
+  } catch {
+    return null;
+  }
+}
+
 export async function markNotificationRead(id: string): Promise<AppNotification> {
   const doc = await databases.updateDocument(
     DB_ID,

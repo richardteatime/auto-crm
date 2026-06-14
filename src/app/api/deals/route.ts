@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       attachments: parsed.data.attachments ? JSON.stringify(parsed.data.attachments) : "[]",
       billingType: parsed.data.billingType ?? "una_tantum",
       recurringMonths: parsed.data.billingType !== "una_tantum" ? (parsed.data.recurringMonths ?? 12) : null,
+      createdBy: auth.user.id,
     });
 
     return NextResponse.json(result, { status: 201 });

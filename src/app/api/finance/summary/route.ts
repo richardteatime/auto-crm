@@ -4,7 +4,7 @@ import { listDeals } from "@/lib/db/deals";
 import { listExpenses } from "@/lib/db/expenses";
 import { listRevenues } from "@/lib/db/revenues";
 import { getStages } from "@/lib/db/pipeline";
-import { requireAuth } from "@/lib/auth";
+import { requireFinanceOrAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ const QuerySchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireFinanceOrAdmin(req);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(req.url);

@@ -47,6 +47,7 @@ export async function createOpportunity(data: {
   notes?: string | null;
   attachments?: string | null;
   value?: number | null;
+  createdBy?: string | null;
 }): Promise<Opportunity> {
   const now = new Date().toISOString();
   const doc = await databases.createDocument(
@@ -62,6 +63,7 @@ export async function createOpportunity(data: {
       value: data.value ?? null,
       status: "aperta",
       dealId: null,
+      createdBy: data.createdBy ?? null,
       createdAt: now,
       updatedAt: now,
     },

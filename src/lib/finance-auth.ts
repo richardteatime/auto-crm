@@ -1,7 +1,11 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KEY || "";
+const _SESSION_SECRET = process.env.SESSION_SECRET;
+if (!_SESSION_SECRET) {
+  throw new Error("SESSION_SECRET è obbligatorio. Configurarlo in .env.local");
+}
+const SESSION_SECRET = _SESSION_SECRET;
 const FINANCE_COOKIE = "finance-session";
 const FINANCE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 

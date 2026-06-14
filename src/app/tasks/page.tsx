@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Plus, Trash2, Pencil, CheckSquare, X } from "lucide-react";
+import { Plus, Trash2, Pencil, CheckSquare, X, PhoneCall } from "lucide-react";
 import { formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -238,9 +240,28 @@ export default function TasksPage() {
                       />
                     </TableCell>
                     <TableCell className={cn("font-medium", task.done && "line-through text-muted-foreground")}>
-                      {task.title}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {task.taskType === "call" && (
+                          <Badge variant="secondary" className="text-[10px] flex items-center gap-1">
+                            <PhoneCall className="h-3 w-3" />
+                            Chiamata
+                          </Badge>
+                        )}
+                        {task.leadId ? (
+                          <Link href={`/leads/${task.leadId}`} className="hover:underline">
+                            {task.title}
+                          </Link>
+                        ) : (
+                          <span>{task.title}</span>
+                        )}
+                      </div>
                       {task.description && (
                         <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
+                      )}
+                      {task.taskType === "call" && task.assigneeName && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Assegnata a {task.assigneeName} {task.callStatus ? `· ${task.callStatus}` : ""}
+                        </p>
                       )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
@@ -251,12 +272,16 @@ export default function TasksPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8" onClick={() => openEdit(task)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleting(task)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {task.taskType !== "call" && (
+                          <>
+                            <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8" onClick={() => openEdit(task)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleting(task)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -286,11 +311,28 @@ export default function TasksPage() {
                     className="cursor-pointer mt-0.5"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm font-medium", task.done && "line-through text-muted-foreground")}>
-                      {task.title}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {task.taskType === "call" && (
+                        <Badge variant="secondary" className="text-[10px] flex items-center gap-1">
+                          <PhoneCall className="h-3 w-3" />
+                          Chiamata
+                        </Badge>
+                      )}
+                      <p className={cn("text-sm font-medium", task.done && "line-through text-muted-foreground")}>
+                        {task.leadId ? (
+                          <Link href={`/leads/${task.leadId}`} className="hover:underline">{task.title}</Link>
+                        ) : (
+                          task.title
+                        )}
+                      </p>
+                    </div>
                     {task.description && (
                       <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
+                    )}
+                    {task.taskType === "call" && task.assigneeName && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Assegnata a {task.assigneeName} {task.callStatus ? `· ${task.callStatus}` : ""}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -299,12 +341,16 @@ export default function TasksPage() {
                   <span>Creata: {formatDate(task.createdAt)}</span>
                 </div>
                 <div className="flex items-center justify-end gap-1 pt-1 border-t">
-                  <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8" onClick={() => openEdit(task)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleting(task)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {task.taskType !== "call" && (
+                    <>
+                      <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8" onClick={() => openEdit(task)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleting(task)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             ))

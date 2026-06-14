@@ -82,6 +82,7 @@ export async function createActivity(data: {
   completedAt?: Date | string | number | null;
   isCompleted?: boolean;
   assignedTo?: string | null;
+  createdBy?: string | null;
 }): Promise<ActivityWithContact> {
   let contactName: string | null = null;
   const contact = await getContact(data.contactId);
@@ -104,6 +105,7 @@ export async function createActivity(data: {
     isCompleted: data.isCompleted ?? false,
     assignedTo: data.assignedTo ?? null,
     contactName,
+    createdBy: data.createdBy ?? null,
     createdAt: now,
   };
 

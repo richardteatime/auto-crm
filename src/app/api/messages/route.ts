@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     const msg = await createMessage({
       author: auth.user.name,
       content: content.trim(),
+      createdBy: auth.user.id,
     });
 
     // Create notifications for all other users

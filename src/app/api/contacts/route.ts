@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
       source: parsed.data.source || "otro",
       temperature: parsed.data.temperature || "cold",
       notes: parsed.data.notes ?? null,
+      createdBy: auth.user.id,
     });
 
     await triggerWorkflows("contact_created", {

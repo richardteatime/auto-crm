@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from "@/lib/db/calendar";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, isAdmin } from "@/lib/auth";
 import { notifyAssignment } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+async function canAccessCalendarEvent(event: { createdBy: string; assignedTo: string[] }, userId: string): Promise<boolean> {
+  if (event.createdBy === userId) return true;
+  if (event.assignedTo.includes(userId)) return true;
+  return isAdmin(userId);
+}
 
 const BodySchema = z.object({
   title: z.string().min(1).optional(),
@@ -22,21 +28,32 @@ const BodySchema = z.object({
   isPrivate: z.boolean().optional(),
 }).passthrough();
 
-export async function GET(request: NextRequest, { params }: Ctx) {
+async function loadEventWithAuth(request: NextRequest, id: string) {
   const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
+  if (auth.error) return { error: auth.error };
 
-  const { id } = await params;
   const event = await getCalendarEvent(id);
-  if (!event) return NextResponse.json({ error: "Non trovato" }, { status: 404 });
-  return NextResponse.json(event);
+  if (!event) {
+    return { error: NextResponse.json({ error: "Non trovato" }, { status: 404 }) };
+  }
+  if (!(await canAccessCalendarEvent(event, auth.user.id))) {
+    return { error: NextResponse.json({ error: "Non autorizzato" }, { status: 403 }) };
+  }
+  return { user: auth.user, event };
+}
+
+export async function GET(request: NextRequest, { params }: Ctx) {
+  const { id } = await params;
+  const check = await loadEventWithAuth(request, id);
+  if (check.error) return check.error;
+  return NextResponse.json(check.event);
 }
 
 export async function PUT(request: NextRequest, { params }: Ctx) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const check = await loadEventWithAuth(request, id);
+  if (check.error) return check.error;
+
   let body;
   try {
     body = await request.json();
@@ -73,11 +90,11 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
       for (const userId of newlyAssigned) {
         await notifyAssignment({
           assignedToUserId: userId,
-          fromUserId: auth.user.id,
-          fromUserName: auth.user.name || auth.user.email,
+          fromUserId: check.user.id,
+          fromUserName: check.user.name || check.user.email,
           type: "calendar_assigned",
           title: `Evento calendar assegnato: ${event.title}`,
-          body: `Assegnato da ${auth.user.name || auth.user.email}`,
+          body: `Assegnato da ${check.user.name || check.user.email}`,
           relatedId: id,
         });
       }
@@ -90,10 +107,10 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const check = await loadEventWithAuth(request, id);
+  if (check.error) return check.error;
+
   try {
     await deleteCalendarEvent(id);
     return NextResponse.json({ success: true });

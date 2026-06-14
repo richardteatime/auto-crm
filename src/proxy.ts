@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SESSION_COOKIE = "appwrite-session";
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KEY || "";
+const _SESSION_SECRET = process.env.SESSION_SECRET;
+if (!_SESSION_SECRET) {
+  throw new Error("SESSION_SECRET è obbligatorio. Configurarlo in .env.local");
+}
+const SESSION_SECRET = _SESSION_SECRET;
 
 const PUBLIC_PATHS = [
   "/api/webhook",

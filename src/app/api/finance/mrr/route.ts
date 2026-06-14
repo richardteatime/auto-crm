@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listDeals } from "@/lib/db/deals";
 import { listRevenues } from "@/lib/db/revenues";
-import { requireAuth } from "@/lib/auth";
+import { requireFinanceOrAdmin } from "@/lib/auth";
 import { getStages } from "@/lib/db/pipeline";
 import type { DealWithContact } from "@/types";
 
@@ -18,7 +18,7 @@ function toMs(d: Date | number | string | null | undefined): number {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireFinanceOrAdmin(request);
   if (auth.error) return auth.error;
 
   const now = new Date();

@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
       notes: parsed.data.notes ?? null,
       attachments: parsed.data.attachments ?? null,
       value: parsed.data.value != null ? Math.round(parsed.data.value * 100) : null,
+      createdBy: auth.user.id,
     });
     return NextResponse.json(result, { status: 201 });
   } catch {

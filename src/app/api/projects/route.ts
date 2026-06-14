@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const assignedTo: string[] = parsed.data.assignedTo ?? [];
-    const project = await createProject({ ...parsed.data, assignedTo });
+    const project = await createProject({ ...parsed.data, assignedTo, createdBy: auth.user.id });
 
     for (const userId of assignedTo) {
       await notifyAssignment({

@@ -4,6 +4,12 @@ const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://l
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
 const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
 
+if (!APPWRITE_PROJECT_ID || !APPWRITE_API_KEY) {
+  throw new Error(
+    "APPWRITE_PROJECT_ID e APPWRITE_API_KEY sono obbligatori. Configurarli in .env.local",
+  );
+}
+
 export const DB_ID = process.env.APPWRITE_DATABASE_ID || "crm";
 
 export const COLLECTIONS = {

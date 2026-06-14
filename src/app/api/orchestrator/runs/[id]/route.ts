@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrchestratorRun } from "@/lib/db/orchestrator-runs";
+import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
   try {
     const { id } = await params;
     const run = await getOrchestratorRun(id);

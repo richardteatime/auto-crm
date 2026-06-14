@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRevenue, updateRevenue, softDeleteRevenue } from "@/lib/db/revenues";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -34,10 +35,9 @@ export async function GET(request: NextRequest, { params }: Ctx) {
 }
 
 export async function PUT(request: NextRequest, { params }: Ctx) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.revenues, id);
+  if (auth.error) return auth.error;
   let body;
   try {
     body = await request.json();
@@ -65,10 +65,9 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.revenues, id);
+  if (auth.error) return auth.error;
   try {
     const body = await request.json().catch(() => ({}));
     const parsed = DeleteBodySchema.safeParse(body);

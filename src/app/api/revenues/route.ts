@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { listRevenues, createRevenue } from "@/lib/db/revenues";
-import { requireAuth } from "@/lib/auth";
+import { requireFinanceOrAdmin } from "@/lib/auth";
 
 const BodySchema = z.object({
   description: z.string().min(1),
@@ -18,7 +18,7 @@ const BodySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireFinanceOrAdmin(request);
   if (auth.error) return auth.error;
 
   try {
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireFinanceOrAdmin(request);
   if (auth.error) return auth.error;
 
   let body;
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const collectedBy: string[] = parsed.data.collectedBy ?? [];
-    const revenue = await createRevenue({ ...parsed.data, collectedBy });
+    const revenue = await createRevenue({ ...parsed.data, collectedBy, createdBy: auth.user.id });
     return NextResponse.json(revenue, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

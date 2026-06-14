@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
 
     // Check if this is the first user BEFORE creating the account.
     const isFirst = await isFirstUser();
+    if (!isFirst) {
+      return NextResponse.json(
+        { success: false, error: "Registrazione disabilitata: contatta un amministratore" },
+        { status: 403 }
+      );
+    }
 
     // Create the user in Appwrite Auth.
     const user = await users.create(

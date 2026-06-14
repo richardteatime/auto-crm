@@ -120,6 +120,7 @@ export async function createDeal(data: {
   billingType?: import("@/types").BillingType;
   recurringMonths?: number | null;
   isPaid?: boolean;
+  createdBy?: string | null;
 }): Promise<DealWithContact> {
   // Se non passano uno stage, mettiamo il deal nel primo stage della pipeline.
   let stageId = data.stageId;
@@ -152,6 +153,7 @@ export async function createDeal(data: {
     recurringStartDate,
     wonAt,
     isPaid: data.isPaid ?? false,
+    createdBy: data.createdBy ?? null,
     createdAt: now,
     updatedAt: now,
   };

@@ -88,6 +88,7 @@ export async function createRevenue(data: {
   notes?: string | null;
   dealId?: string | null;
   opportunityId?: string | null;
+  createdBy?: string | null;
 }): Promise<Revenue> {
   const now = new Date().toISOString();
   const doc = await databases.createDocument(DB_ID, COLLECTIONS.revenues, ID.unique(), {
@@ -102,6 +103,7 @@ export async function createRevenue(data: {
     notes: data.notes ?? null,
     dealId: data.dealId ?? null,
     opportunityId: data.opportunityId ?? null,
+    createdBy: data.createdBy ?? null,
     createdAt: now,
     updatedAt: now,
   });

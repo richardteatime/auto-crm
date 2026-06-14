@@ -61,19 +61,14 @@ export async function replaceStages(
     );
   }
 
-  // Delete all existing stages
+  // List existing stages
   const existing = await databases.listDocuments(
     DB_ID,
     COLLECTIONS.pipelineStages,
     [Query.limit(100)],
   );
-  await Promise.all(
-    existing.documents.map((doc) =>
-      databases.deleteDocument(DB_ID, COLLECTIONS.pipelineStages, doc.$id),
-    ),
-  );
 
-  // Create new stages
+  // Create new stages FIRST (so if anything crashes, old stages are still there)
   const created = await Promise.all(
     stages.map((s) =>
       databases.createDocument(
@@ -88,6 +83,13 @@ export async function replaceStages(
           isLost: s.isLost,
         },
       ),
+    ),
+  );
+
+  // Only after successful creation, delete old stages
+  await Promise.all(
+    existing.documents.map((doc) =>
+      databases.deleteDocument(DB_ID, COLLECTIONS.pipelineStages, doc.$id).catch(() => undefined),
     ),
   );
 

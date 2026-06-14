@@ -62,6 +62,7 @@ export async function listMessages(
 export async function createMessage(data: {
   author: string;
   content: string;
+  createdBy?: string | null;
 }): Promise<Message> {
   const doc = await databases.createDocument(
     DB_ID,
@@ -70,6 +71,7 @@ export async function createMessage(data: {
     {
       author: data.author,
       content: data.content,
+      createdBy: data.createdBy ?? null,
       createdAt: new Date().toISOString(),
     },
   );

@@ -260,4 +260,9 @@ export interface Task {
   dueAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Se presente, questo task è un call task mappato dalla collection call_tasks */
+  taskType?: "generic" | "call";
+  leadId?: string;
+  callStatus?: string;
+  assigneeName?: string | null;
 }

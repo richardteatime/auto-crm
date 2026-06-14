@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { listContacts } from "@/lib/db/contacts";
-import { requireAuth } from "@/lib/auth";
+import { requireFinanceOrAdmin } from "@/lib/auth";
 import { listDeals } from "@/lib/db/deals";
 import { listActivities } from "@/lib/db/activities";
 import { listQuotes } from "@/lib/db/quotes";
@@ -37,7 +37,7 @@ function inRange(ts: number, fromMs: number, maxMs: number) {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireFinanceOrAdmin(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);

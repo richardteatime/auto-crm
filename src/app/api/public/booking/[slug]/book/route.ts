@@ -148,6 +148,7 @@ export async function POST(
     link.assignedTo,
     new Date(startIso),
     new Date(endIso),
+    link.id,
   );
   if (parseBookingAssignees(link.assignedTo).length > 0 && !selectedAssignee) {
     return NextResponse.json(

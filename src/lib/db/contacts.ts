@@ -99,6 +99,7 @@ export async function createContact(data: {
   source?: string;
   temperature?: string;
   notes?: string | null;
+  createdBy?: string | null;
 }): Promise<Contact> {
   const now = new Date().toISOString();
   try {
@@ -116,6 +117,7 @@ export async function createContact(data: {
         source: normalizeContactSource(data.source),
         temperature: data.temperature ?? "cold",
         notes: data.notes ?? null,
+        createdBy: data.createdBy ?? null,
         createdAt: now,
         updatedAt: now,
       },

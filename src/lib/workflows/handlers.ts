@@ -7,8 +7,7 @@ import {
   createTask,
   createNotification,
   getStages,
-  createCallTask,
-  getOpenCallTaskForLead,
+  createOpenCallTaskIfMissing,
   getLead,
   updateLead,
 } from "@/lib/db";
@@ -256,6 +255,20 @@ export const movePipelineStageExecutor: NodeExecutor = async ({ config, context,
   }
 };
 
+function isUrlAllowed(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    const hostname = url.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) return false;
+    if (/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)|^0\./.test(hostname)) return false;
+    if (hostname === "169.254.169.254") return false;
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const httpRequestExecutor: NodeExecutor = async ({ config, context, dryRun }) => {
   if (dryRun) return ok({ simulated: true, action: "http_request" });
   const method = String(config.method ?? "GET").toUpperCase();
@@ -264,6 +277,7 @@ export const httpRequestExecutor: NodeExecutor = async ({ config, context, dryRu
   const body = config.body ? interpolateString(String(config.body), context) : undefined;
 
   if (!url) return fail("URL richiesto");
+  if (!isUrlAllowed(url)) return fail("URL non consentito: accesso a IP privati, localhost o protocolli non HTTP/S è bloccato");
 
   try {
     const res = await fetch(url, {
@@ -308,18 +322,17 @@ export const createLeadCallTaskExecutor: NodeExecutor = async ({ config, context
   if (!leadId) return fail("LeadId mancante nel contesto");
   const who = String(config.assignee ?? "setter") === "closer" ? CLOSER : SETTER;
   try {
-    const existing = await getOpenCallTaskForLead(leadId, who.id);
-    if (existing) return skip(`Call task già aperta (${existing.id})`);
     const lead = await getLead(leadId);
     const notes =
       interpolateString(String(config.notes ?? ""), context) || lead?.message || null;
-    const task = await createCallTask({
+    const { task, created } = await createOpenCallTaskIfMissing({
       leadId,
       assignedTo: who.id,
       assigneeName: who.name,
       status: "pending",
       notes,
     });
+    if (!created) return skip(`Call task già aperta (${task.id})`);
     return ok({ callTaskId: task.id, assignedTo: who.id });
   } catch (e) {
     return fail(String(e));

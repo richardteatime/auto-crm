@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getOpportunity, updateOpportunity, deleteOpportunity } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 
 const BodySchema = z.object({
   title: z.string().min(1).optional(),
@@ -29,10 +30,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.opportunities, id);
+  if (auth.error) return auth.error;
   let body;
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
@@ -72,10 +72,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(_req);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(_req, COLLECTIONS.opportunities, id);
+  if (auth.error) return auth.error;
   const existing = await getOpportunity(id);
   if (!existing) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });
   try {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createContact } from "@/lib/db/contacts";
-import { requireAuth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 const MAX_IMPORT_BATCH = 500;
 
@@ -19,7 +19,7 @@ const BodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
 
   let body;

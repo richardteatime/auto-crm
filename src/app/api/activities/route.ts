@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       type: parsed.data.type as (typeof VALID_ACTIVITY_TYPES)[number],
       description: parsed.data.description,
       contactId: parsed.data.contactId,
+      createdBy: auth.user.id,
       dealId: parsed.data.dealId ?? null,
       scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null,
       startAt: parsed.data.startAt ? new Date(parsed.data.startAt) : null,

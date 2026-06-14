@@ -108,17 +108,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Auth check: if a webhook secret is stored, require it in the header
+  // Auth check: webhook secret must be configured and provided
   const stored = await getSetting("webhook_secret");
+  if (!stored) {
+    return NextResponse.json(
+      { error: "Webhook non configurato: impostare webhook_secret" },
+      { status: 503 }
+    );
+  }
 
-  if (stored) {
-    const secretHeader = request.headers.get("x-webhook-secret");
-    if (!secretHeader || secretHeader !== stored) {
-      return NextResponse.json(
-        { error: "Secret non valido o mancante" },
-        { status: 401 }
-      );
-    }
+  const secretHeader = request.headers.get("x-webhook-secret");
+  if (!secretHeader || secretHeader !== stored) {
+    return NextResponse.json(
+      { error: "Secret non valido o mancante" },
+      { status: 401 }
+    );
   }
 
   let rawBody: unknown;

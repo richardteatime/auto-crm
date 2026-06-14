@@ -137,6 +137,7 @@ async function main() {
   await addAttr("contacts", enm("contacts", "source", ["website", "whatsapp", "referido", "redes_sociales", "llamada_fria", "email", "formulario", "evento", "import", "webhook", "otro"], true, "otro"));
   await addAttr("contacts", enm("contacts", "temperature", ["cold", "warm", "hot"], true, "cold"));
   await addAttr("contacts", text("contacts", "notes", false));
+  await addAttr("contacts", str("contacts", "createdBy", 128, false));
   await addAttr("contacts", dt("contacts", "createdAt", true));
   await addAttr("contacts", dt("contacts", "updatedAt", true));
   await addIndex("contacts", "idx_temperature", "key", ["temperature"]);
@@ -176,6 +177,7 @@ async function main() {
   await addAttr("deals", dt("deals", "recurringStartDate", false));
   await addAttr("deals", dt("deals", "wonAt", false));
   await addAttr("deals", bool("deals", "isPaid", true, false));
+  await addAttr("deals", str("deals", "createdBy", 128, false));
   await addAttr("deals", dt("deals", "createdAt", true));
   await addAttr("deals", dt("deals", "updatedAt", true));
   await addIndex("deals", "idx_stageId", "key", ["stageId"]);
@@ -197,6 +199,7 @@ async function main() {
   await addAttr("activities", dt("activities", "completedAt", false));
   await addAttr("activities", bool("activities", "isCompleted", true, false));
   await addAttr("activities", str("activities", "assignedTo", 128, false));
+  await addAttr("activities", str("activities", "createdBy", 128, false));
   await addAttr("activities", dt("activities", "createdAt", true));
   await addIndex("activities", "idx_contactId", "key", ["contactId"]);
   await addIndex("activities", "idx_dealId", "key", ["dealId"]);
@@ -225,6 +228,7 @@ async function main() {
   await ensureCollection("messages", "Messages");
   await addAttr("messages", str("messages", "author", 255, true));
   await addAttr("messages", text("messages", "content", true));
+  await addAttr("messages", str("messages", "createdBy", 128, false));
   await addAttr("messages", dt("messages", "createdAt", true));
 
   // === EXPENSES ===
@@ -254,6 +258,7 @@ async function main() {
   await addAttr("revenues", str("revenues", "opportunityId", 128, false));
   await addAttr("revenues", text("revenues", "deleteReason", false));
   await addAttr("revenues", dt("revenues", "deletedAt", false));
+  await addAttr("revenues", str("revenues", "createdBy", 128, false));
   await addAttr("revenues", dt("revenues", "createdAt", true));
   await addAttr("revenues", dt("revenues", "updatedAt", true));
   await addIndex("revenues", "idx_date", "key", ["date"]);
@@ -272,10 +277,59 @@ async function main() {
   await addAttr("quotes", enm("quotes", "status", ["bozza", "inviato", "accettato", "rifiutato"], true, "bozza"));
   await addAttr("quotes", int("quotes", "vatRate", true, 22));
   await addAttr("quotes", dt("quotes", "validUntil", false));
+  await addAttr("quotes", str("quotes", "createdBy", 128, false));
   await addAttr("quotes", dt("quotes", "createdAt", true));
   await addAttr("quotes", dt("quotes", "updatedAt", true));
   await addIndex("quotes", "idx_dealId", "key", ["dealId"]);
   await addIndex("quotes", "idx_number", "key", ["number"]);
+
+  // === OPPORTUNITIES ===
+  await ensureCollection("opportunities", "Opportunities");
+  await addAttr("opportunities", str("opportunities", "contactId", 128, true));
+  await addAttr("opportunities", str("opportunities", "title", 255, true));
+  await addAttr("opportunities", text("opportunities", "description", false));
+  await addAttr("opportunities", text("opportunities", "notes", false));
+  await addAttr("opportunities", text("opportunities", "attachments", false));
+  await addAttr("opportunities", int("opportunities", "value", false));
+  await addAttr("opportunities", str("opportunities", "status", 64, true, "aperta"));
+  await addAttr("opportunities", str("opportunities", "dealId", 128, false));
+  await addAttr("opportunities", str("opportunities", "createdBy", 128, false));
+  await addAttr("opportunities", dt("opportunities", "createdAt", true));
+  await addAttr("opportunities", dt("opportunities", "updatedAt", true));
+  await addIndex("opportunities", "idx_contactId", "key", ["contactId"]);
+  await addIndex("opportunities", "idx_status", "key", ["status"]);
+  await addIndex("opportunities", "idx_createdAt", "key", ["createdAt"]);
+
+  // === PROJECTS ===
+  await ensureCollection("projects", "Projects");
+  await addAttr("projects", str("projects", "title", 255, true));
+  await addAttr("projects", text("projects", "description", false));
+  await addAttr("projects", str("projects", "status", 64, true, "aperto"));
+  await addAttr("projects", str("projects", "priority", 64, true, "media"));
+  await addAttr("projects", text("projects", "assignedTo", false));
+  await addAttr("projects", dt("projects", "startDate", false));
+  await addAttr("projects", dt("projects", "dueDate", false));
+  await addAttr("projects", dt("projects", "deliveredAt", false));
+  await addAttr("projects", text("projects", "notes", false));
+  await addAttr("projects", str("projects", "contactId", 128, false));
+  await addAttr("projects", str("projects", "dealId", 128, false));
+  await addAttr("projects", str("projects", "createdBy", 128, false));
+  await addAttr("projects", dt("projects", "createdAt", true));
+  await addAttr("projects", dt("projects", "updatedAt", true));
+  await addIndex("projects", "idx_status", "key", ["status"]);
+  await addIndex("projects", "idx_contactId", "key", ["contactId"]);
+  await addIndex("projects", "idx_dealId", "key", ["dealId"]);
+  await addIndex("projects", "idx_createdAt", "key", ["createdAt"]);
+
+  // === PROJECT LOGS ===
+  await ensureCollection("project_logs", "Project Logs");
+  await addAttr("project_logs", str("project_logs", "projectId", 128, true));
+  await addAttr("project_logs", str("project_logs", "fromStatus", 64, false));
+  await addAttr("project_logs", str("project_logs", "toStatus", 64, true));
+  await addAttr("project_logs", text("project_logs", "notes", false));
+  await addAttr("project_logs", dt("project_logs", "createdAt", true));
+  await addIndex("project_logs", "idx_projectId", "key", ["projectId"]);
+  await addIndex("project_logs", "idx_createdAt", "key", ["createdAt"]);
 
   // Seed default pipeline stages
   console.log("\n--- Seeding Pipeline Stages ---\n");
@@ -598,6 +652,7 @@ async function main() {
   await addAttr("leads", str("leads", "formId", 128, false));
   await addAttr("leads", str("leads", "funnelId", 128, false));
   await addAttr("leads", str("leads", "bookingLinkId", 128, false));
+  await addAttr("leads", str("leads", "createdBy", 128, false));
   await addAttr("leads", dt("leads", "createdAt", true));
   await addAttr("leads", dt("leads", "updatedAt", true));
   await addIndex("leads", "idx_pipelineStage", "key", ["pipelineStage"]);
@@ -664,6 +719,7 @@ async function main() {
   await addAttr("call_tasks", dt("call_tasks", "completedAt", false));
   await addAttr("call_tasks", enm("call_tasks", "callOutcome", ["qualified", "not_qualified", "no_answer", "call_later", "wrong_number", "interested", "not_interested", "needs_quote"], false));
   await addAttr("call_tasks", text("call_tasks", "notes", false));
+  await addAttr("call_tasks", str("call_tasks", "createdBy", 128, false));
   await addAttr("call_tasks", dt("call_tasks", "createdAt", true));
   await addAttr("call_tasks", dt("call_tasks", "updatedAt", true));
   await addIndex("call_tasks", "idx_leadId", "key", ["leadId"]);

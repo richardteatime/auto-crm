@@ -25,7 +25,7 @@ if (!APPLY) {
 
 const USER_ID_MAP: Record<string, string | null> = {
   "69fe3569001d6868d7e0": "6a162ac9000920902da8", // Francesco
-  "69ef7adf0011bc8f0d8d": "6a2dcefde095891b0300", // Leonardo
+  "69ef7adf0011bc8f0d8d": "6a2dccd40010177db894", // Leonardo
   "69ef70767bfe83ca7647": "6a2dcc800037d83f4532", // Ricardo
 };
 

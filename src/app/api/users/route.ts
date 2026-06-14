@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { users } from "@/lib/appwrite";
-import { requireAuth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
 
   try {

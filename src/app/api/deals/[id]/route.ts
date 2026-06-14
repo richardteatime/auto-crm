@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDeal, updateDeal, deleteDeal } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 
 const BodySchema = z.object({
   title: z.string().optional(),
@@ -49,10 +50,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.deals, id);
+  if (auth.error) return auth.error;
 
   let body;
   try {
@@ -113,10 +114,10 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(_request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+
+  const auth = await requireOwnerOrAdmin(_request, COLLECTIONS.deals, id);
+  if (auth.error) return auth.error;
 
   try {
     const existing = await getDeal(id);

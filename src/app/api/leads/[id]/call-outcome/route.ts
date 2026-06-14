@@ -4,10 +4,9 @@ import { requireAuth } from "@/lib/auth";
 import {
   getLead,
   getOpenCallTaskForLead,
-  createCallTask,
   updateCallTask,
 } from "@/lib/db";
-import { leoIdentity } from "@/lib/leads/automation";
+import { leoIdentity, setterIdentity } from "@/lib/leads/automation";
 import { CALL_OUTCOMES, OUTCOME_LABELS, type CallOutcome } from "@/lib/leads/types";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
 
@@ -53,22 +52,34 @@ export async function POST(
   }
 
   try {
-    // Upsert the call task → completed with the recorded outcome.
-    // Prefer the task assigned to the authenticated user to avoid closing the
-    // wrong task when both setter and closer have open tasks.
-    let task = await getOpenCallTaskForLead(id, auth.user.id);
-    if (!task) {
-      task = await getOpenCallTaskForLead(id);
+    // Determine caller identity by email (setter = Cugina, closer = Leo).
+    const callerEmail = auth.user.email?.toLowerCase() ?? "";
+    const cuginaEmail = (process.env.CUGINA_EMAIL ?? "").toLowerCase();
+    const leoEmail = (process.env.LEO_EMAIL ?? "").toLowerCase();
+
+    let callerIdentity = null as typeof setterIdentity | typeof leoIdentity | null;
+    if (callerEmail && cuginaEmail && callerEmail === cuginaEmail) {
+      callerIdentity = setterIdentity;
+    } else if (callerEmail && leoEmail && callerEmail === leoEmail) {
+      callerIdentity = leoIdentity;
     }
-    if (!task) {
-      task = await createCallTask({
-        leadId: id,
-        assignedTo: leoIdentity.id,
-        assigneeName: leoIdentity.name,
-        status: "pending",
-        notes,
-      });
+
+    if (!callerIdentity) {
+      return NextResponse.json(
+        { error: "Utente non autorizzato a registrare esiti per questo lead" },
+        { status: 403 },
+      );
     }
+
+    // Find the open call task for this lead assigned to the caller.
+    const task = await getOpenCallTaskForLead(id, callerIdentity.id);
+    if (!task) {
+      return NextResponse.json(
+        { error: "Nessuna call task aperta trovata per questo lead" },
+        { status: 404 },
+      );
+    }
+
     const completed = await updateCallTask(task.id, {
       status: "completed",
       callOutcome: outcome as CallOutcome,
@@ -93,7 +104,7 @@ export async function POST(
         email: updatedLead?.email ?? lead.email,
         phone: updatedLead?.phone ?? lead.phone,
       },
-      `call_outcome_recorded:${id}:${outcome}`,
+      `call_outcome_recorded:${id}:${outcome}:${task.id}`,
     );
 
     return NextResponse.json({

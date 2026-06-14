@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getProject, updateProject, deleteProject } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 import { notifyAssignment } from "@/lib/notify";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -30,10 +31,9 @@ export async function GET(request: NextRequest, { params }: Ctx) {
 }
 
 export async function PUT(request: NextRequest, { params }: Ctx) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.projects, id);
+  if (auth.error) return auth.error;
   let body;
   try {
     body = await request.json();
@@ -85,10 +85,9 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.projects, id);
+  if (auth.error) return auth.error;
   try {
     await deleteProject(id);
     return NextResponse.json({ success: true });

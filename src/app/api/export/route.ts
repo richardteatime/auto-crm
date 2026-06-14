@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { listContacts } from "@/lib/db/contacts";
-import { requireAuth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { listDeals } from "@/lib/db/deals";
 import { listActivities } from "@/lib/db/activities";
 import { listQuotes } from "@/lib/db/quotes";
@@ -14,7 +14,9 @@ export const dynamic = "force-dynamic";
 
 function escapeCSV(value: string | null | undefined): string {
   if (value === null || value === undefined) return "";
-  const str = String(value);
+  let str = String(value);
+  // Defuse CSV formula injection (Excel/Sheets interpret leading =, +, -, @, tabs, CR).
+  if (/^[+=\-@\t\r]/.test(str)) str = "'" + str;
   if (str.includes(",") || str.includes('"') || str.includes("\n"))
     return `"${str.replace(/"/g, '""')}"`;
   return str;
@@ -24,9 +26,16 @@ function buildCSV(headers: string[], rows: string[][]): string {
   return [headers, ...rows].map((r) => r.map(escapeCSV).join(",")).join("\n");
 }
 
-function getTs(val: Date | number | null | undefined): number {
-  if (!val) return 0;
+function getTs(val: Date | number | string | null | undefined): number {
+  if (val === null || val === undefined) return 0;
   if (val instanceof Date) return val.getTime();
+  if (typeof val === "string") {
+    const parsed = Date.parse(val);
+    if (!Number.isNaN(parsed)) return parsed;
+    const n = Number(val);
+    if (!Number.isNaN(n)) return n < 1e12 ? n * 1000 : n;
+    return 0;
+  }
   const n = val as number;
   return n < 1e12 ? n * 1000 : n;
 }
@@ -68,7 +77,7 @@ const QuerySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
+  const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
 
   const { searchParams } = new URL(request.url);

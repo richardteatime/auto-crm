@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { getQuote } from "@/lib/db/quotes";
-import { requireAuth } from "@/lib/auth";
+import { requireOwnerOrAdmin } from "@/lib/auth";
 import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
+import { COLLECTIONS } from "@/lib/appwrite";
 import fs from "fs";
 import path from "path";
 
@@ -78,13 +79,13 @@ function lineTotal(item: DbQuoteItem): number {
 }
 
 export async function GET(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(_req);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.quotes, id);
+  if (auth.error) return auth.error;
 
   const quote = await getQuote(id);
   if (!quote) {

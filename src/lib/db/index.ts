@@ -209,7 +209,10 @@ export {
   listCallTasks,
   getCallTask,
   createCallTask,
+  createOpenCallTaskIfMissing,
+  openCallTaskId,
   updateCallTask,
+  deleteCallTask,
   getOpenCallTaskForLead,
 } from "./call-tasks";
 

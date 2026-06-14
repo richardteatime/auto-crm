@@ -38,14 +38,8 @@ function toIsoDate(
 }
 
 async function generateQuoteNumber(): Promise<string> {
-  const today = new Date();
-  const dateStr = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, "0"),
-    String(today.getDate()).padStart(2, "0"),
-  ].join("");
-  const suffix = String(today.getTime() % 1000).padStart(3, "0");
-  return `Q-${dateStr}-${suffix}`;
+  // Collision-resistant identifier; Appwrite IDs are unique.
+  return `Q-${ID.unique()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -101,6 +95,7 @@ export async function createQuote(data: {
   generatedText?: string | null;
   vatRate?: number;
   validUntil?: Date | string | number | null;
+  createdBy?: string | null;
 }): Promise<Quote> {
   const number = await generateQuoteNumber();
 
@@ -113,6 +108,7 @@ export async function createQuote(data: {
     items: data.items || "[]",
     status: "bozza",
     vatRate: data.vatRate ?? 22,
+    createdBy: data.createdBy ?? null,
     createdAt: now,
     updatedAt: now,
   };

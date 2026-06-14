@@ -6,7 +6,8 @@ import {
   updateContact,
   deleteContact,
 } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 
 const BodySchema = z.object({
   name: z.string().optional(),
@@ -52,10 +53,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.contacts, id);
+  if (auth.error) return auth.error;
 
   let body;
   try {
@@ -110,10 +111,10 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(_request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+
+  const auth = await requireOwnerOrAdmin(_request, COLLECTIONS.contacts, id);
+  if (auth.error) return auth.error;
 
   try {
     const existing = await getContact(id);

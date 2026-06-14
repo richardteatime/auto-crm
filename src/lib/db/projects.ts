@@ -79,6 +79,7 @@ export async function createProject(data: {
   notes?: string | null;
   contactId?: string | null;
   dealId?: string | null;
+  createdBy?: string | null;
 }): Promise<Project> {
   const now = new Date().toISOString();
   const doc = await databases.createDocument(DB_ID, COLLECTIONS.projects, ID.unique(), {
@@ -93,6 +94,7 @@ export async function createProject(data: {
     notes: data.notes ?? null,
     contactId: data.contactId ?? null,
     dealId: data.dealId ?? null,
+    createdBy: data.createdBy ?? null,
     createdAt: now,
     updatedAt: now,
   });

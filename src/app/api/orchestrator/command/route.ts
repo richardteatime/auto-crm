@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleCommand } from "@/lib/orchestrator/router";
+import { requireAdmin } from "@/lib/auth";
 
 const BodySchema = z.object({
   senderPhone: z.string().optional(),
@@ -16,6 +17,9 @@ const BodySchema = z.object({
  * Used for testing or direct API integration.
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const parsed = BodySchema.safeParse(body);

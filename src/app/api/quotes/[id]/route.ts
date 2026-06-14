@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getQuote, updateQuote, deleteQuote } from "@/lib/db/quotes";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +34,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.quotes, id);
+  if (auth.error) return auth.error;
   const quote = await getQuote(id);
   if (!quote) {
     return NextResponse.json({ error: "Preventivo non trovato" }, { status: 404 });
@@ -74,10 +74,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAuth(_req);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(_req, COLLECTIONS.quotes, id);
+  if (auth.error) return auth.error;
   const quote = await getQuote(id);
   if (!quote) {
     return NextResponse.json({ error: "Preventivo non trovato" }, { status: 404 });
