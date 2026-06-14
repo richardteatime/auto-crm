@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isAuthRoute(pathname)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
         {children}
       </div>
     );
