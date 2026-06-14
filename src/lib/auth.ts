@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
+import { getDocumentOwner } from "@/lib/db/ownership";
+import { isFinanceUser } from "@/lib/finance-auth";
 
 const APPWRITE_ENDPOINT =
   process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
@@ -8,7 +10,11 @@ const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
 
 // Dedicated session secret — decoupled from the Appwrite API key so that
 // rotating the API key does not invalidate all active user sessions.
-const SESSION_SECRET = process.env.SESSION_SECRET || APPWRITE_API_KEY;
+const _SESSION_SECRET = process.env.SESSION_SECRET;
+if (!_SESSION_SECRET) {
+  throw new Error("SESSION_SECRET è obbligatorio. Configurarlo in .env.local");
+}
+const SESSION_SECRET = _SESSION_SECRET;
 
 const SESSION_COOKIE = "appwrite-session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
@@ -47,6 +53,37 @@ export function verifyToken(
     return null;
   }
   return { userId, sessionId };
+}
+
+export async function verifySessionActive(
+  userId: string,
+  sessionId: string,
+): Promise<boolean> {
+  try {
+    const { users } = await import("@/lib/appwrite");
+    const sessions = await users.listSessions(userId);
+    return sessions.sessions.some((session) => session.$id === sessionId);
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin check
+// ---------------------------------------------------------------------------
+
+export async function isAdmin(userId: string): Promise<boolean> {
+  try {
+    const { databases, DB_ID } = await import("@/lib/appwrite");
+    const { Query } = await import("@/lib/query17");
+    const ops = await databases.listDocuments(DB_ID, "crm_operators", [
+      Query.equal("appwriteUserId", userId),
+      Query.limit(1),
+    ]);
+    return ops.documents[0]?.role === "admin";
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +144,9 @@ export async function getCurrentUser(
   const parsed = verifyToken(raw);
   if (!parsed) return null;
 
+  const sessionActive = await verifySessionActive(parsed.userId, parsed.sessionId);
+  if (!sessionActive) return null;
+
   try {
     const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");
     const res = await fetch(`${baseUrl}/v1/users/${parsed.userId}`, {
@@ -144,6 +184,82 @@ export async function requireAuth(
     error: NextResponse.json(
       { success: false, error: "Non autenticato" },
       { status: 401 }
+    ),
+  };
+}
+
+/**
+ * Require ownership or admin role for a specific document.
+ * Falls back to allowing the operation if ownership cannot be determined
+ * (legacy documents without createdBy).
+ */
+export async function requireOwnerOrAdmin(
+  request: NextRequest,
+  collectionId: string,
+  documentId: string,
+): Promise<
+  | { user: AuthUser; error?: never }
+  | { user?: never; error: NextResponse }
+> {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth;
+
+  // Admin bypass
+  if (await isAdmin(auth.user.id)) return { user: auth.user };
+
+  const ownerId = await getDocumentOwner(collectionId, documentId);
+  if (ownerId && ownerId !== auth.user.id) {
+    return {
+      error: NextResponse.json(
+        { success: false, error: "Non autorizzato" },
+        { status: 403 },
+      ),
+    };
+  }
+  return { user: auth.user };
+}
+
+/**
+ * Require admin role. Returns user only if they are an admin in crm_operators.
+ */
+export async function requireAdmin(
+  request: NextRequest,
+): Promise<
+  | { user: AuthUser; error?: never }
+  | { user?: never; error: NextResponse }
+> {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth;
+
+  if (await isAdmin(auth.user.id)) return { user: auth.user };
+
+  return {
+    error: NextResponse.json(
+      { success: false, error: "Richiede ruolo admin" },
+      { status: 403 },
+    ),
+  };
+}
+
+/**
+ * Require finance access or admin role.
+ */
+export async function requireFinanceOrAdmin(
+  request: NextRequest,
+): Promise<
+  | { user: AuthUser; error?: never }
+  | { user?: never; error: NextResponse }
+> {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth;
+
+  if (isFinanceUser(auth.user.id)) return { user: auth.user };
+  if (await isAdmin(auth.user.id)) return { user: auth.user };
+
+  return {
+    error: NextResponse.json(
+      { success: false, error: "Richiede accesso finanziario o ruolo admin" },
+      { status: 403 },
     ),
   };
 }

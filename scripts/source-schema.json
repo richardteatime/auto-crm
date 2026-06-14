@@ -1,0 +1,1224 @@
+[
+  {
+    "id": "contacts",
+    "name": "Contacts",
+    "documentCount": 15,
+    "fields": [
+      {
+        "key": "name",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "email",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "phone",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "company",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "source",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "otro",
+        "elements": [
+          "website",
+          "whatsapp",
+          "referido",
+          "redes_sociales",
+          "llamada_fria",
+          "email",
+          "formulario",
+          "evento",
+          "import",
+          "webhook",
+          "otro"
+        ]
+      },
+      {
+        "key": "temperature",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "cold",
+        "elements": [
+          "cold",
+          "warm",
+          "hot"
+        ]
+      },
+      {
+        "key": "score",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": 0
+      },
+      {
+        "key": "vatNumber",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "address",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      }
+    ]
+  },
+  {
+    "id": "pipeline_stages",
+    "name": "Pipeline Stages",
+    "documentCount": 6,
+    "fields": [
+      {
+        "key": "name",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "order",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": 1
+      },
+      {
+        "key": "color",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "#64748b"
+      },
+      {
+        "key": "isWon",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "isLost",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      }
+    ]
+  },
+  {
+    "id": "deals",
+    "name": "Deals",
+    "documentCount": 13,
+    "fields": [
+      {
+        "key": "title",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "stageId",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "contactId",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "contactName",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "contactTemperature",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null,
+        "elements": [
+          "cold",
+          "warm",
+          "hot"
+        ]
+      },
+      {
+        "key": "stageName",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "stageColor",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "expectedClose",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "attachments",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "recurringMonths",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": 12
+      },
+      {
+        "key": "recurringStartDate",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "wonAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "value",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": 0
+      },
+      {
+        "key": "probability",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": 0
+      },
+      {
+        "key": "isRecurring",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "isPaid",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "billingType",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "una_tantum",
+        "elements": [
+          "una_tantum",
+          "mensile",
+          "annuale"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "activities",
+    "name": "Activities",
+    "documentCount": 10,
+    "fields": [
+      {
+        "key": "type",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null,
+        "elements": [
+          "call",
+          "email",
+          "meeting",
+          "note",
+          "follow_up"
+        ]
+      },
+      {
+        "key": "description",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "contactId",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "contactName",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "dealId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "startAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "endAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "attachments",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "scheduledAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "completedAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "isCompleted",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "assignedTo",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      }
+    ]
+  },
+  {
+    "id": "crm_settings",
+    "name": "CRM Settings",
+    "documentCount": 0,
+    "fields": [
+      {
+        "key": "key",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "value",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      }
+    ]
+  },
+  {
+    "id": "tasks",
+    "name": "Tasks",
+    "documentCount": 0,
+    "fields": [
+      {
+        "key": "title",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "description",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "assignedTo",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdBy",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "dueAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "done",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      }
+    ]
+  },
+  {
+    "id": "messages",
+    "name": "Messages",
+    "documentCount": 14,
+    "fields": [
+      {
+        "key": "author",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "content",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      }
+    ]
+  },
+  {
+    "id": "expenses",
+    "name": "Expenses",
+    "documentCount": 0,
+    "fields": [
+      {
+        "key": "description",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "amount",
+        "type": "integer",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "date",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "type",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "spesa",
+        "elements": [
+          "spesa",
+          "investimento",
+          "stipendio"
+        ]
+      },
+      {
+        "key": "category",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "Altro"
+      },
+      {
+        "key": "createdBy",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "Team"
+      }
+    ]
+  },
+  {
+    "id": "quotes",
+    "name": "Quotes",
+    "documentCount": 10,
+    "fields": [
+      {
+        "key": "dealId",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "number",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "title",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "items",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "validUntil",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "status",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "bozza",
+        "elements": [
+          "bozza",
+          "inviato",
+          "accettato",
+          "rifiutato"
+        ]
+      },
+      {
+        "key": "vatRate",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": 22
+      }
+    ]
+  },
+  {
+    "id": "opportunities",
+    "name": "Opportunities",
+    "documentCount": 11,
+    "fields": [
+      {
+        "key": "contactId",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "title",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "description",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "dealId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "value",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "attachments",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "status",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "aperta"
+      }
+    ]
+  },
+  {
+    "id": "projects",
+    "name": "projects",
+    "documentCount": 13,
+    "fields": [
+      {
+        "key": "title",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "description",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "priority",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "media"
+      },
+      {
+        "key": "assignedTo",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "contactId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "dealId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "startDate",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "dueDate",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "deliveredAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "status",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      }
+    ]
+  },
+  {
+    "id": "project_logs",
+    "name": "project_logs",
+    "documentCount": 0,
+    "fields": [
+      {
+        "key": "projectId",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "fromStatus",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "toStatus",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      }
+    ]
+  },
+  {
+    "id": "notifications",
+    "name": "notifications",
+    "documentCount": 22,
+    "fields": [
+      {
+        "key": "userId",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "type",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "title",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "body",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "relatedId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "relatedType",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "fromUserId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "fromUserName",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "read",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      }
+    ]
+  },
+  {
+    "id": "revenues",
+    "name": "Revenues",
+    "documentCount": 7,
+    "fields": [
+      {
+        "key": "description",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "amount",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": 0
+      },
+      {
+        "key": "date",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "isRecurring",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "recurringMonths",
+        "type": "integer",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "startDate",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "collectedBy",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "isExternal",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "dealId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "opportunityId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "deleteReason",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "deletedAt",
+        "type": "datetime",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "notes",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "billingType",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "una_tantum",
+        "elements": [
+          "una_tantum",
+          "mensile",
+          "annuale"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "calendar_events",
+    "name": "Calendar Events",
+    "documentCount": 6,
+    "fields": [
+      {
+        "key": "title",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "description",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "startAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "endAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "allDay",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "type",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": "activity",
+        "elements": [
+          "activity",
+          "meeting",
+          "call",
+          "travel",
+          "out_of_office",
+          "personal",
+          "other"
+        ]
+      },
+      {
+        "key": "assignedTo",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "createdBy",
+        "type": "string",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "contactId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "dealId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "projectId",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "location",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "color",
+        "type": "string",
+        "required": false,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "isPrivate",
+        "type": "boolean",
+        "required": false,
+        "array": false,
+        "default": false
+      },
+      {
+        "key": "createdAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      },
+      {
+        "key": "updatedAt",
+        "type": "datetime",
+        "required": true,
+        "array": false,
+        "default": null
+      }
+    ]
+  }
+]

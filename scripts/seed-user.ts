@@ -1,5 +1,7 @@
 import { Client, Users, Query } from "node-appwrite";
-import "dotenv/config";
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
 
 const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";

@@ -5,6 +5,7 @@ import type { Databases } from "node-appwrite";
 config({ path: ".env.local" });
 
 const APPLY = process.argv.includes("--apply");
+const NO_PRESERVE = process.argv.includes("--no-preserve");
 const PAGE_SIZE = 500;
 const DELETE_CONCURRENCY = 3;
 const DELETE_RETRIES = 5;
@@ -12,11 +13,13 @@ const DELETE_RETRIES = 5;
 // Preserve only the canonical internal-team contacts explicitly approved by
 // the user. Configuration, users, templates and pipeline stages are not part of
 // this script and therefore remain untouched.
-const PRESERVED_CONTACT_IDS = new Set([
-  "6a164d7500184931bb47", // Francesco Mellucci — canonical oldest duplicate
-  "6a16d1e40020e04b884d", // Leonardo Sartori
-  "6a175927002054196279", // Riccardo Consuegra
-]);
+const PRESERVED_CONTACT_IDS = NO_PRESERVE
+  ? new Set<string>()
+  : new Set([
+      "6a164d7500184931bb47", // Francesco Mellucci — canonical oldest duplicate
+      "6a16d1e40020e04b884d", // Leonardo Sartori
+      "6a175927002054196279", // Riccardo Consuegra
+    ]);
 
 const OPERATIONAL_COLLECTIONS = [
   "workflow_run_logs",
@@ -166,7 +169,7 @@ async function main() {
   for (const contact of preservedContacts) {
     console.log(`  keep ${contact.$id} | ${label(contact)}`);
   }
-  if (preservedContacts.length !== PRESERVED_CONTACT_IDS.size) {
+  if (preservedContacts.length !== PRESERVED_CONTACT_IDS.size && !NO_PRESERVE) {
     throw new Error(
       `Preserve allowlist mismatch: expected ${PRESERVED_CONTACT_IDS.size}, found ${preservedContacts.length}`,
     );
