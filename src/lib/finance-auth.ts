@@ -7,9 +7,9 @@ const FINANCE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 // Authorized finance users (Appwrite user IDs)
 const FINANCE_USER_IDS = [
-  "69ef70767bfe83ca7647", // Ricardo consuegra
-  "69ef7adf0011bc8f0d8d", // leonardo sartori
-  "69fe3569001d6868d7e0", // francesco mellucci
+  "6a14d8a599f23742e879", // Francesco - francy3391@gmail.com
+  "6a2dcc3f002f530aeddc", // rick - riccardoconsuegra@gmail.com
+  "6a3076503b9b7a63f742", // Simo - simo6616@libero.it
 ];
 
 export function isFinanceUser(userId: string): boolean {
