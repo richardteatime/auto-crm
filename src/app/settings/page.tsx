@@ -75,7 +75,7 @@ export default function SettingsPage() {
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Esegui <code>/setup</code> in Claude Code per configurare la tua azienda.
+                Configura i dati della tua azienda.
               </p>
             )}
           </CardContent>
@@ -108,7 +108,7 @@ export default function SettingsPage() {
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Usa <code>/customize</code> in Claude Code per modificare le fasi.
+              Le fasi del pipeline possono essere modificate dalle impostazioni avanzate.
             </p>
           </CardContent>
         </Card>

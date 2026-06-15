@@ -5,7 +5,7 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { NotificationBanner } from "@/components/dashboard/NotificationBanner";
 import type { DashboardStats } from "@/types";
 import { WHITE_LABEL } from "@/lib/white-label";
-import { AlertTriangle, Wrench } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -69,30 +69,10 @@ export default async function DashboardPage() {
           <div className="mx-auto h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center">
             <AlertTriangle className="h-8 w-8 text-amber-600" />
           </div>
-          <h1 className="text-2xl font-bold">Database non inizializzato</h1>
+          <h1 className="text-2xl font-bold">Errore di connessione</h1>
           <p className="text-muted-foreground">
-            Il CRM non trova le collezioni su Appwrite. È necessario eseguire il setup una volta.
+            Il CRM non riesce a connettersi al database. Contatta l&apos;amministratore di sistema.
           </p>
-          <div className="rounded-lg border bg-muted/50 p-4 text-left text-sm space-y-3">
-            <div className="flex items-start gap-2">
-              <Wrench className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-              <div>
-                <p className="font-medium">Soluzione rapida</p>
-                <p className="text-muted-foreground mt-1">
-                  Dal tuo terminale locale, con le stesse variabili d&apos;ambiente del deploy:
-                </p>
-                <pre className="mt-2 p-3 rounded bg-black text-white text-xs font-mono overflow-x-auto">
-                  npm run setup
-                </pre>
-                <p className="text-muted-foreground mt-2">
-                  Oppure entra nel container su Coolify e lancia:
-                </p>
-                <pre className="mt-2 p-3 rounded bg-black text-white text-xs font-mono overflow-x-auto">
-                  npx tsx scripts/setup-appwrite.ts
-                </pre>
-              </div>
-            </div>
-          </div>
           <p className="text-xs text-muted-foreground">
             Errore: {error}
           </p>
@@ -115,29 +95,9 @@ export default async function DashboardPage() {
           <h2 className="text-lg font-semibold mb-2">
             Benvenuto in {WHITE_LABEL.productName}
           </h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            Il tuo CRM è pronto. Ecco come iniziare:
+          <p className="text-sm text-muted-foreground">
+            Il tuo CRM è pronto. Inizia aggiungendo i tuoi contatti e creando il primo deal.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <div className="p-3 rounded-lg bg-card border">
-              <p className="font-medium">1. Personalizza il tuo CRM</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Esegui <code className="bg-muted px-1 rounded">/setup</code> in Claude Code
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-card border">
-              <p className="font-medium">2. Aggiungi contatti</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Vai su Contatti o usa <code className="bg-muted px-1 rounded">/add-lead</code>
-              </p>
-            </div>
-            <div className="p-3 rounded-lg bg-card border">
-              <p className="font-medium">3. Carica dati demo</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Esegui <code className="bg-muted px-1 rounded">npm run seed</code> nel terminale
-              </p>
-            </div>
-          </div>
         </div>
       )}
 

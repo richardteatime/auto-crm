@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  // Bulk update stages (from /setup or /customize)
+  // Bulk update stages (from setup or customization)
   if (body.stages && Array.isArray(body.stages)) {
     try {
       const existingDeals = await listDeals();
