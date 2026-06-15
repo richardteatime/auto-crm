@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { WeekdayKey, AvailabilitySlot, BookingAvailability } from "@/lib/capture/types";
-import { weekdayKeyOf } from "@/lib/capture/availability";
+import { isDateBookable } from "@/lib/capture/availability";
 import { sendPublicAnalytics } from "@/components/capture/PublicAnalyticsTracker";
 import { DayScroller } from "./DayScroller";
 
@@ -36,8 +36,7 @@ function firstEnabledDate(availability: BookingAvailability): string | null {
   const today = todayIso();
   for (let i = 0; i < 21; i++) {
     const date = addDays(today, i);
-    const key = weekdayKeyOf(date);
-    if (key && availability.days[key]?.enabled) return date;
+    if (isDateBookable(date, availability)) return date;
   }
   return null;
 }

@@ -361,10 +361,23 @@ export interface FormSubmission {
 // Booking
 // ===========================================================================
 
-export interface DayAvailability {
-  enabled: boolean;
+export interface TimeInterval {
   start: string; // "HH:mm"
   end: string; // "HH:mm"
+}
+
+export interface DayAvailability {
+  enabled: boolean;
+  intervals: TimeInterval[];
+  // Legacy single-window fields; kept for backward compatibility with old JSON.
+  start?: string;
+  end?: string;
+}
+
+export interface DateException {
+  date: string; // "YYYY-MM-DD"
+  enabled: boolean;
+  intervals: TimeInterval[];
 }
 
 export type WeekdayKey =
@@ -388,6 +401,7 @@ export const WEEKDAY_KEYS: WeekdayKey[] = [
 
 export interface BookingAvailability {
   days: Record<WeekdayKey, DayAvailability>;
+  exceptions: Record<string, DateException>;
   bufferBefore: number; // minutes
   bufferAfter: number; // minutes
   maxPerDay: number;

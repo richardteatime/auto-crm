@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { weekdayKeyOf } from "@/lib/capture/availability";
+import { isDateBookable } from "@/lib/capture/availability";
 import type { BookingAvailability } from "@/lib/capture/types";
 
 interface DayScrollerProps {
@@ -48,8 +48,7 @@ export function DayScroller({
     const list: Array<{ date: string; enabled: boolean }> = [];
     for (let i = 0; i < days; i++) {
       const date = addDays(today, i);
-      const key = weekdayKeyOf(date);
-      const enabled = key ? availability.days[key]?.enabled === true : false;
+      const enabled = isDateBookable(date, availability);
       list.push({ date, enabled });
     }
     return list;

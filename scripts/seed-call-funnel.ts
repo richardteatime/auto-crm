@@ -13,6 +13,7 @@
  */
 import { Client, Databases, ID, Query } from "node-appwrite";
 import { config as loadEnv } from "dotenv";
+import { defaultAvailability } from "../src/lib/capture/defaults";
 
 loadEnv({ path: ".env.local" });
 
@@ -51,23 +52,11 @@ async function main() {
     Query.limit(1),
   ]);
   let booking = blRes.documents[0] as Record<string, unknown> | undefined;
-  const availability = {
-    days: {
-      mon: { enabled: true, start: "09:00", end: "18:00" },
-      tue: { enabled: true, start: "09:00", end: "18:00" },
-      wed: { enabled: true, start: "09:00", end: "18:00" },
-      thu: { enabled: true, start: "09:00", end: "18:00" },
-      fri: { enabled: true, start: "09:00", end: "18:00" },
-      sat: { enabled: false, start: "09:00", end: "18:00" },
-      sun: { enabled: false, start: "09:00", end: "18:00" },
-    },
-    bufferBefore: 0,
-    bufferAfter: 0,
-    maxPerDay: 10,
-  };
+  const availability = defaultAvailability();
   if (booking) {
     await db.updateDocument(DB_ID, "booking_links", booking.$id as string, {
       availability: JSON.stringify(availability),
+      assignedTo: process.env.LEO_USER_ID || "leo",
       updatedAt: now,
     });
     console.log(`  ✓ Booking link /book/${BOOKING_SLUG} aggiornato`);
@@ -76,7 +65,7 @@ async function main() {
     booking = await db.createDocument(DB_ID, "booking_links", ID.unique(), {
       name: "Call conoscitiva con Leo",
       slug: bookingSlug,
-      assignedTo: "leo",
+      assignedTo: process.env.LEO_USER_ID || "leo",
       durationMinutes: 30,
       availability: JSON.stringify(availability),
       successMessage: "Perfetto! La tua call con Leo è prenotata. Riceverai i dettagli via email.",

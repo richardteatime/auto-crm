@@ -209,7 +209,7 @@ export function defaultFormStyle(): FormStyle {
 }
 
 function defaultDay(enabled: boolean): DayAvailability {
-  return { enabled, start: "09:00", end: "18:00" };
+  return { enabled, intervals: [{ start: "09:00", end: "18:00" }] };
 }
 
 export function defaultAvailability(): BookingAvailability {
@@ -217,5 +217,5 @@ export function defaultAvailability(): BookingAvailability {
   for (const k of WEEKDAY_KEYS) {
     days[k] = defaultDay(k !== "sat" && k !== "sun");
   }
-  return { days, bufferBefore: 0, bufferAfter: 0, maxPerDay: 10 };
+  return { days, exceptions: {}, bufferBefore: 0, bufferAfter: 0, maxPerDay: 10 };
 }
