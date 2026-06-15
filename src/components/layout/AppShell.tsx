@@ -4,8 +4,9 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { NotificationProvider } from "@/components/shared/NotificationContext";
+import { AuthGuard } from "@/components/layout/AuthGuard";
 
-const AUTH_ROUTES = ["/login", "/register"];
+const AUTH_ROUTES = ["/login", "/register", "/finance-login"];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
@@ -18,21 +19,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isAuthRoute(pathname)) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
-        {children}
-      </div>
+      <AuthGuard>
+        <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+          {children}
+        </div>
+      </AuthGuard>
     );
   }
 
   return (
-    <NotificationProvider>
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-h-screen min-w-0 md:ml-64">
-        <Header />
-        <main className="flex-1 p-4 md:p-6 bg-background overflow-x-hidden">
-          {children}
-        </main>
-      </div>
-    </NotificationProvider>
+    <AuthGuard>
+      <NotificationProvider>
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-h-screen min-w-0 md:ml-64">
+          <Header />
+          <main className="flex-1 p-4 md:p-6 bg-background overflow-x-hidden">
+            {children}
+          </main>
+        </div>
+      </NotificationProvider>
+    </AuthGuard>
   );
 }
