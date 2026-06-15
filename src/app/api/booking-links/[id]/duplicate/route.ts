@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBookingLink, getBookingLink, updateBookingLink } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
+  const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
 
   const { id } = await params;

@@ -6,7 +6,8 @@ import {
   deleteLandingPage,
   landingSlugExists,
 } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 import { slugify } from "@/lib/capture/slug";
 const BodySchema = z.object({
   name: z.string().min(1).optional(),
@@ -23,10 +24,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
+  const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.landingPages, id);
   if (auth.error) return auth.error;
 
-  const { id } = await params;
   const page = await getLandingPage(id);
   if (!page) {
     return NextResponse.json({ error: "Landing page non trovata" }, { status: 404 });
@@ -38,10 +39,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
-
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.landingPages, id);
+  if (auth.error) return auth.error;
 
   let body;
   try {
@@ -95,10 +95,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
+  const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.landingPages, id);
   if (auth.error) return auth.error;
 
-  const { id } = await params;
   const existing = await getLandingPage(id);
   if (!existing) {
     return NextResponse.json({ error: "Landing page non trovata" }, { status: 404 });

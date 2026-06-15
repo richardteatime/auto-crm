@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getWorkflow, updateWorkflow, deleteWorkflow } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 
 const BodySchema = z.object({
   name: z.string().min(1).optional(),
@@ -17,10 +18,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
+  const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.workflows, id);
   if (auth.error) return auth.error;
 
-  const { id } = await params;
   try {
     const workflow = await getWorkflow(id);
     if (!workflow) {
@@ -39,10 +40,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
+  const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.workflows, id);
   if (auth.error) return auth.error;
 
-  const { id } = await params;
   let body;
   try {
     body = await request.json();
@@ -87,10 +88,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
+  const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.workflows, id);
   if (auth.error) return auth.error;
 
-  const { id } = await params;
   try {
     await deleteWorkflow(id);
     return NextResponse.json({ success: true });

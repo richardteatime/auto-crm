@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { deleteFunnel, getFunnel, updateFunnel } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireOwnerOrAdmin } from "@/lib/auth";
+import { COLLECTIONS } from "@/lib/appwrite";
 
 const BodySchema = z.object({
   name: z.string().min(1).optional(),
@@ -14,9 +15,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.funnels, id);
+  if (auth.error) return auth.error;
   const funnel = await getFunnel(id);
   return funnel
     ? NextResponse.json(funnel)
@@ -27,9 +28,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.funnels, id);
+  if (auth.error) return auth.error;
 
   let body: Record<string, unknown>;
   try {
@@ -73,9 +74,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAuth(request);
-  if (auth.error) return auth.error;
   const { id } = await params;
+  const auth = await requireOwnerOrAdmin(request, COLLECTIONS.funnels, id);
+  if (auth.error) return auth.error;
   try {
     await deleteFunnel(id);
     return NextResponse.json({ success: true });

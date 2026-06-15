@@ -191,8 +191,7 @@ export async function requireAuth(
 
 /**
  * Require ownership or admin role for a specific document.
- * Falls back to allowing the operation if ownership cannot be determined
- * (legacy documents without createdBy).
+ * Denies by default if ownership cannot be determined.
  */
 export async function requireOwnerOrAdmin(
   request: NextRequest,
@@ -209,7 +208,7 @@ export async function requireOwnerOrAdmin(
   if (await isAdmin(auth.user.id)) return { user: auth.user };
 
   const ownerId = await getDocumentOwner(collectionId, documentId);
-  if (ownerId && ownerId !== auth.user.id) {
+  if (!ownerId || ownerId !== auth.user.id) {
     return {
       error: NextResponse.json(
         { success: false, error: "Non autorizzato" },
