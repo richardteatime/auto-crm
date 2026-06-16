@@ -34,9 +34,10 @@ const SOURCE_OPTIONS: { value: string; label: string }[] = [
 
 interface ContactsTableProps {
   contacts: Contact[];
+  onAdd?: () => void;
 }
 
-export function ContactsTable({ contacts }: ContactsTableProps) {
+export function ContactsTable({ contacts, onAdd }: ContactsTableProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filterTemp, setFilterTemp] = useState<Temperature | "">("");
@@ -72,7 +73,7 @@ export function ContactsTable({ contacts }: ContactsTableProps) {
         title="Nessun contatto"
         description="Aggiungi il tuo primo contatto per iniziare a gestire il tuo pipeline di vendita."
         actionLabel="Aggiungi contatto"
-        onAction={() => router.push("/contacts?new=true")}
+        onAction={onAdd}
       />
     );
   }

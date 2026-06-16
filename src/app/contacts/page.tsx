@@ -56,7 +56,7 @@ export default function ContactsPage() {
           ))}
         </div>
       ) : (
-        <ContactsTable contacts={contacts} />
+        <ContactsTable contacts={contacts} onAdd={() => setShowForm(true)} />
       )}
 
       <ContactForm open={showForm} onClose={handleCloseForm} />
