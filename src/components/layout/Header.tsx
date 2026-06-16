@@ -61,7 +61,7 @@ export function Header() {
     <header className="sticky top-0 z-30 flex h-[4.5rem] items-center gap-4 border-b bg-card px-4 md:px-6">
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger
-          render={<Button variant="ghost" size="icon" className="md:hidden cursor-pointer" />}
+          render={<Button variant="ghost" size="icon" className="md:hidden cursor-pointer" aria-label="Apri menu navigazione" />}
         >
           <Menu className="h-5 w-5" />
         </SheetTrigger>

@@ -232,3 +232,33 @@ export async function deleteSession(
     },
   });
 }
+
+/**
+ * Create a session for a user via the Appwrite Admin API.
+ * Useful for test fixtures or server-to-server flows that need to avoid
+ * the rate-limited public email/password session endpoint.
+ */
+export async function createServerSession(
+  userId: string
+): Promise<{ userId: string; sessionId: string }> {
+  const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");
+  const res = await fetch(`${baseUrl}/v1/users/${userId}/sessions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Appwrite-Project": APPWRITE_PROJECT_ID,
+      "X-Appwrite-Key": APPWRITE_API_KEY,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text.slice(0, 500));
+  }
+
+  const data = await res.json();
+  return {
+    userId: data.userId,
+    sessionId: data.$id,
+  };
+}
