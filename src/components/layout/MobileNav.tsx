@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -16,6 +16,7 @@ import {
   GitBranch,
   CalendarDays,
   Bell,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
@@ -41,6 +42,7 @@ const navItems = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { counts } = useNotifications();
   const { enabled } = useModules();
 
@@ -49,6 +51,12 @@ export function MobileNav() {
     if (!mod) return true;
     return enabled?.includes(mod) ?? true;
   });
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="flex flex-col h-full bg-[var(--sidebar)] text-[var(--sidebar-foreground)]">
@@ -85,6 +93,16 @@ export function MobileNav() {
           );
         })}
       </nav>
+
+      <div className="px-3 py-4 border-t border-[var(--sidebar-border)]">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--sidebar-foreground)]/70 hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)] transition-colors cursor-pointer"
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          Esci
+        </button>
+      </div>
     </div>
   );
 }

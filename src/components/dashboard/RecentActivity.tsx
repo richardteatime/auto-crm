@@ -47,7 +47,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{activity.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {activity.contactName} &middot;{" "}
+                      {activity.contactName || "—"} &middot;{" "}
                       {formatRelativeDate(activity.createdAt)}
                     </p>
                   </div>
