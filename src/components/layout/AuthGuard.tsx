@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-const AUTH_ROUTES = ["/login", "/register", "/finance-login"];
+const AUTH_ROUTES = ["/login", "/register"];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(

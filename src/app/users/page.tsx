@@ -90,13 +90,14 @@ export default function UsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={createUser} className="space-y-3">
+            <form onSubmit={createUser} className="space-y-3" autoComplete="off">
               <div>
                 <label className="text-sm font-medium">Nome</label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Mario Rossi"
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -107,6 +108,7 @@ export default function UsersPage() {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="mario@azienda.it"
                   required
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -117,6 +119,7 @@ export default function UsersPage() {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   placeholder="Minimo 8 caratteri"
                   required
+                  autoComplete="new-password"
                 />
               </div>
               <Button type="submit" className="w-full">
