@@ -40,7 +40,11 @@ const navItems = [
   { href: "/settings", label: "Impostazioni", icon: Settings, badge: null },
 ];
 
-export function MobileNav() {
+interface MobileNavProps {
+  onNavigate?: () => void;
+}
+
+export function MobileNav({ onNavigate }: MobileNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { counts } = useNotifications();
@@ -53,6 +57,7 @@ export function MobileNav() {
   });
 
   async function handleLogout() {
+    onNavigate?.();
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
@@ -75,6 +80,7 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors cursor-pointer",
                 isActive

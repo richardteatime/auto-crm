@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, User, LogOut, Briefcase } from "lucide-react";
+import { Menu, LogOut, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MobileNav } from "./MobileNav";
@@ -40,6 +40,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -58,14 +59,14 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 flex h-[4.5rem] items-center gap-4 border-b bg-card px-4 md:px-6">
-      <Sheet>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger
           render={<Button variant="ghost" size="icon" className="md:hidden cursor-pointer" />}
         >
           <Menu className="h-5 w-5" />
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
-          <MobileNav />
+          <MobileNav onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>
 
