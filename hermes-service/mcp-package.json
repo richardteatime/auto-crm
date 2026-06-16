@@ -1,0 +1,8 @@
+{
+  "name": "hermes-mcp-auto-crm",
+  "private": true,
+  "dependencies": {
+    "tsx": "^4.21.0",
+    "node-appwrite": "17.0.0"
+  }
+}

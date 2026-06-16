@@ -1,0 +1,17 @@
+# Hermes Agent configuration for the headless chat service.
+# This template is copied to $HERMES_HOME/config.yaml on first run if no config exists.
+
+model:
+  # Default model used for single-query chat requests.
+  # Override at runtime with the HERMES_MODEL env var (rendered by entrypoint.sh).
+  default: "anthropic/claude-sonnet-4-6"
+  # "auto" picks a provider based on available API keys in $HERMES_HOME/.env.
+  provider: "auto"
+  base_url: "https://openrouter.ai/api/v1"
+
+mcp_servers:
+  auto-crm:
+    command: "/opt/hermes/mcp/node_modules/.bin/tsx"
+    args:
+      - "/opt/hermes/mcp/crm-server.ts"
+    timeout: 60

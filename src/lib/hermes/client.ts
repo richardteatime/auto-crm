@@ -2,6 +2,9 @@ import { spawn, execSync } from "child_process";
 
 const HERMES_TIMEOUT_MS = 120_000;
 
+const HERMES_SERVICE_URL = process.env.HERMES_SERVICE_URL;
+const HERMES_API_KEY = process.env.HERMES_API_KEY;
+
 function resolveHermesPath(): string {
   try {
     const cmd = process.platform === "win32" ? "where hermes" : "which hermes";
@@ -102,24 +105,70 @@ function runHermes(
   });
 }
 
+async function callHermesHttp(
+  message: string,
+  sessionId?: string,
+): Promise<{ reply: string; sessionId?: string }> {
+  if (!HERMES_SERVICE_URL) {
+    throw new Error("HERMES_SERVICE_URL is not configured");
+  }
+
+  const url = new URL("/chat", HERMES_SERVICE_URL).toString();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (HERMES_API_KEY) {
+    headers["Authorization"] = `Bearer ${HERMES_API_KEY}`;
+  }
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ message, session_id: sessionId, max_turns: 30 }),
+    signal: AbortSignal.timeout(125_000),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Hermes service error ${res.status}: ${text.slice(0, 500)}`);
+  }
+
+  const data = (await res.json()) as { reply?: string; session_id?: string };
+  return { reply: data.reply ?? "", sessionId: data.session_id };
+}
+
 /**
  * Send a message to Hermes Agent and return its final text response.
  *
- * Uses `hermes chat -q` in quiet mode. If a sessionId is provided,
- * attempts to resume that session; falls back to a fresh session
- * if resume fails (Hermes `-q` mode does not always support resume).
+ * Behavior:
+ * - If HERMES_SERVICE_URL is set, calls the remote Hermes chat service via HTTP.
+ * - Otherwise falls back to spawning the local `hermes chat -q` binary.
+ *
+ * If a sessionId is provided, attempts to resume that session; if resume fails,
+ * falls back to a fresh session.
  */
 export async function callHermes(
   message: string,
-  conversationId: number,
+  _conversationId: number,
   sessionId?: string,
 ): Promise<{ reply: string; sessionId?: string }> {
+  if (HERMES_SERVICE_URL) {
+    try {
+      return await callHermesHttp(message, sessionId);
+    } catch (_err) {
+      // Resume failed — fall back to a fresh session.
+      if (sessionId) {
+        return callHermesHttp(message, undefined);
+      }
+      throw _err;
+    }
+  }
+
   if (sessionId) {
     try {
       const result = await runHermes(buildArgs(message, sessionId));
       return result;
-    } catch {
+    } catch (_err) {
       // Resume failed — fall through to fresh session
+      void _err;
     }
   }
   return runHermes(buildArgs(message));
