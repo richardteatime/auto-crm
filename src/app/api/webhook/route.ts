@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createContact } from "@/lib/db/contacts";
-import { createActivity } from "@/lib/db/activities";
+import { ingestLead } from "@/lib/capture/ingest";
+import { clientIp } from "@/lib/capture/analytics";
 import { getSetting } from "@/lib/db/settings";
 import { triggerWorkflows } from "@/lib/workflows/trigger";
+import { corsHeaders } from "@/lib/cors";
 
 // Simple in-memory rate limiter: max 30 requests per IP per minute
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -65,7 +66,7 @@ const FIELD_MAP: Record<string, string> = {
 };
 
 function extractFields(
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
 ): Record<string, string> {
   // Handle Typeform-style nested data
   const data =
@@ -99,12 +100,11 @@ function extractFields(
 }
 
 export async function POST(request: NextRequest) {
-  // Rate limit by IP
-  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  const ip = clientIp(request.headers) ?? "unknown";
   if (!checkRateLimit(ip)) {
     return NextResponse.json(
       { error: "Troppe richieste. Riprova più tardi." },
-      { status: 429 }
+      { status: 429, headers: corsHeaders(request) },
     );
   }
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
   if (!stored) {
     return NextResponse.json(
       { error: "Webhook non configurato: impostare webhook_secret" },
-      { status: 503 }
+      { status: 503, headers: corsHeaders(request) },
     );
   }
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
   if (!secretHeader || secretHeader !== stored) {
     return NextResponse.json(
       { error: "Secret non valido o mancante" },
-      { status: 401 }
+      { status: 401, headers: corsHeaders(request) },
     );
   }
 
@@ -129,91 +129,82 @@ export async function POST(request: NextRequest) {
   try {
     rawBody = await request.json();
   } catch {
-    return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
+    return NextResponse.json(
+      { error: "JSON invalido" },
+      { status: 400, headers: corsHeaders(request) },
+    );
   }
 
   const parsed = BodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Dati non validi", issues: parsed.error.issues },
-      { status: 400 },
+      { status: 400, headers: corsHeaders(request) },
     );
   }
 
   const payload = parsed.data;
   const fields = extractFields(payload);
 
-  if (!fields.name) {
+  if (!fields.name && !fields.email && !fields.phone) {
     return NextResponse.json(
       {
-        error: "Il campo 'name' o 'nombre' è obbligatorio",
+        error: "Inserisci almeno nome, email o telefono",
         received: Object.keys(payload),
         hint: "Campi supportati: name, nombre, full_name, email, correo, phone, telefono, company, empresa, notes, notas, message",
       },
-      { status: 400 }
+      { status: 400, headers: corsHeaders(request) },
     );
   }
 
   try {
-    const contact = await createContact({
-      name: fields.name,
-      email: fields.email || null,
-      phone: fields.phone || null,
-      company: fields.company || null,
-      source: "webhook",
-      temperature: "cold",
-      notes: fields.notes || null,
-    });
-
-    // Log activity for the new lead
-    await createActivity({
-      type: "note",
-      description: `Lead ricevuto via webhook${fields.company ? ` (${fields.company})` : ""}`,
-      contactId: contact.id,
-    });
+    const { lead, duplicate } = await ingestLead(
+      {
+        name: fields.name || null,
+        email: fields.email || null,
+        phone: fields.phone || null,
+        company: fields.company || null,
+        message: fields.notes || null,
+        source: "webhook",
+        rawData: payload,
+      },
+      {
+        ip,
+        userAgent: request.headers.get("user-agent"),
+        referrer: request.headers.get("referer"),
+      },
+    );
 
     await triggerWorkflows(
       "webhook",
       {
-        contactId: contact.id,
-        name: contact.name,
-        email: contact.email,
+        leadId: lead.id,
+        contactId: lead.contactId,
         source: "webhook",
         rawPayload: payload,
       },
-      `webhook:${contact.id}`,
-    );
-
-    await triggerWorkflows(
-      "contact_created",
-      {
-        contactId: contact.id,
-        name: contact.name,
-        email: contact.email,
-        phone: contact.phone,
-        company: contact.company,
-        source: contact.source,
-      },
-      `contact_created:${contact.id}`,
+      `webhook:${lead.id}`,
     );
 
     return NextResponse.json(
       {
         success: true,
-        contact: {
-          id: contact.id,
-          name: contact.name,
-          email: contact.email,
-          source: contact.source,
-        },
+        leadId: lead.id,
+        duplicate,
       },
-      { status: 201 }
+      { status: 201, headers: corsHeaders(request) },
     );
   } catch (error) {
-    console.error("[webhook] Errore nella creazione del contatto:", error);
+    console.error("[webhook] Errore nell'ingestion del lead:", error);
     return NextResponse.json(
-      { error: "Errore interno nella creazione del contatto" },
-      { status: 500 }
+      { error: "Errore interno nella creazione del lead" },
+      { status: 500, headers: corsHeaders(request) },
     );
   }
+}
+
+export function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    headers: corsHeaders(request),
+  });
 }
