@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   "/api/telegram/webhook",
   "/api/orchestrator/callback/gitagent",
   "/api/orchestrator/callback/deploy",
+  "/api/leads/email-inbound",
   "/api/auth",
   "/api/health",
   "/api/public",
