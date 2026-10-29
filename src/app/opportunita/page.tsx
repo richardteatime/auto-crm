@@ -32,8 +32,8 @@ interface OppRow {
 }
 
 const STATUS_CONFIG = {
-  aperta:      { label: "Aperta",      className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300" },
-  trasformata: { label: "Trasformata", className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300" },
+  aperta:      { label: "Aperta",      className: "bg-blue-500/10 text-blue-700 border-blue-500/25 dark:bg-blue-950 dark:text-blue-300" },
+  trasformata: { label: "Trasformata", className: "bg-green-500/10 text-green-700 border-green-500/25 dark:bg-green-950 dark:text-green-300" },
 };
 
 function parseAttachments(json: string | null): { name: string; url: string }[] {
@@ -155,7 +155,7 @@ export default function OpportunitaPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Opportunità</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Opportunità</h1>
           <p className="text-muted-foreground">Analisi completa — aperte e trasformate in trattativa</p>
         </div>
         <Button
@@ -183,7 +183,7 @@ export default function OpportunitaPage() {
 
       {/* Valore potenziale aperte */}
       {openCount > 0 && (
-        <Card className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <Card className="bg-blue-500/5 dark:bg-blue-950/20 border-blue-500/25 dark:border-blue-800">
           <CardContent className="pt-4 pb-3">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Valore potenziale opportunità aperte</p>
             <p className="text-3xl font-bold text-blue-600 mt-1">{formatCurrency(totalOpenValue)}</p>

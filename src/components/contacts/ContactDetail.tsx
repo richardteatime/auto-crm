@@ -1,46 +1,46 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { ContactForm } from "./ContactForm";
-import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
-import { DealForm } from "@/components/deals/DealForm";
-import { OpportunityList } from "@/components/opportunities/OpportunityList";
 import {
   ArrowLeft,
   Mail,
   Phone,
   Building2,
-  Calendar,
-  FileText,
-  Clock,
-  Users,
   Pencil,
   Trash2,
   Plus,
   MessageCircle,
   Copy,
   Check,
-  Paperclip,
-  CalendarDays,
   NotebookPen,
+  MoreHorizontal,
+  MapPin,
+  Receipt,
+  Handshake,
+  ListPlus,
 } from "lucide-react";
-import { formatCurrency, formatDate, formatRelativeDate, cleanPhoneForWhatsApp, getActivityStatus, ACTIVITY_STATUS_STYLE } from "@/lib/constants";
-import { ACTIVITY_TYPE_CONFIG, SOURCE_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
-import type { Temperature, ActivityType, LeadSource } from "@/types";
-
-const activityIcons: Record<string, typeof Phone> = {
-  call: Phone,
-  email: Mail,
-  meeting: Users,
-  note: FileText,
-  follow_up: Clock,
-};
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ContactAvatar } from "@/components/shared/ContactAvatar";
+import { ContactForm } from "./ContactForm";
+import { ContactTimeline, type TimelineActivity } from "./ContactTimeline";
+import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
+import { DealForm } from "@/components/deals/DealForm";
+import { OpportunityList } from "@/components/opportunities/OpportunityList";
+import { formatCurrencyShort, cleanPhoneForWhatsApp, SOURCE_LABELS } from "@/lib/constants";
+import { agoLabel, formatDayMonth } from "@/lib/dates";
+import { toMs, cn } from "@/lib/utils";
+import type { Temperature, LeadSource } from "@/types";
 
 interface ContactDetailClientProps {
   contact: {
@@ -49,6 +49,8 @@ interface ContactDetailClientProps {
     email: string | null;
     phone: string | null;
     company: string | null;
+    vatNumber?: string | null;
+    address?: string | null;
     source: string;
     temperature: string;
     notes: string | null;
@@ -61,28 +63,15 @@ interface ContactDetailClientProps {
     probability: number;
     stageName: string | null;
     stageColor: string | null;
+    isWon?: boolean;
+    isLost?: boolean;
     createdAt: number | Date;
   }>;
-  activities: Array<{
-    id: string;
-    type: string;
-    description: string;
-    startAt?: number | Date | null;
-    endAt?: number | Date | null;
-    notes?: string | null;
-    attachments?: string | null;
-    dealId?: string | null;
-    scheduledAt: number | Date | null;
-    completedAt: number | Date | null;
-    createdAt: number | Date;
-  }>;
+  activities: TimelineActivity[];
+  nowMs: number;
 }
 
-export function ContactDetailClient({
-  contact,
-  deals,
-  activities,
-}: ContactDetailClientProps) {
+export function ContactDetailClient({ contact, deals, activities, nowMs }: ContactDetailClientProps) {
   const router = useRouter();
   const [showEditForm, setShowEditForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -91,6 +80,12 @@ export function ContactDetailClient({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [internalNotes, setInternalNotes] = useState(contact.notes || "");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  const notesDirty = internalNotes !== (contact.notes || "");
+  const openDeals = deals.filter((d) => !d.isWon && !d.isLost);
+  const openValue = openDeals.reduce((s, d) => s + d.value, 0);
+  const wonValue = deals.filter((d) => d.isWon).reduce((s, d) => s + d.value, 0);
+  const lastTouch = activities.reduce((max, a) => Math.max(max, toMs(a.completedAt ?? a.createdAt)), 0);
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);
@@ -102,6 +97,7 @@ export function ContactDetailClient({
       });
       if (!res.ok) throw new Error();
       toast.success("Note salvate");
+      router.refresh();
     } catch {
       toast.error("Errore durante il salvataggio");
     } finally {
@@ -113,7 +109,7 @@ export function ContactDetailClient({
     try {
       await navigator.clipboard.writeText(value);
       setCopiedField(field);
-      toast.success("Copiato");
+      toast.success("Copiato negli appunti");
       setTimeout(() => setCopiedField(null), 2000);
     } catch {
       toast.error("Errore durante la copia");
@@ -121,10 +117,7 @@ export function ContactDetailClient({
   };
 
   const handleDelete = async () => {
-    if (!confirm("Sei sicuro di voler eliminare questo contatto? Questa azione non può essere annullata.")) {
-      return;
-    }
-
+    if (!confirm(`Eliminare ${contact.name}? Questa azione non può essere annullata.`)) return;
     try {
       const res = await fetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Errore durante l'eliminazione");
@@ -150,323 +143,193 @@ export function ContactDetailClient({
     }
   };
 
+  const stats = [
+    { label: "In trattativa", value: formatCurrencyShort(openValue), hint: `${openDeals.length} aperte` },
+    { label: "Vinto", value: formatCurrencyShort(wonValue), hint: wonValue > 0 ? "cliente" : "ancora nulla" },
+    { label: "Interazioni", value: String(activities.length), hint: "registrate" },
+    { label: "Ultimo contatto", value: lastTouch ? agoLabel(lastTouch, nowMs) : "mai", hint: "" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.push("/contacts")}
-          className="cursor-pointer"
-          aria-label="Torna ai contatti"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{contact.name}</h1>
-            <StatusBadge temperature={contact.temperature as Temperature} />
-          </div>
-          <p className="text-muted-foreground">
-            {SOURCE_LABELS[contact.source as LeadSource] || contact.source}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowEditForm(true)}
-            className="cursor-pointer"
-          >
-            <Pencil className="h-4 w-4 mr-1" />
-            Modifica
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDelete}
-            className="cursor-pointer text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Elimina
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <Link
+        href="/contacts"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Contatti
+      </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Contact info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Informazioni</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {contact.email && (
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                <a href={`mailto:${contact.email}`} className="text-primary hover:underline flex-1 truncate">
-                  {contact.email}
-                </a>
-                <button
-                  onClick={() => handleCopy(contact.email!, "email")}
-                  className="p-1 rounded hover:bg-muted cursor-pointer"
-                  title="Copia email"
-                >
-                  {copiedField === "email" ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-            )}
-            {contact.phone && (
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="flex-1">{contact.phone}</span>
-                <div className="flex items-center gap-1">
-                  <a
-                    href={`https://wa.me/${cleanPhoneForWhatsApp(contact.phone)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1 rounded hover:bg-green-50 cursor-pointer"
-                    title="Apri WhatsApp"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5 text-green-600" />
-                  </a>
-                  <a
-                    href={`tel:${contact.phone}`}
-                    className="p-1 rounded hover:bg-blue-50 cursor-pointer"
-                    title="Chiama"
-                  >
-                    <Phone className="h-3.5 w-3.5 text-blue-600" />
-                  </a>
-                  <button
-                    onClick={() => handleCopy(contact.phone!, "phone")}
-                    className="p-1 rounded hover:bg-muted cursor-pointer"
-                    title="Copia telefono"
-                  >
-                    {copiedField === "phone" ? (
-                      <Check className="h-3.5 w-3.5 text-green-600" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-            {contact.company && (
-              <div className="flex items-center gap-2 text-sm">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span>{contact.company}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>Creato il {formatDate(contact.createdAt)}</span>
+      {/* Profile */}
+      <section className="relative overflow-hidden rounded-2xl border bg-card shadow-card">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-brand-radial opacity-70" />
+        <div className="relative flex flex-col gap-5 p-5 md:flex-row md:items-center md:p-6">
+          <ContactAvatar name={contact.name} size="xl" className="ring-4 ring-card" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-2xl font-extrabold tracking-tight md:text-[28px]">{contact.name}</h1>
+              <StatusBadge temperature={contact.temperature as Temperature} />
             </div>
-          </CardContent>
-        </Card>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              {contact.company && (
+                <span className="inline-flex items-center gap-1">
+                  <Building2 className="size-3.5" />
+                  {contact.company}
+                </span>
+              )}
+              <span>
+                {contact.company ? "· " : ""}
+                {SOURCE_LABELS[contact.source as LeadSource] || contact.source}
+              </span>
+              <span>· aggiunto il {formatDayMonth(toMs(contact.createdAt))}</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {contact.phone && (
+              <>
+                <Button variant="outline" size="sm" nativeButton={false} render={<a href={`tel:${contact.phone}`} />} className="gap-1.5">
+                  <Phone className="size-3.5" />
+                  Chiama
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  nativeButton={false}
+                  render={<a href={`https://wa.me/${cleanPhoneForWhatsApp(contact.phone)}`} target="_blank" rel="noopener noreferrer" />}
+                  className="gap-1.5"
+                >
+                  <MessageCircle className="size-3.5 text-emerald-600" />
+                  WhatsApp
+                </Button>
+              </>
+            )}
+            {contact.email && (
+              <Button variant="outline" size="sm" nativeButton={false} render={<a href={`mailto:${contact.email}`} />} className="gap-1.5">
+                <Mail className="size-3.5" />
+                Email
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setShowActivityForm(true)} className="gap-1.5">
+              <ListPlus className="size-3.5" />
+              Attività
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Altre azioni" />}>
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setShowDealForm(true)}>
+                  <Handshake />
+                  Nuova trattativa
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowEditForm(true)}>
+                  <Pencil />
+                  Modifica contatto
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={handleDelete}>
+                  <Trash2 />
+                  Elimina
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <dl className="relative grid grid-cols-2 border-t md:grid-cols-4">
+          {stats.map((s, i) => (
+            <div key={s.label} className={cn("px-5 py-3.5 md:px-6", i % 2 === 1 && "border-l", i >= 2 && "border-t md:border-t-0", i >= 2 && "md:border-l")}>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</dt>
+              <dd className="mt-0.5 text-lg font-bold tracking-tight tabular-nums">
+                {s.value}
+                {s.hint && <span className="ml-1.5 text-xs font-medium text-muted-foreground">{s.hint}</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
-        {/* Deals */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
-                Trattative ({deals.length})
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDealForm(true)}
-                className="cursor-pointer"
-              >
-                <Plus className="h-4 w-4 mr-1" />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          <ContactTimeline
+            activities={activities}
+            nowMs={nowMs}
+            onAdd={() => setShowActivityForm(true)}
+            onComplete={handleCompleteActivity}
+            onEdit={(a) =>
+              setEditingActivity({
+                id: a.id,
+                type: a.type,
+                description: a.description,
+                contactId: contact.id,
+                dealId: a.dealId ?? null,
+                startAt: a.startAt ? String(a.startAt) : null,
+                endAt: a.endAt ? String(a.endAt) : null,
+                notes: a.notes ?? null,
+                attachments: a.attachments ?? null,
+              })
+            }
+          />
+          <OpportunityList contactId={contact.id} />
+        </div>
+
+        <aside className="space-y-5">
+          <section className="rounded-xl border bg-card p-4 shadow-card">
+            <h2 className="mb-3 text-sm font-semibold">Recapiti</h2>
+            <dl className="space-y-2.5 text-sm">
+              <InfoRow icon={Mail} label="Email" value={contact.email} href={contact.email ? `mailto:${contact.email}` : undefined} onCopy={() => contact.email && handleCopy(contact.email, "email")} copied={copiedField === "email"} />
+              <InfoRow icon={Phone} label="Telefono" value={contact.phone} href={contact.phone ? `tel:${contact.phone}` : undefined} onCopy={() => contact.phone && handleCopy(contact.phone, "phone")} copied={copiedField === "phone"} />
+              <InfoRow icon={Receipt} label="P. IVA" value={contact.vatNumber ?? null} onCopy={() => contact.vatNumber && handleCopy(contact.vatNumber, "vat")} copied={copiedField === "vat"} />
+              <InfoRow icon={MapPin} label="Indirizzo" value={contact.address ?? null} href={contact.address ? `https://maps.google.com/?q=${encodeURIComponent(contact.address)}` : undefined} />
+            </dl>
+          </section>
+
+          <section className="rounded-xl border bg-card p-4 shadow-card">
+            <div className="mb-3 flex items-center">
+              <h2 className="text-sm font-semibold">Trattative</h2>
+              <span className="ml-1.5 text-xs text-muted-foreground tabular-nums">{deals.length}</span>
+              <Button variant="ghost" size="xs" onClick={() => setShowDealForm(true)} className="ml-auto gap-1">
+                <Plus className="size-3" />
                 Nuova
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
             {deals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nessuna trattativa</p>
+              <p className="text-xs text-muted-foreground">Nessuna trattativa con questo contatto.</p>
             ) : (
-              <div className="space-y-3">
+              <ul className="-mx-1 space-y-0.5">
                 {deals.map((deal) => (
-                  <div
-                    key={deal.id}
-                    className="p-3 rounded-lg border cursor-pointer hover:bg-muted/50"
-                    onClick={() => router.push(`/deals/${deal.id}`)}
-                  >
-                    <p className="text-sm font-medium">{deal.title}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-sm font-semibold text-primary">
-                        {formatCurrency(deal.value)}
+                  <li key={deal.id}>
+                    <Link href={`/deals/${deal.id}`} className="flex items-center gap-2.5 rounded-lg px-1 py-2 transition-colors hover:bg-muted/60">
+                      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: deal.stageColor ?? "#94a3b8" }} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{deal.title}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{deal.stageName ?? "—"}</span>
                       </span>
-                      <Badge
-                        variant="outline"
-                        style={{
-                          borderColor: deal.stageColor || undefined,
-                          color: deal.stageColor || undefined,
-                        }}
-                      >
-                        {deal.stageName}
-                      </Badge>
-                    </div>
-                  </div>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrencyShort(deal.value)}</span>
+                    </Link>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
-          </CardContent>
-        </Card>
+          </section>
 
-        {/* Activity timeline */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">
-              Attività ({activities.length})
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowActivityForm(true)}
-              className="cursor-pointer"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Registra
+          <section className="rounded-xl border bg-card p-4 shadow-card">
+            <div className="mb-2 flex items-center gap-2">
+              <NotebookPen className="size-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Note</h2>
+              {notesDirty && <span className="text-[11px] text-amber-600 dark:text-amber-400">modifiche non salvate</span>}
+            </div>
+            <textarea
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+              placeholder="Come stanno andando le cose con questo contatto…"
+              className="min-h-[140px] w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15"
+            />
+            <Button size="sm" onClick={handleSaveNotes} disabled={savingNotes || !notesDirty} className="mt-2 w-full">
+              {savingNotes ? "Salvataggio…" : "Salva note"}
             </Button>
-          </CardHeader>
-          <CardContent>
-            {activities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nessuna attività. Registra una chiamata, email o nota.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {activities.map((activity) => {
-                  const Icon = activityIcons[activity.type] || FileText;
-                  const config = ACTIVITY_TYPE_CONFIG[activity.type as ActivityType];
-                  const status = getActivityStatus(activity);
-                  const style = ACTIVITY_STATUS_STYLE[status];
-                  let attachmentList: { name: string; url: string }[] = [];
-                  try { attachmentList = JSON.parse(activity.attachments || "[]"); } catch { /* */ }
-                  return (
-                    <div key={activity.id} className="flex gap-3">
-                      <div className={`rounded-full p-2 h-fit shrink-0 ${style.iconBg}`}>
-                        <Icon className={`h-3.5 w-3.5 ${style.iconColor}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary" className="text-xs">
-                            {config?.label || activity.type}
-                          </Badge>
-                          <span className={`text-xs font-medium ${
-                            status === "completed" ? "text-green-600" :
-                            status === "overdue"   ? "text-red-600"   :
-                                                     "text-yellow-600"
-                          }`}>
-                            {style.label}
-                          </span>
-                          {status !== "completed" && (
-                            <button
-                              className="text-xs text-muted-foreground underline cursor-pointer hover:text-foreground"
-                              onClick={() => handleCompleteActivity(activity.id)}
-                            >
-                              Segna completata
-                            </button>
-                          )}
-                          {attachmentList.length > 0 && (
-                            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                              <Paperclip className="h-3 w-3" />
-                              {attachmentList.length}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium mt-1">{activity.description}</p>
-                        {activity.startAt && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <CalendarDays className="h-3 w-3" />
-                            {formatDate(activity.startAt as number | Date)}
-                            {activity.endAt ? ` → ${formatDate(activity.endAt as number | Date)}` : ""}
-                          </p>
-                        )}
-                        {activity.notes && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{activity.notes}</p>
-                        )}
-                        {attachmentList.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {attachmentList.map((a) => (
-                              <a
-                                key={a.url}
-                                href={a.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-primary hover:underline flex items-center gap-0.5"
-                              >
-                                <Paperclip className="h-3 w-3" />
-                                {a.name}
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatRelativeDate(activity.createdAt)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setEditingActivity({
-                          id: activity.id,
-                          type: activity.type,
-                          description: activity.description,
-                          contactId: contact.id,
-                          dealId: activity.dealId ?? null,
-                          startAt: activity.startAt ? String(activity.startAt) : null,
-                          endAt: activity.endAt ? String(activity.endAt) : null,
-                          notes: activity.notes ?? null,
-                          attachments: activity.attachments ?? null,
-                        })}
-                        className="shrink-0 cursor-pointer p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        title="Modifica attività"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </section>
+        </aside>
       </div>
-
-      {/* Note interne */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <NotebookPen className="h-4 w-4 text-muted-foreground" />
-              Note
-            </CardTitle>
-            <Button
-              size="sm"
-              onClick={handleSaveNotes}
-              disabled={savingNotes}
-              className="cursor-pointer"
-            >
-              {savingNotes ? "Salvataggio…" : "Salva"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            value={internalNotes}
-            onChange={(e) => setInternalNotes(e.target.value)}
-            placeholder="Scrivi qui come stanno andando le cose con questo contatto…"
-            className="w-full min-h-[140px] resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Opportunità — sezione full width sotto le 3 card */}
-      <OpportunityList contactId={contact.id} />
 
       <ContactForm
         open={showEditForm}
@@ -505,6 +368,54 @@ export function ContactDetailClient({
         }}
         preselectedContactId={contact.id}
       />
+    </div>
+  );
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  href,
+  onCopy,
+  copied,
+}: {
+  icon: typeof Mail;
+  label: string;
+  value: string | null;
+  href?: string;
+  onCopy?: () => void;
+  copied?: boolean;
+}) {
+  return (
+    <div className="group flex items-start gap-2.5">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <dt className="text-[11px] text-muted-foreground">{label}</dt>
+        <dd className="truncate">
+          {value ? (
+            href ? (
+              <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="hover:text-primary hover:underline">
+                {value}
+              </a>
+            ) : (
+              value
+            )
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </dd>
+      </div>
+      {value && onCopy && (
+        <button
+          type="button"
+          onClick={onCopy}
+          aria-label={`Copia ${label.toLowerCase()}`}
+          className="mt-1 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+        >
+          {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+        </button>
+      )}
     </div>
   );
 }

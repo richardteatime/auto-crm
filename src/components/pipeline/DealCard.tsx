@@ -1,97 +1,159 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatCurrency } from "@/lib/constants";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { RefreshCw, CheckCircle2, Circle } from "lucide-react";
-import type { Temperature } from "@/types";
+import { CalendarClock, CheckCircle2, Circle, Hourglass, RefreshCw } from "lucide-react";
+import { ContactAvatar } from "@/components/shared/ContactAvatar";
+import { formatCurrencyShort } from "@/lib/constants";
+import { formatDayMonth, romeDayDiff } from "@/lib/dates";
+import { cn } from "@/lib/utils";
+import type { BillingType } from "@/types";
 
-interface DealCardProps {
+export interface DealCardData {
   id: string;
   title: string;
   value: number;
   contactName: string | null;
   contactTemperature: string | null;
   probability: number;
-  billingType?: import("@/types").BillingType;
+  billingType?: BillingType;
   recurringMonths?: number | null;
   isPaid?: boolean;
-  isWon?: boolean;
+  expectedCloseMs: number;
+  updatedMs: number;
+}
+
+export const TEMPERATURE_DOT: Record<string, { color: string; label: string }> = {
+  hot: { color: "#f43f5e", label: "Caldo" },
+  warm: { color: "#f59e0b", label: "Tiepido" },
+  cold: { color: "#38bdf8", label: "Freddo" },
+};
+
+const STALE_DAYS = 14;
+
+function probabilityColor(p: number) {
+  if (p >= 70) return "#10b981";
+  if (p >= 40) return "#f59e0b";
+  return "#94a3b8";
 }
 
 export function DealCard({
-  id,
-  title,
-  value,
-  contactName,
-  contactTemperature,
-  probability,
-  billingType,
-  recurringMonths,
-  isPaid,
+  deal,
   isWon,
-}: DealCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  isLost,
+  nowMs,
+  onOpen,
+  overlay,
+}: {
+  deal: DealCardData;
+  isWon?: boolean;
+  isLost?: boolean;
+  nowMs: number;
+  onOpen?: (id: string) => void;
+  overlay?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: deal.id,
+    disabled: overlay,
+  });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  const open = !isWon && !isLost;
+  const recurring = deal.billingType && deal.billingType !== "una_tantum";
+  const suffix = deal.billingType === "mensile" ? "/mese" : deal.billingType === "annuale" ? "/anno" : "";
+  const temp = deal.contactTemperature ? TEMPERATURE_DOT[deal.contactTemperature] : null;
+  const closeDiff = deal.expectedCloseMs ? romeDayDiff(nowMs, deal.expectedCloseMs) : null;
+  const staleDays = deal.updatedMs ? Math.floor((nowMs - deal.updatedMs) / 86_400_000) : 0;
 
   return (
-    <Card
+    <div
       ref={setNodeRef}
-      style={style}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      className="p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+      onClick={() => onOpen?.(deal.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onOpen?.(deal.id);
+      }}
+      aria-label={`${deal.title}, ${formatCurrencyShort(deal.value)}`}
+      className={cn(
+        "group relative cursor-grab touch-manipulation select-none rounded-lg border bg-card p-3 text-left shadow-card outline-none transition-[box-shadow,border-color,opacity] hover:border-input hover:shadow-lifted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
+        isDragging && "opacity-35",
+        isLost && "opacity-70",
+        overlay && "rotate-[1.5deg] scale-[1.02] cursor-grabbing border-primary/40 shadow-lifted"
+      )}
     >
-      <div className="space-y-2">
-        <div className="flex items-start justify-between gap-1">
-          <p className="text-sm font-medium leading-tight flex-1">{title}</p>
-          {billingType && billingType !== "una_tantum" && (
-            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${billingType === "annuale" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"}`}>
-              <RefreshCw className="h-2.5 w-2.5" />
-              {recurringMonths ?? 12}m
-            </span>
-          )}
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-primary">
-            {formatCurrency(value)}{billingType === "mensile" ? "/mo" : billingType === "annuale" ? "/anno" : ""}
+      <div className="flex items-start gap-2">
+        <p className="line-clamp-2 flex-1 text-[13px] font-semibold leading-snug">{deal.title}</p>
+        {recurring && (
+          <span
+            title={`Ricorrente, ${deal.recurringMonths ?? 12} mesi`}
+            className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary"
+          >
+            <RefreshCw className="size-2.5" />
+            {deal.recurringMonths ?? 12}m
           </span>
-          {contactTemperature && (
-            <StatusBadge
-              temperature={contactTemperature as Temperature}
-              size="sm"
-            />
-          )}
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{contactName || "Senza contatto"}</span>
-          <span>{probability}%</span>
-        </div>
-        {isWon && (
-          <div className={`flex items-center gap-1 text-xs font-medium ${isPaid ? "text-green-600" : "text-amber-500"}`}>
-            {isPaid ? (
-              <CheckCircle2 className="h-3 w-3" />
-            ) : (
-              <Circle className="h-3 w-3" />
-            )}
-            {isPaid ? "Pagato" : "Non pagato"}
-          </div>
         )}
       </div>
-    </Card>
+
+      <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+        <ContactAvatar name={deal.contactName} size="xs" />
+        <span className="truncate">{deal.contactName ?? "Senza contatto"}</span>
+        {temp && (
+          <span className="ml-auto flex shrink-0 items-center gap-1" title={`Lead ${temp.label.toLowerCase()}`}>
+            <span className="size-1.5 rounded-full" style={{ backgroundColor: temp.color }} />
+            <span className="text-[11px]">{temp.label}</span>
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <span className="text-[15px] font-bold leading-none tracking-tight tabular-nums">
+          {formatCurrencyShort(deal.value)}
+          {suffix && <span className="ml-0.5 text-[11px] font-medium text-muted-foreground">{suffix}</span>}
+        </span>
+        {open && closeDiff !== null && (
+          <span
+            className={cn(
+              "flex items-center gap-1 text-[11px] font-medium tabular-nums",
+              closeDiff < 0 ? "text-rose-600 dark:text-rose-400" : closeDiff <= 7 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+            )}
+            title="Chiusura prevista"
+          >
+            <CalendarClock className="size-3" />
+            {formatDayMonth(deal.expectedCloseMs)}
+          </span>
+        )}
+        {isWon && (
+          <span
+            className={cn(
+              "flex items-center gap-1 text-[11px] font-semibold",
+              deal.isPaid ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+            )}
+          >
+            {deal.isPaid ? <CheckCircle2 className="size-3" /> : <Circle className="size-3" />}
+            {deal.isPaid ? "Pagato" : "Da incassare"}
+          </span>
+        )}
+      </div>
+
+      {open && (
+        <div className="mt-2.5 flex items-center gap-2">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full transition-[width] duration-500"
+              style={{ width: `${Math.min(100, Math.max(0, deal.probability))}%`, backgroundColor: probabilityColor(deal.probability) }}
+            />
+          </div>
+          <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">{deal.probability}%</span>
+        </div>
+      )}
+
+      {open && staleDays >= STALE_DAYS && (
+        <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+          <Hourglass className="size-3" />
+          Ferma da {staleDays} giorni
+        </p>
+      )}
+    </div>
   );
 }

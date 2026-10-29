@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Lock, Loader2 } from "lucide-react";
+import { useCurrentUser } from "@/components/shared/CurrentUserContext";
 
 export default function FinanceLoginPage() {
   const router = useRouter();
+  const user = useCurrentUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,8 @@ export default function FinanceLoginPage() {
       const res = await fetch("/api/finance/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        // The email is prefilled with the signed-in user's, unless they typed another
+        body: JSON.stringify({ email: email || user?.email || "", password }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -44,13 +47,16 @@ export default function FinanceLoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-muted/30">
+    <div className="flex min-h-[calc(100dvh-12rem)] items-center justify-center py-8">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Lock className="h-5 w-5 text-primary" />
-            Accesso Finance
-          </CardTitle>
+        <CardHeader className="items-center text-center">
+          <span className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Lock className="size-5" />
+          </span>
+          <CardTitle className="text-xl font-bold tracking-tight">Area Finance</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Fatturato, spese e MRR sono riservati agli amministratori: conferma la tua password per entrare.
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -59,7 +65,7 @@ export default function FinanceLoginPage() {
               <Input
                 id="finance-email"
                 type="email"
-                value={email}
+                value={email || user?.email || ""}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="la tua email CRM"
                 required
@@ -74,6 +80,7 @@ export default function FinanceLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="la tua password CRM"
+                autoFocus
                 required
                 className="h-11"
               />

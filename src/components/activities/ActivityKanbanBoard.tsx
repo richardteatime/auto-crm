@@ -223,9 +223,9 @@ export function ActivityKanbanBoard({ activities, users, onUpdate, onEdit }: Kan
   };
 
   const colConfig = [
-    { id: "todo", label: "Da fare", color: "border-t-4 border-slate-400", bg: "bg-slate-50/50" },
-    { id: "in-progress", label: "In corso", color: "border-t-4 border-blue-500", bg: "bg-blue-50/50" },
-    { id: "done", label: "Fatto", color: "border-t-4 border-green-500", bg: "bg-green-50/50" },
+    { id: "todo", label: "Da fare", color: "border-t-4 border-slate-400", bg: "bg-slate-500/5" },
+    { id: "in-progress", label: "In corso", color: "border-t-4 border-blue-500", bg: "bg-blue-500/5" },
+    { id: "done", label: "Fatto", color: "border-t-4 border-green-500", bg: "bg-green-500/5" },
   ];
 
   return (

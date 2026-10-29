@@ -196,7 +196,7 @@ export default function ActivitiesPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold tracking-tight">Attività</h1></div>
+        <div><h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Attività</h1></div>
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />)}
         </div>
@@ -208,7 +208,7 @@ export default function ActivitiesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Attività</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Attività</h1>
           <p className="text-muted-foreground">Storico interazioni e follow-up</p>
         </div>
         <div className="flex gap-2">
@@ -250,7 +250,7 @@ export default function ActivitiesPage() {
       />
 
       {/* Filter bar */}
-      <div className="bg-muted/40 border rounded-lg p-4 space-y-4">
+      <div className="rounded-xl border bg-card p-4 shadow-card space-y-4">
         {/* Top row: search + actions */}
         <div className="flex gap-2 items-center">
           <div className="relative flex-1">

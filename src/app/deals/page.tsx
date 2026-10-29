@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,8 +19,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ContactAvatar } from "@/components/shared/ContactAvatar";
 import { Plus, Briefcase, Pencil, Trash2, RefreshCw, Search, X, SlidersHorizontal } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/constants";
+import { formatCurrencyShort, formatDate } from "@/lib/constants";
 import { DealForm, type DealInitialData } from "@/components/deals/DealForm";
 import { ReportDialog } from "@/components/shared/ReportDialog";
 import { toast } from "sonner";
@@ -161,7 +161,7 @@ export default function DealsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Trattative</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Trattative</h1>
           <p className="text-muted-foreground">Opportunità di vendita attive</p>
         </div>
         <div className="flex gap-2">
@@ -309,7 +309,7 @@ export default function DealsPage() {
         />
       ) : (
         <>
-          <div className="rounded-lg border">
+          <div className="overflow-hidden rounded-xl border bg-card shadow-card">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -331,34 +331,61 @@ export default function DealsPage() {
                   </TableRow>
                 ) : (
                   filtered.map((deal) => (
-                    <TableRow key={deal.id} className="cursor-pointer hover:bg-muted/50"
+                    <TableRow key={deal.id} className="group cursor-pointer hover:bg-muted/40"
                       onClick={() => router.push(`/deals/${deal.id}`)}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-semibold">
                         <div className="flex items-center gap-2">
                           {deal.title}
                           {deal.billingType !== "una_tantum" && (
-                            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-medium ${deal.billingType === "annuale" ? "bg-emerald-500/20 text-emerald-400" : "bg-blue-500/20 text-blue-400"}`}>
-                              <RefreshCw className="h-2.5 w-2.5" />
+                            <span className="inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                              <RefreshCw className="size-2.5" />
                               {deal.recurringMonths ?? 12}m
                             </span>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{deal.contactName || "-"}</TableCell>
-                      <TableCell className="font-semibold text-primary">
-                        {formatCurrency(deal.value)}{deal.billingType === "mensile" ? "/mo" : deal.billingType === "annuale" ? "/anno" : ""}
+                      <TableCell>
+                        {deal.contactName ? (
+                          <span className="flex items-center gap-2">
+                            <ContactAvatar name={deal.contactName} size="sm" />
+                            <span className="truncate">{deal.contactName}</span>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-semibold tabular-nums">
+                        {formatCurrencyShort(deal.value)}
+                        {deal.billingType !== "una_tantum" && (
+                          <span className="ml-0.5 text-xs font-medium text-muted-foreground">
+                            {deal.billingType === "mensile" ? "/mese" : "/anno"}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" style={{ borderColor: deal.stageColor || undefined, color: deal.stageColor || undefined }}>
-                          {deal.stageName}
-                        </Badge>
+                        {deal.stageName && (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
+                            style={{ backgroundColor: `${deal.stageColor ?? "#64748b"}1f`, color: deal.stageColor ?? undefined }}
+                          >
+                            <span className="size-1.5 rounded-full" style={{ backgroundColor: deal.stageColor ?? "#64748b" }} />
+                            {deal.stageName}
+                          </span>
+                        )}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{deal.probability}%</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <span className="flex items-center gap-2">
+                          <span className="h-1 w-14 overflow-hidden rounded-full bg-muted">
+                            <span className="block h-full rounded-full bg-primary" style={{ width: `${deal.probability}%` }} />
+                          </span>
+                          <span className="text-xs tabular-nums text-muted-foreground">{deal.probability}%</span>
+                        </span>
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                         {formatDate(deal.expectedClose)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
                           <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8"
                             onClick={(e) => openEdit(e, deal)}>
                             <Pencil className="h-4 w-4" />
@@ -393,7 +420,7 @@ export default function DealsPage() {
         <DialogContent showCloseButton={false} className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Eliminare la trattativa?</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrency(deletingDeal.value) : ""}). Questa azione è irreversibile.
+            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}). Questa azione è irreversibile.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingDeal(null)}>Annulla</Button>

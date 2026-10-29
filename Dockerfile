@@ -17,6 +17,8 @@ RUN npm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
+# Day boundaries ("oggi", "scaduta") follow the team's clock, not UTC
+ENV TZ=Europe/Rome
 
 WORKDIR /app
 

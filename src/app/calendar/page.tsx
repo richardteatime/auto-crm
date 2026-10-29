@@ -240,7 +240,7 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-semibold">Calendario</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Calendario</h1>
         </div>
         <Button
           onClick={() => {

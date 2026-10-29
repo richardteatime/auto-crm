@@ -4,12 +4,12 @@ export const PROJECT_STATUS_CONFIG: Record<
   ProjectStatus,
   { label: string; color: string; bg: string; border: string }
 > = {
-  aperto:        { label: "Aperto",        color: "text-blue-600",   bg: "bg-blue-100",   border: "border-blue-300" },
-  in_lavorazione:{ label: "In Lavorazione",color: "text-yellow-600", bg: "bg-yellow-100", border: "border-yellow-300" },
-  bloccato:      { label: "Bloccato",      color: "text-red-600",    bg: "bg-red-100",    border: "border-red-300" },
-  in_pausa:      { label: "In Pausa",      color: "text-gray-500",   bg: "bg-gray-100",   border: "border-gray-300" },
-  revisione_cto: { label: "Revisione CTO", color: "text-purple-600", bg: "bg-purple-100", border: "border-purple-300" },
-  consegnato:    { label: "Consegnato",    color: "text-green-600",  bg: "bg-green-100",  border: "border-green-300" },
+  aperto:        { label: "Aperto",        color: "text-blue-600",   bg: "bg-blue-500/15",   border: "border-blue-500/35" },
+  in_lavorazione:{ label: "In Lavorazione",color: "text-yellow-600", bg: "bg-yellow-500/15", border: "border-yellow-500/35" },
+  bloccato:      { label: "Bloccato",      color: "text-red-600",    bg: "bg-red-500/15",    border: "border-red-500/35" },
+  in_pausa:      { label: "In Pausa",      color: "text-gray-500",   bg: "bg-gray-500/15",   border: "border-gray-500/35" },
+  revisione_cto: { label: "Revisione CTO", color: "text-purple-600", bg: "bg-purple-500/15", border: "border-purple-500/35" },
+  consegnato:    { label: "Consegnato",    color: "text-green-600",  bg: "bg-green-500/15",  border: "border-green-500/35" },
 };
 
 export const PROJECT_STATUS_OPTIONS: ProjectStatus[] = [

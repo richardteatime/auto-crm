@@ -223,7 +223,7 @@ export default function PreventiviPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Preventivi</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Preventivi</h1>
           <p className="text-muted-foreground">Analisi e monitoraggio di tutti i preventivi</p>
         </div>
         <ReportDialog section="quotes" />
@@ -273,7 +273,7 @@ export default function PreventiviPage() {
               <FileText className="h-4 w-4" />
               Totale
             </div>
-            <p className="text-2xl font-bold">{kpi.total}</p>
+            <p className="text-2xl font-bold tracking-tight tabular-nums">{kpi.total}</p>
           </CardContent>
         </Card>
 
@@ -295,7 +295,7 @@ export default function PreventiviPage() {
               <TrendingUp className="h-4 w-4 text-primary" />
               Tasso accettazione
             </div>
-            <p className="text-2xl font-bold">{kpi.winRate}%</p>
+            <p className="text-2xl font-bold tracking-tight tabular-nums">{kpi.winRate}%</p>
             <p className="text-xs text-muted-foreground mt-0.5">su preventivi inviati</p>
           </CardContent>
         </Card>

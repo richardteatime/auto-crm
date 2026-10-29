@@ -1,191 +1,146 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Bell, Activity, GitBranch, CalendarDays, MessageSquare, CheckCheck, X } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Bell, ListChecks, FolderKanban, CalendarDays, MessageSquare, CheckCheck, BellOff } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { it } from "date-fns/locale";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "./NotificationContext";
 import type { AppNotification } from "@/lib/db/notifications";
-import { formatDistanceToNow } from "date-fns";
-import { it } from "date-fns/locale";
 
-function NotificationItem({
-  notification,
-  onRead,
-}: {
-  notification: AppNotification;
-  onRead: (id: string) => void;
-}) {
-  const router = useRouter();
+const TYPE_STYLE: Record<AppNotification["type"], { icon: typeof Bell; tone: string }> = {
+  activity_assigned: { icon: ListChecks, tone: "bg-sky-500/12 text-sky-600 dark:text-sky-300" },
+  project_assigned: { icon: FolderKanban, tone: "bg-violet-500/12 text-violet-600 dark:text-violet-300" },
+  calendar_assigned: { icon: CalendarDays, tone: "bg-amber-500/12 text-amber-600 dark:text-amber-300" },
+  chat_message: { icon: MessageSquare, tone: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300" },
+};
 
-  const href =
-    notification.relatedType === "activity"
-      ? "/activities"
-      : notification.relatedType === "project"
-        ? "/timeline"
-        : notification.relatedType === "calendar_event"
-          ? "/calendar"
-          : notification.relatedType === "message"
-            ? "/messages"
-            : null;
-
-  function handleClick() {
-    // Note: notification is NOT marked as read here.
-    // It will be marked as read when the user opens the specific item.
-    if (href) router.push(href);
+function hrefFor(n: AppNotification): string | null {
+  switch (n.relatedType) {
+    case "activity":
+      return "/activities";
+    case "project":
+      return n.relatedId ? `/timeline/${n.relatedId}` : "/timeline";
+    case "calendar_event":
+      return "/calendar";
+    case "message":
+      return "/messages";
+    default:
+      return null;
   }
-
-  return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        "w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0",
-        !notification.read && "bg-blue-50/50 dark:bg-blue-950/20",
-      )}
-    >
-      <div
-        className={cn(
-          "mt-0.5 h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-          notification.type === "activity_assigned"
-            ? "bg-blue-100 text-blue-600"
-            : "bg-purple-100 text-purple-600",
-        )}
-      >
-        {notification.type === "activity_assigned" ? (
-          <Activity className="h-4 w-4" />
-        ) : notification.type === "calendar_assigned" ? (
-          <CalendarDays className="h-4 w-4" />
-        ) : notification.type === "chat_message" ? (
-          <MessageSquare className="h-4 w-4" />
-        ) : (
-          <GitBranch className="h-4 w-4" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            "text-sm leading-snug",
-            !notification.read ? "font-semibold" : "font-normal text-muted-foreground",
-          )}
-        >
-          {notification.title}
-        </p>
-        {notification.body && (
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{notification.body}</p>
-        )}
-        <p className="text-xs text-muted-foreground mt-1">
-          {formatDistanceToNow(new Date(notification.createdAt), {
-            addSuffix: true,
-            locale: it,
-          })}
-        </p>
-      </div>
-      {!notification.read && (
-        <span className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-      )}
-    </button>
-  );
 }
 
 export function NotificationBell() {
-  const { notifications, counts, markRead, markAllRead, refresh } = useNotifications();
+  const router = useRouter();
+  const { notifications, counts, markAllRead, refresh } = useNotifications();
   const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (
-        !panelRef.current?.contains(e.target as Node) &&
-        !buttonRef.current?.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  function handleOpen() {
-    setOpen((v) => !v);
-    if (!open) refresh();
-  }
-
-  const recent = notifications.slice(0, 20);
+  const recent = notifications.slice(0, 12);
 
   return (
-    <div className="relative">
-      <button
-        ref={buttonRef}
-        onClick={handleOpen}
-        className="relative flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent transition-colors cursor-pointer"
-        aria-label="Notifiche"
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) refresh();
+      }}
+    >
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label={counts.total > 0 ? `Notifiche, ${counts.total} da leggere` : "Notifiche"}
+            className="relative flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-popup-open:bg-muted data-popup-open:text-foreground"
+          />
+        }
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="size-4" />
         {counts.total > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-            {counts.total > 99 ? "99+" : counts.total}
+          <span className="absolute right-1.5 top-1.5 flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/60" />
+            <span className="relative inline-flex size-2 rounded-full bg-primary ring-2 ring-background" />
           </span>
         )}
-      </button>
-
-      {open && (
-        <div
-          ref={panelRef}
-          className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-border bg-card shadow-xl overflow-hidden"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-semibold">
-              Notifiche{" "}
-              {counts.total > 0 && (
-                <span className="ml-1 rounded-full bg-red-100 text-red-600 text-xs px-1.5 py-0.5">
-                  {counts.total}
-                </span>
-              )}
-            </span>
-            <div className="flex items-center gap-1">
-              {counts.total > 0 && (
-                <button
-                  onClick={() => markAllRead()}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted cursor-pointer"
-                  title="Segna tutte come lette"
-                >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                  Tutte lette
-                </button>
-              )}
-              <button
-                onClick={() => setOpen(false)}
-                className="p-1 rounded hover:bg-muted transition-colors cursor-pointer"
-              >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
-          </div>
-
-          {/* List */}
-          <div className="max-h-96 overflow-y-auto">
-            {recent.length === 0 ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">
-                Nessuna notifica
-              </div>
-            ) : (
-              recent.map((n) => (
-                <NotificationItem
-                  key={n.id}
-                  notification={n}
-                  onRead={(id) => {
-                    // Only mark as read from the bell if user explicitly wants to dismiss
-                    markRead(id);
-                  }}
-                />
-              ))
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-[min(92vw,380px)] gap-0 p-0">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">Notifiche</span>
+            {counts.total > 0 && (
+              <span className="rounded-full bg-primary/12 px-1.5 text-[11px] font-semibold leading-5 tabular-nums text-primary">
+                {counts.total}
+              </span>
             )}
           </div>
+          {counts.total > 0 && (
+            <button
+              type="button"
+              onClick={() => markAllRead()}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <CheckCheck className="size-3.5" />
+              Segna tutte lette
+            </button>
+          )}
         </div>
-      )}
-    </div>
+
+        <div className="max-h-[420px] overflow-y-auto scrollbar-thin">
+          {recent.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+              <span className="flex size-10 items-center justify-center rounded-full bg-muted">
+                <BellOff className="size-4 text-muted-foreground" />
+              </span>
+              <p className="text-sm font-medium">Tutto tranquillo</p>
+              <p className="text-xs text-muted-foreground">Qui arrivano attività, eventi e messaggi assegnati a te.</p>
+            </div>
+          ) : (
+            recent.map((n) => {
+              const style = TYPE_STYLE[n.type] ?? TYPE_STYLE.activity_assigned;
+              const Icon = style.icon;
+              const href = hrefFor(n);
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    if (href) router.push(href);
+                  }}
+                  className={cn(
+                    "flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors last:border-0 hover:bg-muted/60",
+                    !n.read && "bg-primary/[0.04]"
+                  )}
+                >
+                  <span className={cn("mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full", style.tone)}>
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn("block text-sm leading-snug", n.read ? "text-muted-foreground" : "font-semibold")}>
+                      {n.title}
+                    </span>
+                    {n.body && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{n.body}</span>}
+                    <span className="mt-1 block text-[11px] text-muted-foreground">
+                      {n.fromUserName ? `${n.fromUserName} · ` : ""}
+                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: it })}
+                    </span>
+                  </span>
+                  {!n.read && <span className="mt-2 size-2 shrink-0 rounded-full bg-primary" />}
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <Link
+          href="/notifications"
+          onClick={() => setOpen(false)}
+          className="block border-t px-4 py-2.5 text-center text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+        >
+          Vedi tutte le notifiche
+        </Link>
+      </PopoverContent>
+    </Popover>
   );
 }

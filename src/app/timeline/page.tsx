@@ -78,7 +78,7 @@ export default function TimelinePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Timeline Progetti</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Progetti</h1>
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}
         </div>
@@ -90,7 +90,7 @@ export default function TimelinePage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Timeline Progetti</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Progetti</h1>
           <p className="text-muted-foreground">Traccia lo stato di avanzamento dei tuoi progetti tecnici</p>
         </div>
         <Button onClick={() => setShowForm(true)} className="cursor-pointer">

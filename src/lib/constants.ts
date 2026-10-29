@@ -54,9 +54,9 @@ export const ACTIVITY_STATUS_STYLE: Record<
   ActivityStatus,
   { iconBg: string; iconColor: string; label: string }
 > = {
-  completed: { iconBg: "bg-green-100",  iconColor: "text-green-600",  label: "Completata" },
-  overdue:   { iconBg: "bg-red-100",    iconColor: "text-red-600",    label: "Scaduta"    },
-  open:      { iconBg: "bg-yellow-100", iconColor: "text-yellow-600", label: "Aperta"     },
+  completed: { iconBg: "bg-green-500/15",  iconColor: "text-green-600",  label: "Completata" },
+  overdue:   { iconBg: "bg-red-500/15",    iconColor: "text-red-600",    label: "Scaduta"    },
+  open:      { iconBg: "bg-yellow-500/15", iconColor: "text-yellow-600", label: "Aperta"     },
 };
 
 export function formatCurrency(cents: number): string {
@@ -66,9 +66,26 @@ export function formatCurrency(cents: number): string {
   }).format(cents / 100);
 }
 
+const EUR_WHOLE = new Intl.NumberFormat("it-IT", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+/** Whole euros, for dashboards and lists where cents are noise */
+export function formatCurrencyShort(cents: number): string {
+  return EUR_WHOLE.format(Math.round(cents / 100));
+}
+
 export function cleanPhoneForWhatsApp(phone: string): string {
-  // "+52 55 1234 5678" → "525512345678"
-  return phone.replace(/[\s\-\(\)]/g, "").replace(/^\+/, "");
+  // "+39 333 123 4567" → "393331234567"; "0039…" → "39…"
+  let digits = phone.replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) return digits.slice(1);
+  if (digits.startsWith("00")) return digits.slice(2);
+  // Italian mobile saved without the country code: "333 123 4567"
+  if (/^3\d{8,9}$/.test(digits)) digits = "39" + digits;
+  return digits;
 }
 
 function toDate(date: Date | number): Date {

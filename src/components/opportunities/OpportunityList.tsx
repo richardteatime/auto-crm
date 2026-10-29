@@ -38,8 +38,8 @@ interface OppRow {
 }
 
 const STATUS_CONFIG = {
-  aperta:      { label: "Aperta",               variant: "secondary"   as const, className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300" },
-  trasformata: { label: "Trasformata",          variant: "outline"     as const, className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300" },
+  aperta:      { label: "Aperta",               variant: "secondary"   as const, className: "bg-blue-500/10 text-blue-700 border-blue-500/25 dark:bg-blue-950 dark:text-blue-300" },
+  trasformata: { label: "Trasformata",          variant: "outline"     as const, className: "bg-green-500/10 text-green-700 border-green-500/25 dark:bg-green-950 dark:text-green-300" },
 };
 
 function parseAttachments(json: string | null): { name: string; url: string }[] {

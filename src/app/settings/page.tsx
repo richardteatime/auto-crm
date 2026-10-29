@@ -64,7 +64,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Impostazioni</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Impostazioni</h1>
         <p className="text-muted-foreground">
           Impostazioni del CRM e comandi disponibili
         </p>

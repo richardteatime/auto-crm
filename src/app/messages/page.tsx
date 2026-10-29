@@ -152,7 +152,7 @@ export default function MessagesPage() {
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Chat Team</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Chat team</h1>
           <p className="text-muted-foreground">
             Comunica con i tuoi colleghi in tempo reale
           </p>

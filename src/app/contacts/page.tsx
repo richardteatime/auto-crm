@@ -1,65 +1,52 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { ContactsTable } from "@/components/contacts/ContactsTable";
-import { ContactForm } from "@/components/contacts/ContactForm";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import type { Contact } from "@/types";
+import type { Metadata } from "next";
+import { listContacts, listDeals, getStages } from "@/lib/db";
+import { ContactsTable, type ContactRow } from "@/components/contacts/ContactsTable";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { QuickCreateButton } from "@/components/shared/QuickCreateButton";
 import { ReportDialog } from "@/components/shared/ReportDialog";
+import { toMs } from "@/lib/utils";
 
-export default function ContactsPage() {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(true);
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Contatti" };
 
-  const loadContacts = () => {
-    fetch("/api/contacts")
-      .then((res) => res.json())
-      .then((data) => {
-        setContacts(data);
-        setLoading(false);
-      });
-  };
+export default async function ContactsPage() {
+  const now = new Date();
+  const [contacts, deals, stages] = await Promise.all([listContacts(), listDeals(), getStages()]);
 
-  useEffect(() => {
-    loadContacts();
-  }, []);
+  const closed = new Set(stages.filter((s) => s.isWon || s.isLost).map((s) => s.id));
+  const won = new Set(stages.filter((s) => s.isWon).map((s) => s.id));
 
-  const handleCloseForm = () => {
-    setShowForm(false);
-    loadContacts();
-  };
+  const rows: ContactRow[] = contacts.map((c) => {
+    const own = deals.filter((d) => d.contactId === c.id);
+    const open = own.filter((d) => !closed.has(d.stageId));
+    return {
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      company: c.company,
+      source: c.source,
+      temperature: c.temperature,
+      createdMs: toMs(c.createdAt),
+      openDeals: open.length,
+      openValue: open.reduce((s, d) => s + (d.value ?? 0), 0),
+      wonValue: own.filter((d) => won.has(d.stageId)).reduce((s, d) => s + (d.value ?? 0), 0),
+    };
+  });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contatti</h1>
-          <p className="text-muted-foreground">
-            Gestisci i tuoi lead e prospect
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <ReportDialog section="contacts" />
-          <Button onClick={() => setShowForm(true)} className="cursor-pointer">
-            <Plus className="h-4 w-4 mr-2" />
-            Nuovo Contatto
-          </Button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <ContactsTable contacts={contacts} />
-      )}
-
-      <ContactForm open={showForm} onClose={handleCloseForm} />
+    <div className="space-y-5">
+      <PageHeader
+        title="Contatti"
+        description={`${contacts.length} contatti tra lead, clienti e aziende`}
+        actions={
+          <>
+            <ReportDialog section="contacts" />
+            <QuickCreateButton kind="contact" label="Nuovo contatto" />
+          </>
+        }
+      />
+      <ContactsTable contacts={rows} nowMs={now.getTime()} />
     </div>
   );
 }

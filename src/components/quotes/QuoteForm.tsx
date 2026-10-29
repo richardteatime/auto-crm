@@ -332,7 +332,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           onClick={() => toggleBilling(item.id)}
                           className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer flex items-center gap-1 transition-colors ${
                             item.billingType !== "una_tantum"
-                              ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300"
+                              ? "bg-blue-500/10 border-blue-500/25 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300"
                               : "bg-muted border-muted-foreground/20 text-muted-foreground"
                           }`}
                           title="Clicca per cambiare tipo"

@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 const typeConfig = {
-  activity_assigned: { label: "Attività", icon: Activity, color: "text-blue-600", bg: "bg-blue-100" },
-  project_assigned: { label: "Progetto", icon: GitBranch, color: "text-purple-600", bg: "bg-purple-100" },
-  calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-100" },
-  chat_message: { label: "Chat", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-100" },
+  activity_assigned: { label: "Attività", icon: Activity, color: "text-blue-600", bg: "bg-blue-500/15" },
+  project_assigned: { label: "Progetto", icon: GitBranch, color: "text-purple-600", bg: "bg-purple-500/15" },
+  calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-500/15" },
+  chat_message: { label: "Chat", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-500/15" },
 };
 
 export default function NotificationsPage() {
@@ -41,7 +41,7 @@ export default function NotificationsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Notifiche</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Notifiche</h1>
           <p className="text-muted-foreground">
             {counts.total > 0
               ? `${counts.total} non letta${counts.total > 1 ? "e" : ""}`
@@ -94,7 +94,7 @@ export default function NotificationsPage() {
                     className={cn(
                       "flex items-start gap-3 p-3 rounded-lg border transition-colors",
                       !n.read
-                        ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900"
+                        ? "bg-blue-500/5 dark:bg-blue-950/20 border-blue-500/25 dark:border-blue-900"
                         : "bg-card border-border hover:bg-muted/30"
                     )}
                   >
