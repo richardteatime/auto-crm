@@ -3,6 +3,7 @@ import { ID } from "node-appwrite";
 import { users } from "@/lib/appwrite";
 import {
   createSession,
+  getCurrentUser,
   isFirstUser,
   setSessionCookie,
 } from "@/lib/auth";
@@ -37,6 +38,19 @@ export async function POST(request: NextRequest) {
     // Check if this is the first user BEFORE creating the account.
     const isFirst = await isFirstUser();
 
+    // Once the first account exists, sign-up is closed to the public:
+    // only a logged-in team member can create an account for a colleague.
+    const requester = isFirst ? null : await getCurrentUser(request);
+    if (!isFirst && !requester) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Registrazione chiusa: chiedi a un collega di crearti l'account",
+        },
+        { status: 403 }
+      );
+    }
+
     // Create the user in Appwrite Auth.
     const user = await users.create(
       ID.unique(),
@@ -45,9 +59,6 @@ export async function POST(request: NextRequest) {
       password,
       name
     );
-
-    // Immediately create a session so the user is logged in after registration.
-    const { userId, sessionId } = await createSession(email, password);
 
     const response = NextResponse.json(
       {
@@ -58,7 +69,12 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
 
-    setSessionCookie(response, userId, sessionId);
+    // Only the very first user is logged in right away: a colleague's new
+    // account must not replace the session of whoever created it.
+    if (isFirst) {
+      const { userId, sessionId } = await createSession(email, password);
+      setSessionCookie(response, userId, sessionId);
+    }
     return response;
   } catch (error: unknown) {
     const message =
