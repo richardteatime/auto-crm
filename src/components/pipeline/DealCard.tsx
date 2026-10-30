@@ -37,32 +37,17 @@ function probabilityColor(p: number) {
   return "#94a3b8";
 }
 
-export function DealCard({
-  deal,
-  isWon,
-  isLost,
-  nowMs,
-  onOpen,
-  overlay,
-}: {
+interface DealCardProps {
   deal: DealCardData;
   isWon?: boolean;
   isLost?: boolean;
   nowMs: number;
-  onOpen?: (id: string) => void;
-  overlay?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: deal.id,
-    disabled: overlay,
-  });
+}
 
-  const open = !isWon && !isLost;
-  const recurring = deal.billingType && deal.billingType !== "una_tantum";
-  const suffix = deal.billingType === "mensile" ? "/mese" : deal.billingType === "annuale" ? "/anno" : "";
-  const temp = deal.contactTemperature ? TEMPERATURE_DOT[deal.contactTemperature] : null;
-  const closeDiff = deal.expectedCloseMs ? romeDayDiff(nowMs, deal.expectedCloseMs) : null;
-  const staleDays = deal.updatedMs ? Math.floor((nowMs - deal.updatedMs) / 86_400_000) : 0;
+const CARD_CLASS = "group relative select-none rounded-lg border bg-card p-3 text-left shadow-card";
+
+export function DealCard({ deal, isWon, isLost, nowMs, onOpen }: DealCardProps & { onOpen?: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: deal.id });
 
   return (
     <div
@@ -76,12 +61,36 @@ export function DealCard({
       }}
       aria-label={`${deal.title}, ${formatCurrencyShort(deal.value)}`}
       className={cn(
-        "group relative cursor-grab touch-manipulation select-none rounded-lg border bg-card p-3 text-left shadow-card outline-none transition-[box-shadow,border-color,opacity] hover:border-input hover:shadow-lifted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
+        CARD_CLASS,
+        "cursor-grab touch-manipulation outline-none transition-[box-shadow,border-color,opacity] hover:border-input hover:shadow-lifted focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
         isDragging && "opacity-35",
-        isLost && "opacity-70",
-        overlay && "rotate-[1.5deg] scale-[1.02] cursor-grabbing border-primary/40 shadow-lifted"
+        isLost && "opacity-70"
       )}
     >
+      <DealCardBody deal={deal} isWon={isWon} isLost={isLost} nowMs={nowMs} />
+    </div>
+  );
+}
+
+/** The copy that follows the pointer. No dnd hooks here: it would re-register the dragged card's id. */
+export function DealCardOverlay({ deal, nowMs }: DealCardProps) {
+  return (
+    <div className={cn(CARD_CLASS, "rotate-[1.5deg] scale-[1.02] cursor-grabbing border-primary/40 shadow-lifted")}>
+      <DealCardBody deal={deal} nowMs={nowMs} />
+    </div>
+  );
+}
+
+function DealCardBody({ deal, isWon, isLost, nowMs }: DealCardProps) {
+  const open = !isWon && !isLost;
+  const recurring = deal.billingType && deal.billingType !== "una_tantum";
+  const suffix = deal.billingType === "mensile" ? "/mese" : deal.billingType === "annuale" ? "/anno" : "";
+  const temp = deal.contactTemperature ? TEMPERATURE_DOT[deal.contactTemperature] : null;
+  const closeDiff = deal.expectedCloseMs ? romeDayDiff(nowMs, deal.expectedCloseMs) : null;
+  const staleDays = deal.updatedMs ? Math.floor((nowMs - deal.updatedMs) / 86_400_000) : 0;
+
+  return (
+    <>
       <div className="flex items-start gap-2">
         <p className="line-clamp-2 flex-1 text-[13px] font-semibold leading-snug">{deal.title}</p>
         {recurring && (
@@ -154,6 +163,6 @@ export function DealCard({
           Ferma da {staleDays} giorni
         </p>
       )}
-    </div>
+    </>
   );
 }

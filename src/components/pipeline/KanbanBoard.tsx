@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -21,8 +22,9 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { toast } from "sonner";
 import { Search, X, RefreshCw, Trophy } from "lucide-react";
 import { KanbanColumn } from "./KanbanColumn";
-import { DealCard, TEMPERATURE_DOT, type DealCardData } from "./DealCard";
+import { DealCardOverlay, TEMPERATURE_DOT, type DealCardData } from "./DealCard";
 import { Segmented } from "@/components/shared/Segmented";
+import { useHydrated } from "@/components/shared/ThemeProvider";
 import { burstConfetti } from "@/lib/confetti";
 import { formatCurrencyShort } from "@/lib/constants";
 import { toMs } from "@/lib/utils";
@@ -90,6 +92,7 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [columns, setColumns] = useState(initialColumns);
   const [activeId, setActiveId] = useState<string | null>(null);
   const columnsSnapshot = useRef<PipelineColumn[]>(initialColumns);
@@ -282,9 +285,14 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
           ))}
         </div>
 
-        <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }}>
-          {activeDeal ? <DealCard deal={toCard(activeDeal)} nowMs={nowMs} overlay /> : null}
-        </DragOverlay>
+        {/* In <body>: inside a transformed ancestor the fixed overlay would drift away from the pointer */}
+        {hydrated &&
+          createPortal(
+            <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }}>
+              {activeDeal ? <DealCardOverlay deal={toCard(activeDeal)} nowMs={nowMs} /> : null}
+            </DragOverlay>,
+            document.body
+          )}
       </DndContext>
     </div>
   );

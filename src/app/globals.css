@@ -60,7 +60,7 @@
   --shadow-lifted: var(--elevation-lifted);
   --shadow-panel: var(--elevation-panel);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-fade-up: fade-up 0.42s var(--ease-out-expo) both;
+  --animate-fade-up: fade-up 0.42s var(--ease-out-expo) backwards;
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
 }
 
@@ -221,12 +221,13 @@
   }
 }
 
+/* Filled "backwards" only: a forwards fill keeps an identity matrix on the element
+   once the animation ends, and that traps position:fixed children (drag overlays) */
 @keyframes fade-up {
   from {
     opacity: 0;
     transform: translateY(6px);
   }
-  /* "none", not translateY(0): a lingering transform would trap position:fixed children (drag overlays) */
   to {
     opacity: 1;
     transform: none;
