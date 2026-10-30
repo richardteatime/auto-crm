@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { NotificationToggle } from "@/components/shared/NotificationToggle";
+import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import type { CrmConfig } from "@/types";
 
 export default function SettingsPage() {
@@ -66,11 +67,13 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Impostazioni</h1>
         <p className="text-muted-foreground">
-          Impostazioni del CRM e comandi disponibili
+          Il tuo account, le impostazioni del CRM e i comandi disponibili
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChangePasswordCard />
+
         {/* Business config */}
         <Card>
           <CardHeader>

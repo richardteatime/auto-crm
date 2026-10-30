@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronsUpDown, LogOut, Settings, Keyboard } from "lucide-react";
+import { ChevronsUpDown, KeyRound, LogOut, Settings, Keyboard } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +67,10 @@ export function UserMenu({ className }: { className?: string }) {
         <DropdownMenuItem render={<Link href="/settings" />}>
           <Settings />
           Impostazioni
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/settings" />}>
+          <KeyRound />
+          Cambia password
         </DropdownMenuItem>
         <DropdownMenuItem onClick={openPalette}>
           <Keyboard />

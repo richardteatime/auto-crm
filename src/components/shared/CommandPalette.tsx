@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Handshake, Moon, Sun, Building2 } from "lucide-react";
+import { Handshake, Moon, Sun, Building2, KeyRound } from "lucide-react";
 import {
   Command,
   CommandDialog,
@@ -205,6 +205,13 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
           >
             {isDark ? <Sun className="text-muted-foreground" /> : <Moon className="text-muted-foreground" />}
             <span>{isDark ? "Passa al tema chiaro" : "Passa al tema scuro"}</span>
+          </CommandItem>
+          <CommandItem
+            value="cambia password sicurezza account accesso"
+            onSelect={() => run(() => router.push("/settings"))}
+          >
+            <KeyRound className="text-muted-foreground" />
+            <span>Cambia password</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>
