@@ -3,6 +3,7 @@ import { getQuote } from "@/lib/db/quotes";
 import { requireAuth } from "@/lib/auth";
 import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
+import { buildPaymentSchedule, describePaymentTerms, parsePaymentTerms } from "@/lib/quote-payment";
 import fs from "fs";
 import path from "path";
 
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 interface DbQuoteItem {
   id: string;
   description: string;
+  details?: string;
   quantity: number;
   unitPrice: number; // cents
   discount?: number; // %
@@ -68,6 +70,27 @@ function formatDateIt(date: Date | number | string | null | undefined): string {
       ? date
       : new Date(typeof date === "number" ? (date < 1e12 ? date * 1000 : date) : date);
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+/** Long line description: plain lines become paragraphs, "- " lines a bullet list. */
+function renderDetails(text: string | undefined): string {
+  if (!text?.trim()) return "";
+  const out: string[] = [];
+  let bullets: string[] = [];
+  const flush = () => {
+    if (bullets.length) out.push(`<ul>${bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>`);
+    bullets = [];
+  };
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (!line) { flush(); continue; }
+    const m = line.match(/^[-*•·]\s+(.*)$/);
+    if (m) { bullets.push(m[1]); continue; }
+    flush();
+    out.push(`<p>${esc(line)}</p>`);
+  }
+  flush();
+  return `<div class="item-details">${out.join("")}</div>`;
 }
 
 function lineTotal(item: DbQuoteItem): number {
@@ -151,6 +174,7 @@ export async function GET(
           <div class="item-col item-col-right">
             <div class="item-total">${formatEur(lt)}${unitLabel}</div>
           </div>
+          ${renderDetails(item.details)}
         </div>`;
     })
     .join("");
@@ -171,6 +195,7 @@ export async function GET(
         <div class="item-col item-col-right">
           <div class="item-total">${formatEur(setupSub)}</div>
         </div>
+        ${renderDetails(setupItem.details)}
       </div>`
     : "";
 
@@ -201,10 +226,33 @@ export async function GET(
     company.vatNumber ? `P.IVA ${company.vatNumber}` : "",
   ].filter(Boolean).join(" | ");
 
+  // Per-quote payment terms (if set) override the company default.
+  const terms = parsePaymentTerms(quote.paymentTerms);
+  const oneOffSub = setupSub + oneTimeSub;
+  const oneOffTotal = oneOffSub + Math.round((oneOffSub * quote.vatRate) / 100);
+  const schedule = terms ? buildPaymentSchedule(terms, oneOffTotal) : [];
+  const recurringNote = hasMonthly || hasAnnual
+    ? `<p class="schedule-note">I canoni ricorrenti${hasMonthly ? ` (${formatEur(monthlySub)}/mese + IVA)` : ""}${hasAnnual ? `${hasMonthly ? " e" : ""} (${formatEur(annualSub)}/anno + IVA)` : ""} sono fatturati alla rispettiva scadenza.</p>`
+    : "";
+  const termsBlock = terms
+    ? [
+        `<p>${esc(describePaymentTerms(terms)).replace(/\n/g, "<br>")}</p>`,
+        terms.method !== "personalizzato" && terms.customText ? `<p>${esc(terms.customText)}</p>` : "",
+        schedule.length > 0
+          ? `<table class="schedule">${schedule
+              .map((r) => `<tr><td>${esc(r.label)}</td><td>${formatEur(r.amount)}</td></tr>`)
+              .join("")}</table><p class="schedule-note">Importi IVA inclusa.</p>`
+          : "",
+        recurringNote,
+        `<p><strong>Metodo:</strong> Bonifico Bancario</p>`,
+      ].filter(Boolean).join("")
+    : "";
+
   const paymentBlock = [
-    company.paymentTerms
-      ? `<strong>Modalità di Pagamento:</strong> ${esc(company.paymentTerms)}`
-      : `<strong>Modalità di Pagamento:</strong> Bonifico Bancario`,
+    termsBlock ||
+      (company.paymentTerms
+        ? `<strong>Modalità di Pagamento:</strong> ${esc(company.paymentTerms)}`
+        : `<strong>Modalità di Pagamento:</strong> Bonifico Bancario`),
     company.bankHolder ? `<p>Intestatario C/C: ${esc(company.bankHolder)}</p>` : "",
     company.iban ? `<p>IBAN: ${esc(company.iban)}</p>` : "",
   ].filter(Boolean).join("");
@@ -324,6 +372,15 @@ export async function GET(
             letter-spacing: 0.5px;
         }
         .note p, .pagamento p { margin: 4px 0; }
+        .schedule { border-collapse: collapse; margin: 8px 0 2px; min-width: 340px; }
+        .schedule td { padding: 4px 0; border-bottom: 1px solid var(--bordo); font-size: 13px; }
+        .schedule td:last-child { text-align: right; padding-left: 30px; font-weight: 600; white-space: nowrap; }
+        .schedule-note { font-size: 11px; color: #777; }
+        .item-row { flex-wrap: wrap; }
+        .item-details { flex-basis: 100%; font-size: 12px; color: #555; line-height: 1.5; margin-top: 6px; padding-right: 160px; }
+        .item-details p { margin: 2px 0 4px; }
+        .item-details ul { margin: 2px 0 4px; padding-left: 16px; }
+        .item-details li { margin: 1px 0; }
 
         /* === RIGHE OFFERTA (CLEAN) === */
         .items-section { margin-top: 10px; margin-bottom: 25px; }

@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         title: q.title,
         items: q.items,
         notes: q.notes,
+        paymentTerms: q.paymentTerms ?? null,
         status: q.status,
         vatRate: q.vatRate,
         validUntil: q.validUntil,

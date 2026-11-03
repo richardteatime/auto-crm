@@ -194,6 +194,8 @@ async function main() {
   await addAttr("quotes", str("quotes", "title", 255, true));
   await addAttr("quotes", text("quotes", "items", true, 100000));
   await addAttr("quotes", text("quotes", "notes", false, 100000));
+  // JSON PaymentTerms (src/lib/quote-payment.ts); null = company default
+  await addAttr("quotes", str("quotes", "paymentTerms", 2000, false));
   await addAttr("quotes", enm("quotes", "status", ["bozza", "inviato", "accettato", "rifiutato"], true, "bozza"));
   await addAttr("quotes", int("quotes", "vatRate", true, 22));
   await addAttr("quotes", dt("quotes", "validUntil", false));
