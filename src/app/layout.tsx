@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
+import { getServerUser } from "@/lib/auth-server";
 import { SIDEBAR_BOOT_SCRIPT } from "@/components/layout/sidebar-state";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -28,6 +29,9 @@ export const metadata: Metadata = {
   },
   description:
     "Il CRM di SarconX: pipeline di vendita, contatti, preventivi, attività e finanza in un unico posto.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "SarconX", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
@@ -37,11 +41,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const u = await getServerUser();
+  const initialUser = u ? { id: u.id, name: u.name, email: u.email, role: u.role } : null;
   return (
     <html
       lang="it"
@@ -54,7 +60,7 @@ export default function RootLayout({
       <body className="min-h-full" suppressHydrationWarning>
         <ThemeProvider>
           <TooltipProvider>
-            <AppShell>{children}</AppShell>
+            <AppShell initialUser={initialUser}>{children}</AppShell>
             <Toaster position="bottom-right" />
             <NotificationChecker />
           </TooltipProvider>

@@ -17,6 +17,8 @@ interface NotificationCounts {
   calendar: number;
   chat: number;
   total: number;
+  /** New leads to call + call-backs due */
+  leads: number;
 }
 
 interface NotificationContextValue {
@@ -30,7 +32,7 @@ interface NotificationContextValue {
 
 const NotificationContext = createContext<NotificationContextValue>({
   notifications: [],
-  counts: { activities: 0, timeline: 0, calendar: 0, chat: 0, total: 0 },
+  counts: { activities: 0, timeline: 0, calendar: 0, chat: 0, total: 0, leads: 0 },
   loading: false,
   refresh: async () => {},
   markRead: async () => {},
@@ -42,9 +44,16 @@ const POLL_INTERVAL = 30_000; // 30 seconds
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [leadsToCall, setLeadsToCall] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchNotifications = useCallback(async () => {
+    fetch("/api/leads/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && typeof d.toCall === "number") setLeadsToCall(d.toCall);
+      })
+      .catch(() => {});
     try {
       const res = await fetch("/api/notifications");
       if (res.ok) {
@@ -102,8 +111,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (n.type === "calendar_assigned") calendar++;
       if (n.type === "chat_message") chat++;
     }
-    return { activities, timeline, calendar, chat, total: activities + timeline + calendar + chat };
-  }, [notifications]);
+    return { activities, timeline, calendar, chat, total: activities + timeline + calendar + chat, leads: leadsToCall };
+  }, [notifications, leadsToCall]);
 
   return (
     <NotificationContext.Provider

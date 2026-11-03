@@ -10,13 +10,15 @@ import { useCommandPalette, Kbd } from "@/components/shared/CommandPalette";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BrandMark } from "./BrandMark";
 import { UserMenu } from "./UserMenu";
-import { NAV_SECTIONS, SETTINGS_ITEM, isActivePath, type NavItem } from "./nav-config";
+import { navSectionsFor, SETTINGS_ITEM, isActivePath, type NavItem } from "./nav-config";
+import { useRole } from "@/components/shared/CurrentUserContext";
 import { toggleSidebar } from "./sidebar-state";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { counts } = useNotifications();
   const openPalette = useCommandPalette();
+  const sections = navSectionsFor(useRole());
 
   // "[" collapses / expands, like most pro tools
   useEffect(() => {
@@ -72,7 +74,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-1 scrollbar-thin sidebar-collapsed:px-2.5">
-        {NAV_SECTIONS.map((section, i) => (
+        {sections.map((section, i) => (
           <div key={section.label ?? i}>
             {section.label && (
               <>

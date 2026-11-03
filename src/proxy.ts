@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { roleFromLabels, salesCanAccess, SALES_HOME, type Role } from "@/lib/roles";
 
 const SESSION_COOKIE = "appwrite-session";
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KEY || "";
 
 const PUBLIC_PATHS = [
   "/api/webhook",
+  "/api/leads/intake",
+  "/sw.js",
+  "/manifest.webmanifest",
   "/api/auth",
   "/api/health",
   "/login",
@@ -56,6 +60,34 @@ async function verifyTokenEdge(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Role check (Node runtime). The signed cookie only carries the user id, so the
+// role comes from the Appwrite user labels, cached briefly per user.
+// ---------------------------------------------------------------------------
+const ROLE_TTL_MS = 60_000;
+const roleCache = new Map<string, { role: Role; exp: number }>();
+
+async function roleOf(userId: string): Promise<Role | null> {
+  const hit = roleCache.get(userId);
+  if (hit && hit.exp > Date.now()) return hit.role;
+  const endpoint = (process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "").replace(/\/v1\/?$/, "");
+  try {
+    const res = await fetch(`${endpoint}/v1/users/${userId}`, {
+      headers: {
+        "X-Appwrite-Project": process.env.APPWRITE_PROJECT_ID || "",
+        "X-Appwrite-Key": process.env.APPWRITE_API_KEY || "",
+      },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { labels?: string[] };
+    const role = roleFromLabels(data.labels);
+    roleCache.set(userId, { role, exp: Date.now() + ROLE_TTL_MS });
+    return role;
+  } catch {
+    return null;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -93,6 +125,23 @@ export async function proxy(request: NextRequest) {
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // A salesperson only reaches the Lead section: everything else is refused server-side.
+  if (!salesCanAccess(pathname)) {
+    const role = await roleOf(valid.userId);
+    if (role !== "admin") {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { success: false, error: "Non hai accesso a questa sezione" },
+          { status: role ? 403 : 401 }
+        );
+      }
+      const home = request.nextUrl.clone();
+      home.pathname = role ? SALES_HOME : "/login";
+      home.search = "";
+      return NextResponse.redirect(home);
+    }
   }
 
   return NextResponse.next();

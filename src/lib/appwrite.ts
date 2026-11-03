@@ -21,6 +21,9 @@ export const COLLECTIONS = {
   notifications: "notifications",
   revenues: "revenues",
   calendarEvents: "calendar_events",
+  leads: "leads",
+  leadEvents: "lead_events",
+  pushSubscriptions: "push_subscriptions",
 } as const;
 
 // ---------------------------------------------------------------------------

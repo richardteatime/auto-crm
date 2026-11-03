@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
+import { roleFromLabels, type Role } from "@/lib/roles";
 
 const APPWRITE_ENDPOINT =
   process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
@@ -92,6 +93,8 @@ export type AuthUser = {
   id: string;
   email: string;
   name: string;
+  labels: string[];
+  role: Role;
 };
 
 /**
@@ -118,10 +121,13 @@ export async function getCurrentUser(
     });
     if (!res.ok) return null;
     const data = await res.json();
+    const labels: string[] = Array.isArray(data.labels) ? data.labels : [];
     return {
       id: data.$id,
       email: data.email,
       name: data.name,
+      labels,
+      role: roleFromLabels(labels),
     };
   } catch {
     return null;
@@ -146,6 +152,28 @@ export async function requireAuth(
       { status: 401 }
     ),
   };
+}
+
+/**
+ * Require a full-access user (not a salesperson). Returns the user or a 401/403 response.
+ */
+export async function requireAdmin(
+  request: NextRequest
+): Promise<
+  | { user: AuthUser; error?: never }
+  | { user?: never; error: NextResponse }
+> {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth;
+  if (auth.user.role !== "admin") {
+    return {
+      error: NextResponse.json(
+        { success: false, error: "Non hai i permessi per questa azione" },
+        { status: 403 }
+      ),
+    };
+  }
+  return auth;
 }
 
 /**

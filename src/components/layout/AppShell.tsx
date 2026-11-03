@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/MobileNav";
 import { NotificationProvider } from "@/components/shared/NotificationContext";
-import { CurrentUserProvider } from "@/components/shared/CurrentUserContext";
+import { CurrentUserProvider, type CurrentUser } from "@/components/shared/CurrentUserContext";
 import { QuickCreateProvider } from "@/components/shared/QuickCreate";
 import { CommandPaletteProvider } from "@/components/shared/CommandPalette";
 
@@ -18,7 +18,7 @@ function isAuthRoute(pathname: string): boolean {
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, initialUser = null }: { children: React.ReactNode; initialUser?: CurrentUser | null }) {
   const pathname = usePathname();
 
   // On desktop the page scrolls inside the panel, which survives navigation: start each page at the top
@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <NotificationProvider>
-      <CurrentUserProvider>
+      <CurrentUserProvider initialUser={initialUser}>
         <QuickCreateProvider>
           <CommandPaletteProvider>
             <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">

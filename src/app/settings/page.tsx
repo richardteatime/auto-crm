@@ -16,9 +16,11 @@ import {
 import { toast } from "sonner";
 import { NotificationToggle } from "@/components/shared/NotificationToggle";
 import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
+import { PushCard } from "@/components/leads/PushControls";
+import { useRole } from "@/components/shared/CurrentUserContext";
 import type { CrmConfig } from "@/types";
 
-export default function SettingsPage() {
+function AdminSettings() {
   const [config, setConfig] = useState<CrmConfig | null>(null);
   const [stages, setStages] = useState<
     Array<{ id: string; name: string; color: string; order: number }>
@@ -73,6 +75,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChangePasswordCard />
+        <PushCard />
 
         {/* Business config */}
         <Card>
@@ -241,4 +244,26 @@ export default function SettingsPage() {
       </div>
     </div>
   );
+}
+
+
+/** A salesperson only manages their own account and notifications */
+function SalesSettings() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Impostazioni</h1>
+        <p className="text-muted-foreground">Il tuo account e gli avvisi dei nuovi lead</p>
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <PushCard />
+        <ChangePasswordCard />
+      </div>
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  const role = useRole();
+  return role === "commerciale" ? <SalesSettings /> : <AdminSettings />;
 }

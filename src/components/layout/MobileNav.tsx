@@ -3,23 +3,30 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Sun, SquareKanban, Users, ListChecks, LayoutGrid, LogOut, Search } from "lucide-react";
+import { Sun, SquareKanban, PhoneCall, ListChecks, LayoutGrid, LogOut, Search, Settings } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
 import { useCommandPalette } from "@/components/shared/CommandPalette";
-import { useCurrentUser } from "@/components/shared/CurrentUserContext";
+import { useCurrentUser, useRole } from "@/components/shared/CurrentUserContext";
 import { ContactAvatar } from "@/components/shared/ContactAvatar";
 import { ThemeSwitch } from "@/components/shared/ThemeProvider";
 import { BrandMark } from "./BrandMark";
 import { logout } from "./UserMenu";
-import { NAV_SECTIONS, SETTINGS_ITEM, isActivePath } from "./nav-config";
+import { navSectionsFor, SETTINGS_ITEM, isActivePath, type NavBadge } from "./nav-config";
 
-const TABS = [
+type Tab = { href: string; label: string; icon: typeof Sun; badge?: NavBadge };
+
+const TABS: Tab[] = [
   { href: "/", label: "Oggi", icon: Sun },
+  { href: "/leads", label: "Lead", icon: PhoneCall, badge: "leads" },
   { href: "/pipeline", label: "Pipeline", icon: SquareKanban },
-  { href: "/contacts", label: "Contatti", icon: Users },
-  { href: "/activities", label: "Attività", icon: ListChecks, badge: "activities" as const },
+  { href: "/activities", label: "Attività", icon: ListChecks, badge: "activities" },
+];
+
+const SALES_TABS: Tab[] = [
+  { href: "/leads", label: "Lead", icon: PhoneCall, badge: "leads" },
+  { href: "/settings", label: "Profilo", icon: Settings },
 ];
 
 /** Bottom tab bar for phones, with the full menu in a sheet */
@@ -27,8 +34,10 @@ export function BottomNav() {
   const pathname = usePathname();
   const { counts } = useNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isSales = useRole() === "commerciale";
+  const tabs = isSales ? SALES_TABS : TABS;
 
-  const inTabs = TABS.some((t) => isActivePath(pathname, t.href));
+  const inTabs = tabs.some((t) => isActivePath(pathname, t.href));
 
   return (
     <>
@@ -36,8 +45,8 @@ export function BottomNav() {
         aria-label="Navigazione rapida"
         className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
       >
-        <ul className="grid grid-cols-5">
-          {TABS.map((tab) => {
+        <ul className={cn("grid", isSales ? "grid-cols-3" : "grid-cols-5")}>
+          {tabs.map((tab) => {
             const active = isActivePath(pathname, tab.href);
             const count = tab.badge ? counts[tab.badge] : 0;
             return (
@@ -93,6 +102,7 @@ export function MobileNav({ onNavigate }: { onNavigate?: () => void }) {
   const { counts } = useNotifications();
   const openPalette = useCommandPalette();
   const user = useCurrentUser();
+  const sections = navSectionsFor(user?.role);
 
   return (
     <div className="flex h-full flex-col text-sidebar-foreground">
@@ -119,7 +129,7 @@ export function MobileNav({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4 scrollbar-thin">
-        {NAV_SECTIONS.map((section, i) => (
+        {sections.map((section, i) => (
           <div key={section.label ?? i}>
             {section.label && (
               <p className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
@@ -127,7 +137,7 @@ export function MobileNav({ onNavigate }: { onNavigate?: () => void }) {
               </p>
             )}
             <ul className="space-y-0.5">
-              {[...section.items, ...(i === NAV_SECTIONS.length - 1 ? [SETTINGS_ITEM] : [])].map((item) => {
+              {[...section.items, ...(i === sections.length - 1 ? [SETTINGS_ITEM] : [])].map((item) => {
                 const active = isActivePath(pathname, item.href);
                 const count = item.badge ? counts[item.badge] : 0;
                 return (

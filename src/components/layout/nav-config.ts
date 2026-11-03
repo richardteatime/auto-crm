@@ -12,10 +12,12 @@ import {
   FolderKanban,
   TrendingUp,
   Settings,
+  PhoneCall,
   type LucideIcon,
 } from "lucide-react";
 
-export type NavBadge = "activities" | "timeline" | "calendar" | "chat" | "total";
+export type NavBadge = "activities" | "timeline" | "calendar" | "chat" | "total" | "leads";
+import type { Role } from "@/lib/roles";
 
 export interface NavItem {
   href: string;
@@ -31,6 +33,14 @@ export interface NavSection {
   items: NavItem[];
 }
 
+export const LEADS_ITEM: NavItem = {
+  href: "/leads",
+  label: "Lead",
+  icon: PhoneCall,
+  badge: "leads",
+  keywords: "campagne meta chiamate commerciale richiami",
+};
+
 export const NAV_SECTIONS: NavSection[] = [
   {
     label: null,
@@ -43,6 +53,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Vendite",
     items: [
+      LEADS_ITEM,
       { href: "/pipeline", label: "Pipeline", icon: SquareKanban, keywords: "kanban fasi" },
       { href: "/deals", label: "Trattative", icon: Handshake, keywords: "deal vendite" },
       { href: "/opportunita", label: "Opportunità", icon: Target, keywords: "idee proposte" },
@@ -72,6 +83,17 @@ export const SETTINGS_ITEM: NavItem = {
 };
 
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_SECTIONS.flatMap((s) => s.items), SETTINGS_ITEM];
+
+/** A salesperson only sees the Lead section */
+const SALES_SECTIONS: NavSection[] = [{ label: null, items: [LEADS_ITEM] }];
+
+export function navSectionsFor(role: Role | null | undefined): NavSection[] {
+  return role === "commerciale" ? SALES_SECTIONS : NAV_SECTIONS;
+}
+
+export function allNavItemsFor(role: Role | null | undefined): NavItem[] {
+  return role === "commerciale" ? [LEADS_ITEM, SETTINGS_ITEM] : ALL_NAV_ITEMS;
+}
 
 export function isActivePath(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";

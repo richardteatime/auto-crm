@@ -1,24 +1,33 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import type { Role } from "@/lib/roles";
 
 export interface CurrentUser {
   id: string;
   name: string;
   email: string;
+  role: Role;
 }
 
 const CurrentUserContext = createContext<CurrentUser | null>(null);
 
-export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<CurrentUser | null>(null);
+export function CurrentUserProvider({
+  children,
+  initialUser = null,
+}: {
+  children: React.ReactNode;
+  /** Resolved on the server so the menu is right from the first paint */
+  initialUser?: CurrentUser | null;
+}) {
+  const [user, setUser] = useState<CurrentUser | null>(initialUser);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!cancelled && data?.id) setUser(data);
+        if (!cancelled && data?.id) setUser({ id: data.id, name: data.name, email: data.email, role: data.role ?? "admin" });
       })
       .catch(() => {});
     return () => {
@@ -31,4 +40,8 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
 
 export function useCurrentUser() {
   return useContext(CurrentUserContext);
+}
+
+export function useRole(): Role | null {
+  return useContext(CurrentUserContext)?.role ?? null;
 }

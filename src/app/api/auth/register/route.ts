@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Once the first account exists, sign-up is closed to the public:
     // only a logged-in team member can create an account for a colleague.
     const requester = isFirst ? null : await getCurrentUser(request);
-    if (!isFirst && !requester) {
+    if (!isFirst && (!requester || requester.role !== "admin")) {
       return NextResponse.json(
         {
           success: false,

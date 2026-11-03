@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Handshake, Moon, Sun, Building2, KeyRound } from "lucide-react";
+import { Handshake, Moon, Sun, Building2, KeyRound, PhoneCall } from "lucide-react";
 import {
   Command,
   CommandDialog,
@@ -15,7 +15,8 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { ALL_NAV_ITEMS } from "@/components/layout/nav-config";
+import { allNavItemsFor } from "@/components/layout/nav-config";
+import { useRole } from "./CurrentUserContext";
 import { QUICK_CREATE_ITEMS, useQuickCreate } from "./QuickCreate";
 import { ContactAvatar } from "./ContactAvatar";
 import { formatCurrencyShort } from "@/lib/constants";
@@ -80,25 +81,31 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
   const { resolvedTheme, setTheme } = useTheme();
   const [contacts, setContacts] = useState<SearchContact[]>([]);
   const [deals, setDeals] = useState<SearchDeal[]>([]);
+  const [leads, setLeads] = useState<Array<{ id: string; name: string; company: string | null; phone: string | null; email: string | null }>>([]);
+  const role = useRole();
+  const isSales = role === "commerciale";
 
   // Refresh the searchable records every time the palette opens
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    const get = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : []));
     Promise.all([
-      fetch("/api/contacts").then((r) => (r.ok ? r.json() : [])),
-      fetch("/api/deals").then((r) => (r.ok ? r.json() : [])),
+      isSales ? Promise.resolve([]) : get("/api/contacts"),
+      isSales ? Promise.resolve([]) : get("/api/deals"),
+      get("/api/leads"),
     ])
-      .then(([c, d]) => {
+      .then(([c, d, l]) => {
         if (cancelled) return;
         if (Array.isArray(c)) setContacts(c);
         if (Array.isArray(d)) setDeals(d);
+        if (Array.isArray(l)) setLeads(l);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, isSales]);
 
   const run = useCallback(
     (fn: () => void) => {
@@ -123,6 +130,23 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
       <CommandList className="max-h-[min(60vh,440px)] scrollbar-thin">
         <CommandEmpty>Nessun risultato. Prova con un nome, un&apos;azienda o una pagina.</CommandEmpty>
 
+        {leads.length > 0 && (
+          <CommandGroup heading="Lead">
+            {leads.slice(0, 200).map((l) => (
+              <CommandItem
+                key={l.id}
+                value={`lead ${l.name} ${l.company ?? ""} ${l.email ?? ""} ${l.phone ?? ""} ${l.id}`}
+                onSelect={() => run(() => router.push(`/leads/${l.id}`))}
+              >
+                <PhoneCall className="text-muted-foreground" />
+                <span className="truncate">{l.name}</span>
+                {l.company && <span className="ml-1 truncate text-xs text-muted-foreground">{l.company}</span>}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+
+        {!isSales && (
         <CommandGroup heading="Crea">
           {QUICK_CREATE_ITEMS.map((item) => (
             <CommandItem
@@ -136,6 +160,7 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
             </CommandItem>
           ))}
         </CommandGroup>
+        )}
 
         {contacts.length > 0 && (
           <>
@@ -185,7 +210,7 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
 
         <CommandSeparator />
         <CommandGroup heading="Vai a">
-          {ALL_NAV_ITEMS.map((item) => (
+          {allNavItemsFor(role).map((item) => (
             <CommandItem
               key={item.href}
               value={`vai ${item.label} ${item.keywords ?? ""}`}

@@ -16,6 +16,7 @@ import { useCommandPalette } from "@/components/shared/CommandPalette";
 import { QUICK_CREATE_ITEMS, useQuickCreate } from "@/components/shared/QuickCreate";
 import { BrandMark } from "./BrandMark";
 import { findNav } from "./nav-config";
+import { useRole } from "@/components/shared/CurrentUserContext";
 
 const SUBPAGE_LABELS: Record<string, string> = {
   "/finance/fatturato": "Fatturato",
@@ -27,6 +28,7 @@ const DETAIL_LABELS: Record<string, string> = {
   "/contacts": "Scheda contatto",
   "/deals": "Scheda trattativa",
   "/timeline": "Progetto",
+  "/leads": "Scheda lead",
 };
 
 function useBreadcrumb() {
@@ -39,6 +41,7 @@ function useBreadcrumb() {
 }
 
 export function Header() {
+  const isSales = useRole() === "commerciale";
   const crumb = useBreadcrumb();
   const openPalette = useCommandPalette();
 
@@ -86,8 +89,8 @@ export function Header() {
           <Search className="size-4" />
         </button>
         <ThemeToggle className="hidden md:flex" />
-        <NotificationBell />
-        <NewMenu />
+        {!isSales && <NotificationBell />}
+        {!isSales && <NewMenu />}
       </div>
     </header>
   );

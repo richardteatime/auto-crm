@@ -1,0 +1,15 @@
+{
+  "name": "SarconX CRM",
+  "short_name": "SarconX",
+  "description": "Lead e vendite di SarconX",
+  "start_url": "/leads",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f4f7",
+  "theme_color": "#0d4aa6",
+  "lang": "it",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
