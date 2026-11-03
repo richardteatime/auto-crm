@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,24 +18,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, Plus, RefreshCw, Minus } from "lucide-react";
+import { Trash2, Plus, RefreshCw, Minus, Sparkles, Loader2, History } from "lucide-react";
 import { toast } from "sonner";
+import type { FormQuoteItem } from "@/lib/quote-items";
+import {
+  PAYMENT_METHODS,
+  INSTALLMENT_OPTIONS,
+  DEPOSIT_OPTIONS,
+  DEFAULT_PAYMENT_TERMS,
+  buildPaymentSchedule,
+  describePaymentTerms,
+  type PaymentTerms,
+  type PaymentMethod,
+} from "@/lib/quote-payment";
 
-export interface QuoteItem {
-  id: string;
-  description: string;
-  quantity: number;
-  unitPrice: number; // EUR - lordo
-  discount: number; // %
-  billingType: "una_tantum" | "mensile" | "annuale";
-  isSetup?: boolean;
-}
+export type QuoteItem = FormQuoteItem;
 
 export interface QuoteInitialData {
   id: string;
   title: string;
   items: QuoteItem[];
   notes: string | null;
+  paymentTerms?: PaymentTerms | null;
   status: string;
   vatRate: number;
   validUntil: string;
@@ -56,8 +60,11 @@ const STATUS_OPTIONS = [
   { value: "rifiutato", label: "Rifiutato" },
 ];
 
+const eur = (v: number) =>
+  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
+
 function newItem(): QuoteItem {
-  return { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, discount: 0, billingType: "una_tantum" };
+  return { id: crypto.randomUUID(), description: "", details: "", quantity: 1, unitPrice: 0, discount: 0, billingType: "una_tantum" };
 }
 
 export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps) {
@@ -69,27 +76,36 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   const [notes, setNotes] = useState("");
   const [vatRate, setVatRate] = useState(22);
   const [items, setItems] = useState<QuoteItem[]>([newItem()]);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTerms>(DEFAULT_PAYMENT_TERMS);
   const [submitting, setSubmitting] = useState(false);
+  const [generating, setGenerating] = useState<Record<string, boolean>>({});
+  // Service name for which each row last received an automatic description,
+  // so leaving the field again does not trigger a second call.
+  const autoDone = useRef<Record<string, string>>({});
 
   const setupItem = items.find((i) => i.isSetup);
   const normalItems = items.filter((i) => !i.isSetup);
 
   useEffect(() => {
     if (!open) return;
+    autoDone.current = {};
+    setGenerating({});
     if (initialData) {
       setTitle(initialData.title);
       setStatus(initialData.status);
       setValidUntil(initialData.validUntil);
       setNotes(initialData.notes ?? "");
       setVatRate(initialData.vatRate);
+      setPaymentTerms(initialData.paymentTerms ?? DEFAULT_PAYMENT_TERMS);
       const loaded = initialData.items.length > 0 ? initialData.items : [newItem()];
-      setItems(loaded);
+      setItems(loaded.map((i) => ({ ...i, details: i.details ?? "" })));
     } else {
       setTitle("");
       setStatus("bozza");
       setValidUntil("");
       setNotes("");
       setVatRate(22);
+      setPaymentTerms(DEFAULT_PAYMENT_TERMS);
       setItems([newItem()]);
     }
   }, [open, initialData]);
@@ -117,8 +133,68 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   };
 
   const removeItem = (id: string) => {
-    if (items.length > 1) setItems((prev) => prev.filter((i) => i.id !== id));
+    if (normalItems.length > 1 || items.find((i) => i.id === id)?.isSetup) {
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    }
   };
+
+  // -------------------------------------------------------------------------
+  // Automatic line descriptions
+  // -------------------------------------------------------------------------
+
+  const generateDetails = async (item: QuoteItem, opts: { force?: boolean; auto?: boolean } = {}) => {
+    const service = item.description.trim();
+    if (service.length < 3) {
+      if (!opts.auto) toast.error("Scrivi prima il nome del servizio");
+      return;
+    }
+    if (generating[item.id]) return;
+    autoDone.current[item.id] = service;
+    setGenerating((g) => ({ ...g, [item.id]: true }));
+    try {
+      const res = await fetch("/api/quotes/describe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service,
+          quoteTitle: title.trim(),
+          dealId,
+          otherServices: items.filter((i) => i.id !== item.id).map((i) => i.description),
+          force: !!opts.force,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.details) throw new Error(data.error || "Generazione non riuscita");
+      // Do not overwrite text the user typed while the request was running.
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id && (opts.force || !i.details?.trim()) ? { ...i, details: data.details } : i
+        )
+      );
+      if (!opts.auto || data.source === "storico") {
+        toast.success(
+          data.source === "storico"
+            ? `Descrizione ripresa dal preventivo ${data.quoteNumber ?? "precedente"}`
+            : "Descrizione generata"
+        );
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Generazione non riuscita");
+    } finally {
+      setGenerating((g) => ({ ...g, [item.id]: false }));
+    }
+  };
+
+  const autoGenerate = (item: QuoteItem) => {
+    const service = item.description.trim();
+    if (service.length < 3 || item.details?.trim()) return;
+    if (autoDone.current[item.id] === service) return;
+    void generateDetails(item, { auto: true });
+  };
+
+  // -------------------------------------------------------------------------
+  // Totals (same rules as the PDF: first year = one-off + 12 months + 1 year)
+  // -------------------------------------------------------------------------
 
   const lineTotal = (i: QuoteItem) => i.quantity * i.unitPrice * (1 - i.discount / 100);
   const netPrice = (i: QuoteItem) => i.unitPrice * (1 - i.discount / 100);
@@ -127,11 +203,22 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   const oneTimeSub = normalItems.filter((i) => i.billingType === "una_tantum").reduce((s, i) => s + lineTotal(i), 0);
   const monthlySub = normalItems.filter((i) => i.billingType === "mensile").reduce((s, i) => s + lineTotal(i), 0);
   const annualSub = normalItems.filter((i) => i.billingType === "annuale").reduce((s, i) => s + lineTotal(i), 0);
-  const subtotal = setupLineTotal + oneTimeSub + monthlySub + annualSub;
+  const subtotal = setupLineTotal + oneTimeSub + monthlySub * 12 + annualSub;
   const vatAmount = subtotal * vatRate / 100;
   const total = subtotal + vatAmount;
-  const hasRecurring = monthlySub > 0 || annualSub > 0;
   const hasOneTime = oneTimeSub > 0;
+
+  const oneOffCents = Math.round((setupLineTotal + oneTimeSub) * 100 * (1 + vatRate / 100));
+  const schedule = buildPaymentSchedule(paymentTerms, oneOffCents);
+
+  const setMethod = (method: PaymentMethod) => {
+    setPaymentTerms((prev) => ({
+      method,
+      installments: method === "rate" ? prev.installments ?? 3 : undefined,
+      depositPercent: method === "acconto_saldo" ? prev.depositPercent ?? 50 : undefined,
+      customText: prev.customText,
+    }));
+  };
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -147,6 +234,10 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       toast.error("Inserisci il prezzo del costo sviluppo e installazione");
       return;
     }
+    if (paymentTerms.method === "personalizzato" && !paymentTerms.customText?.trim()) {
+      toast.error("Descrivi la modalità di pagamento personalizzata");
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -154,6 +245,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
         items: items.map((i) => ({
           id: i.id,
           description: i.description,
+          details: i.details?.trim() || undefined,
           quantity: i.quantity,
           unitPrice: Math.round(i.unitPrice * 100),
           discount: i.discount,
@@ -161,6 +253,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
           isSetup: i.isSetup,
         })),
         notes: notes.trim() || null,
+        paymentTerms,
         status,
         vatRate,
         validUntil: validUntil || null,
@@ -190,9 +283,55 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
     }
   };
 
+  const detailsEditor = (item: QuoteItem) => {
+    const busy = !!generating[item.id];
+    const hasText = !!item.details?.trim();
+    return (
+      <div className="space-y-1.5">
+        <div className="relative">
+          <Textarea
+            value={item.details ?? ""}
+            onChange={(e) => updateItem(item.id, "details", e.target.value)}
+            rows={hasText ? Math.min(8, Math.max(3, (item.details ?? "").split("\n").length + 1)) : 2}
+            disabled={busy}
+            placeholder={
+              item.description.trim().length >= 3
+                ? "Descrizione di cosa comprende il servizio: si compila da sola quando esci dal nome"
+                : "Scrivi il nome del servizio: la descrizione si genera in automatico"
+            }
+            className="text-xs leading-relaxed resize-y bg-muted/20"
+          />
+          {busy && (
+            <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-md bg-background/70 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sto scrivendo la descrizione…
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs cursor-pointer"
+            disabled={busy || item.description.trim().length < 3}
+            onClick={() => generateDetails(item, { force: hasText })}
+          >
+            {hasText ? <RefreshCw className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+            {hasText ? "Rigenera con IA" : "Genera descrizione"}
+          </Button>
+          {!hasText && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <History className="h-3 w-3" /> riusa quella già scritta per lo stesso servizio
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Modifica Preventivo" : "Nuovo Preventivo"}
@@ -215,7 +354,9 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               <Label>Stato</Label>
               <Select value={status} onValueChange={(v) => v && setStatus(v)}>
                 <SelectTrigger className="cursor-pointer">
-                  <SelectValue />
+                  <SelectValue>
+                    {(v: string) => STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {STATUS_OPTIONS.map((o) => (
@@ -246,7 +387,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                 onChange={(e) => {
                   if (e.target.checked) {
                     setItems((prev) => [
-                      { id: crypto.randomUUID(), description: "Sviluppo e installazione", quantity: 1, unitPrice: 0, discount: 0, billingType: "una_tantum", isSetup: true },
+                      { id: crypto.randomUUID(), description: "Sviluppo e installazione", details: "", quantity: 1, unitPrice: 0, discount: 0, billingType: "una_tantum", isSetup: true },
                       ...prev,
                     ]);
                   } else {
@@ -258,7 +399,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               <Label htmlFor="include-setup" className="cursor-pointer">Includi costo sviluppo e installazione</Label>
             </div>
             {setupItem && (
-              <div className="rounded-lg border p-3 bg-muted/30">
+              <div className="rounded-lg border p-3 bg-muted/30 space-y-3">
                 <div className="grid grid-cols-4 gap-3 text-sm">
                   <div className="col-span-1 font-medium text-muted-foreground">{setupItem.description}</div>
                   <div>
@@ -293,6 +434,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                     </div>
                   </div>
                 </div>
+                {detailsEditor(setupItem)}
               </div>
             )}
           </div>
@@ -304,7 +446,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/60 border-b">
-                    <th className="text-left px-3 py-2 font-medium">Descrizione</th>
+                    <th className="text-left px-3 py-2 font-medium">Servizio</th>
                     <th className="text-left px-3 py-2 font-medium w-28">Tipo</th>
                     <th className="text-right px-3 py-2 font-medium w-16">Qtà</th>
                     <th className="text-right px-3 py-2 font-medium w-28">Lordo (€)</th>
@@ -313,24 +455,25 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                     <th className="w-9" />
                   </tr>
                 </thead>
-                <tbody>
-                  {normalItems.map((item) => (
-                    <tr key={item.id} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="px-3 py-1.5">
+                {normalItems.map((item) => (
+                  <tbody key={item.id} className="border-b last:border-0">
+                    <tr className="hover:bg-muted/20">
+                      <td className="px-3 pt-1.5">
                         <Input
-                          className="h-8 border-0 shadow-none px-0 focus-visible:ring-0 bg-transparent"
+                          className="h-8 border-0 shadow-none px-0 focus-visible:ring-0 bg-transparent font-medium"
                           value={item.description}
                           onChange={(e) =>
                             updateItem(item.id, "description", e.target.value)
                           }
-                          placeholder="Descrizione voce"
+                          onBlur={() => autoGenerate(item)}
+                          placeholder="es. Restyling sito web"
                         />
                       </td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 pt-1.5">
                         <button
                           type="button"
                           onClick={() => toggleBilling(item.id)}
-                          className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer flex items-center gap-1 transition-colors ${
+                          className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer flex items-center gap-1 whitespace-nowrap transition-colors ${
                             item.billingType !== "una_tantum"
                               ? "bg-blue-500/10 border-blue-500/25 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300"
                               : "bg-muted border-muted-foreground/20 text-muted-foreground"
@@ -346,7 +489,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           )}
                         </button>
                       </td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 pt-1.5">
                         <Input
                           type="number"
                           min="1"
@@ -356,7 +499,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           onChange={(e) => updateItem(item.id, "quantity", e.target.value)}
                         />
                       </td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 pt-1.5">
                         <Input
                           type="number"
                           min="0"
@@ -369,7 +512,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           placeholder="0.00"
                         />
                       </td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 pt-1.5">
                         <Input
                           type="number"
                           min="0"
@@ -383,10 +526,10 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                           placeholder="0"
                         />
                       </td>
-                      <td className="px-3 py-1.5 text-right font-medium tabular-nums">
+                      <td className="px-3 pt-1.5 text-right font-medium tabular-nums">
                         €{netPrice(item).toFixed(2)}
                       </td>
-                      <td className="px-1 py-1.5">
+                      <td className="px-1 pt-1.5">
                         <Button
                           type="button"
                           variant="ghost"
@@ -399,8 +542,13 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                         </Button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
+                    <tr>
+                      <td colSpan={7} className="px-3 pb-2.5 pt-1">
+                        {detailsEditor(item)}
+                      </td>
+                    </tr>
+                  </tbody>
+                ))}
               </table>
             </div>
             <Button
@@ -435,7 +583,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               </Select>
             </div>
 
-            <div className="text-right space-y-1 text-sm min-w-[240px]">
+            <div className="text-right space-y-1 text-sm min-w-[260px]">
               {setupItem && setupLineTotal > 0 && (
                 <div className="flex justify-between gap-8 text-muted-foreground">
                   <span>Sviluppo e installazione</span>
@@ -481,6 +629,95 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
             </div>
           </div>
 
+          {/* MODALITÀ DI PAGAMENTO */}
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-2 min-w-[240px] flex-1">
+                <Label>Modalità di pagamento</Label>
+                <Select value={paymentTerms.method} onValueChange={(v) => v && setMethod(v as PaymentMethod)}>
+                  <SelectTrigger className="cursor-pointer w-full">
+                    <SelectValue>
+                      {(v: string) => PAYMENT_METHODS.find((m) => m.value === v)?.label ?? v}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {paymentTerms.method === "rate" && (
+                <div className="space-y-2">
+                  <Label>Numero rate</Label>
+                  <Select
+                    value={String(paymentTerms.installments ?? 3)}
+                    onValueChange={(v) => v && setPaymentTerms((p) => ({ ...p, installments: Number(v) }))}
+                  >
+                    <SelectTrigger className="cursor-pointer w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INSTALLMENT_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n} rate
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {paymentTerms.method === "acconto_saldo" && (
+                <div className="space-y-2">
+                  <Label>Acconto</Label>
+                  <Select
+                    value={String(paymentTerms.depositPercent ?? 50)}
+                    onValueChange={(v) => v && setPaymentTerms((p) => ({ ...p, depositPercent: Number(v) }))}
+                  >
+                    <SelectTrigger className="cursor-pointer w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPOSIT_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}%
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {paymentTerms.method === "personalizzato" ? (
+              <Textarea
+                value={paymentTerms.customText ?? ""}
+                onChange={(e) => setPaymentTerms((p) => ({ ...p, customText: e.target.value }))}
+                rows={2}
+                placeholder="es. 40% alla firma, 40% alla presentazione della grafica, 20% alla messa online"
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">{describePaymentTerms(paymentTerms)}</p>
+            )}
+
+            {schedule.length > 0 && (
+              <div className="rounded-md bg-muted/30 px-3 py-2 text-sm">
+                {schedule.map((row) => (
+                  <div key={row.label} className="flex justify-between gap-6 py-0.5">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="font-medium tabular-nums">{eur(row.amount / 100)}</span>
+                  </div>
+                ))}
+                <p className="pt-1 text-[11px] text-muted-foreground">
+                  Importi IVA inclusa, calcolati sulla parte una tantum
+                  {monthlySub > 0 || annualSub > 0 ? "; i canoni ricorrenti si pagano alla loro scadenza." : "."}
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="q-notes">Note</Label>
             <Textarea
@@ -488,7 +725,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Condizioni di pagamento, termini di consegna, validità offerta..."
+              placeholder="Termini di consegna, validità offerta, altre condizioni..."
             />
           </div>
 

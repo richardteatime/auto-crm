@@ -158,4 +158,61 @@ export async function classifyLead(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Free-form text generation (quote line descriptions, ...)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate plain text from a prompt with the configured provider.
+ * Returns null when no provider is configured or the call fails.
+ */
+export async function generateText(
+  prompt: string,
+  options: { maxTokens?: number; timeoutMs?: number } = {},
+): Promise<string | null> {
+  const maxTokens = options.maxTokens ?? 600;
+  const signal = AbortSignal.timeout(options.timeoutMs ?? 30_000);
+
+  try {
+    if (openRouterKey) {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openRouterKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: openRouterModel,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: maxTokens,
+          temperature: 0.4,
+        }),
+        signal,
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content ?? null;
+    }
+
+    if (anthropicKey) {
+      const { default: Anthropic } = await import("@anthropic-ai/sdk");
+      const client = new Anthropic({ apiKey: anthropicKey });
+      const response = await client.messages.create(
+        {
+          model: "claude-sonnet-4-6-20250514",
+          max_tokens: maxTokens,
+          messages: [{ role: "user", content: prompt }],
+        },
+        { signal },
+      );
+      const block = response.content[0];
+      return block.type === "text" ? block.text : null;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export { hasAI as isAIEnabled };

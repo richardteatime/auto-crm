@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getQuote, updateQuote, deleteQuote } from "@/lib/db/quotes";
+import { parsePaymentTerms, serializePaymentTerms } from "@/lib/quote-payment";
 import { requireAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -39,10 +40,11 @@ export async function PUT(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  const { title, items, notes, status, vatRate, validUntil } = body as {
+  const { title, items, notes, paymentTerms, status, vatRate, validUntil } = body as {
     title?: string;
     items?: unknown[];
     notes?: string | null;
+    paymentTerms?: unknown;
     status?: string;
     vatRate?: number;
     validUntil?: string | null;
@@ -52,6 +54,7 @@ export async function PUT(
   if (title !== undefined) updates.title = title.trim();
   if (items !== undefined) updates.items = JSON.stringify(items);
   if (notes !== undefined) updates.notes = notes?.trim() || null;
+  if (paymentTerms !== undefined) updates.paymentTerms = serializePaymentTerms(parsePaymentTerms(paymentTerms));
   if (status !== undefined) updates.status = status;
   if (vatRate !== undefined) updates.vatRate = vatRate;
   if (validUntil !== undefined) updates.validUntil = validUntil ? new Date(validUntil) : null;

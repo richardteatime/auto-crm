@@ -21,6 +21,8 @@ import {
 import { Plus, Pencil, Trash2, FileDown, FileText } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { toast } from "sonner";
+import { parseItemsForForm } from "@/lib/quote-items";
+import { parsePaymentTerms } from "@/lib/quote-payment";
 import { QuoteForm, type QuoteInitialData } from "./QuoteForm";
 
 interface DbQuoteItem {
@@ -39,6 +41,7 @@ interface QuoteRow {
   title: string;
   items: string;
   notes: string | null;
+  paymentTerms?: string | null;
   status: string;
   vatRate: number;
   validUntil: number | Date | null;
@@ -62,22 +65,6 @@ function calcTotal(q: QuoteRow): number {
     return subtotal + Math.round((subtotal * q.vatRate) / 100);
   } catch {
     return 0;
-  }
-}
-
-function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
-  try {
-    return (JSON.parse(itemsJson) as DbQuoteItem[]).map((i) => ({
-      id: i.id,
-      description: i.description,
-      quantity: i.quantity,
-      unitPrice: i.unitPrice / 100,
-      discount: i.discount ?? 0,
-      billingType: i.billingType ?? "una_tantum",
-      isSetup: i.isSetup,
-    }));
-  } catch {
-    return [];
   }
 }
 
@@ -126,6 +113,7 @@ export function QuoteList({ dealId }: QuoteListProps) {
       title: q.title,
       items: parseItemsForForm(q.items),
       notes: q.notes,
+      paymentTerms: parsePaymentTerms(q.paymentTerms),
       status: q.status,
       vatRate: q.vatRate,
       validUntil: toDateInputValue(q.validUntil),

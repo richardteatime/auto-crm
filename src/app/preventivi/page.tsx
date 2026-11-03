@@ -37,6 +37,8 @@ import {
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { ReportDialog } from "@/components/shared/ReportDialog";
+import { parseItemsForForm } from "@/lib/quote-items";
+import { parsePaymentTerms } from "@/lib/quote-payment";
 import { QuoteForm, type QuoteInitialData } from "@/components/quotes/QuoteForm";
 
 interface QuoteRow {
@@ -45,6 +47,7 @@ interface QuoteRow {
   title: string;
   items: string;
   notes: string | null;
+  paymentTerms?: string | null;
   status: string;
   vatRate: number;
   validUntil: number | Date | null;
@@ -53,21 +56,6 @@ interface QuoteRow {
   dealTitle: string | null;
   contactName: string | null;
   contactCompany: string | null;
-}
-
-function parseItemsForForm(itemsJson: string): QuoteInitialData["items"] {
-  try {
-    return (JSON.parse(itemsJson) as { id: string; description: string; quantity: number; unitPrice: number; discount?: number; billingType?: "una_tantum" | "mensile" | "annuale" }[]).map((i) => ({
-      id: i.id,
-      description: i.description,
-      quantity: i.quantity,
-      unitPrice: i.unitPrice / 100,
-      discount: i.discount ?? 0,
-      billingType: i.billingType ?? "una_tantum",
-    }));
-  } catch {
-    return [];
-  }
 }
 
 function toDateInputValue(val: number | Date | null | undefined): string {
@@ -137,6 +125,7 @@ export default function PreventiviPage() {
       title: q.title,
       items: parseItemsForForm(q.items),
       notes: q.notes,
+      paymentTerms: parsePaymentTerms(q.paymentTerms),
       status: q.status,
       vatRate: q.vatRate,
       validUntil: toDateInputValue(q.validUntil),
