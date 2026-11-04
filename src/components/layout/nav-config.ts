@@ -53,7 +53,6 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Vendite",
     items: [
-      LEADS_ITEM,
       { href: "/pipeline", label: "Pipeline", icon: SquareKanban, keywords: "kanban fasi" },
       { href: "/deals", label: "Trattative", icon: Handshake, keywords: "deal vendite" },
       { href: "/opportunita", label: "Opportunità", icon: Target, keywords: "idee proposte" },
@@ -72,6 +71,10 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Business",
     items: [{ href: "/finance", label: "Finance", icon: TrendingUp, keywords: "fatturato spese mrr incassi" }],
+  },
+  {
+    label: "Lead",
+    items: [LEADS_ITEM],
   },
 ];
 
