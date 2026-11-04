@@ -46,15 +46,24 @@ function fromDoc<T>(doc: Models.Document): T {
   } as T;
 }
 
+/** Progressive number per year: SX-2026-001, SX-2026-002, ... */
 async function generateQuoteNumber(): Promise<string> {
-  const today = new Date();
-  const dateStr = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, "0"),
-    String(today.getDate()).padStart(2, "0"),
-  ].join("");
-  const suffix = String(today.getTime() % 1000).padStart(3, "0");
-  return `Q-${dateStr}-${suffix}`;
+  const prefix = `SX-${new Date().getFullYear()}-`;
+  let max = 0;
+  try {
+    const res = await databases.listDocuments(DB_ID, COLLECTIONS.quotes, [
+      Query.startsWith("number", prefix),
+      Query.limit(500),
+    ]);
+    for (const d of res.documents) {
+      const n = parseInt(String((d as unknown as { number?: string }).number ?? "").slice(prefix.length), 10);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+  } catch {
+    // Never risk a duplicate progressive number: fall back to a unique one.
+    return `${prefix}T${Date.now().toString(36).toUpperCase()}`;
+  }
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
 // ---------------------------------------------------------------------------
