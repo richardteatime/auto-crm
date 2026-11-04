@@ -117,7 +117,8 @@ export default function OpportunitaPage() {
       const res = await fetch(`/api/opportunities/${deletingOpp.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setOpps((prev) => prev.filter((o) => o.id !== deletingOpp.id));
-      toast.success("Opportunità eliminata");
+      const data = await res.json().catch(() => ({}));
+      toast.success(data.dealDeleted ? "Opportunità e trattativa eliminate" : "Opportunità eliminata");
     } catch {
       toast.error("Errore durante l'eliminazione");
     } finally {
@@ -356,7 +357,11 @@ export default function OpportunitaPage() {
         <DialogContent showCloseButton={false} className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Eliminare l&apos;opportunità?</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingOpp?.title}</strong>. Questa azione è irreversibile.
+            Stai per eliminare <strong>{deletingOpp?.title}</strong>.
+            {deletingOpp?.dealId
+              ? " Verrà eliminata anche la trattativa collegata, con i suoi preventivi."
+              : ""}{" "}
+            Questa azione è irreversibile.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingOpp(null)}>Annulla</Button>

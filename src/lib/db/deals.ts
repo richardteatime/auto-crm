@@ -233,6 +233,38 @@ export async function updateDeal(
 // deleteDeal
 // ---------------------------------------------------------------------------
 
+/**
+ * Delete a deal together with what only makes sense inside it:
+ * its quotes are deleted; activities, calendar events, leads and
+ * opportunities that point to it are kept but unlinked (an opportunity
+ * goes back to "aperta").
+ */
 export async function deleteDeal(id: string): Promise<void> {
+  const linked = async (collection: string) => {
+    try {
+      const res = await databases.listDocuments(DB_ID, collection, [
+        Query.equal("dealId", id),
+        Query.limit(500),
+      ]);
+      return res.documents;
+    } catch {
+      return []; // collection or attribute missing on this instance
+    }
+  };
+
+  for (const q of await linked(COLLECTIONS.quotes)) {
+    await databases.deleteDocument(DB_ID, COLLECTIONS.quotes, q.$id);
+  }
+  for (const col of [COLLECTIONS.activities, COLLECTIONS.calendarEvents, COLLECTIONS.leads]) {
+    for (const doc of await linked(col)) {
+      await databases.updateDocument(DB_ID, col, doc.$id, { dealId: null }).catch(() => undefined);
+    }
+  }
+  for (const opp of await linked(COLLECTIONS.opportunities)) {
+    await databases
+      .updateDocument(DB_ID, COLLECTIONS.opportunities, opp.$id, { dealId: null, status: "aperta" })
+      .catch(() => undefined);
+  }
+
   await databases.deleteDocument(DB_ID, COLLECTIONS.deals, id);
 }

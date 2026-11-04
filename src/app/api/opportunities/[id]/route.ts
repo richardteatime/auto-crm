@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpportunity, updateOpportunity, deleteOpportunity } from "@/lib/db";
+import { getOpportunity, updateOpportunity, deleteOpportunity, getDeal, deleteDeal } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
 export async function GET(
@@ -61,8 +61,14 @@ export async function DELETE(
   const existing = await getOpportunity(id);
   if (!existing) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });
   try {
+    // An opportunity turned into a deal takes the deal (and its quotes) with it.
+    let dealDeleted = false;
+    if (existing.dealId && (await getDeal(existing.dealId))) {
+      await deleteDeal(existing.dealId);
+      dealDeleted = true;
+    }
     await deleteOpportunity(id);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, dealDeleted });
   } catch {
     return NextResponse.json(
       { error: "Errore nell'eliminazione" },

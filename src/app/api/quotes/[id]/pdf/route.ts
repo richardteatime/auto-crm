@@ -3,12 +3,7 @@ import { getQuote } from "@/lib/db/quotes";
 import { requireAuth } from "@/lib/auth";
 import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
-import {
-  buildPaymentSchedule,
-  describePaymentTerms,
-  parsePaymentTerms,
-  type PaymentTerms,
-} from "@/lib/quote-payment";
+import { buildPaymentSchedule, describePaymentTerms, parsePaymentTerms } from "@/lib/quote-payment";
 import { parseDbItems, type DbQuoteItem } from "@/lib/quote-items";
 import fs from "fs";
 import path from "path";
@@ -16,8 +11,8 @@ import path from "path";
 export const dynamic = "force-dynamic";
 
 // ---------------------------------------------------------------------------
-// Commercial proposal document (A4, print-ready HTML; "Scarica PDF" prints it).
-// Amounts are stored in cents.
+// Quote document: classic A4 business layout, print-ready HTML
+// ("Scarica PDF" prints it). Amounts are stored in cents.
 // ---------------------------------------------------------------------------
 
 interface CompanyConfig {
@@ -56,21 +51,14 @@ function esc(str: string | null | undefined): string {
     .replace(/"/g, "&quot;");
 }
 
-const eurFmt = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", useGrouping: "always" });
-const eurShortFmt = new Intl.NumberFormat("it-IT", {
+const eurFmt = new Intl.NumberFormat("it-IT", {
   style: "currency",
   currency: "EUR",
-  maximumFractionDigits: 0,
   useGrouping: "always",
 });
 
 function eur(cents: number): string {
   return eurFmt.format(cents / 100);
-}
-
-/** No decimals when the amount is a whole number of euros. */
-function eurShort(cents: number): string {
-  return cents % 100 === 0 ? eurShortFmt.format(cents / 100) : eurFmt.format(cents / 100);
 }
 
 function toDate(d: Date | number | string | null | undefined): Date | null {
@@ -82,15 +70,11 @@ function toDate(d: Date | number | string | null | undefined): Date | null {
 function dateIt(d: Date | number | string | null | undefined): string {
   const date = toDate(d);
   if (!date || Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+  return date.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function num(v: unknown): number {
   return typeof v === "number" ? v : parseFloat(String(v ?? "")) || 0;
-}
-
-function lineGross(item: DbQuoteItem): number {
-  return Math.round(num(item.quantity) * num(item.unitPrice));
 }
 
 function lineTotal(item: DbQuoteItem): number {
@@ -124,28 +108,8 @@ function renderDetails(text: string | undefined): string {
   return `<div class="details">${out.join("")}</div>`;
 }
 
-function shortPaymentLabel(terms: PaymentTerms | null): string {
-  if (!terms) return "Bonifico bancario";
-  switch (terms.method) {
-    case "consegna":
-      return "Alla consegna";
-    case "anticipato":
-      return "All'accettazione";
-    case "30gg":
-      return "30 giorni d.f.";
-    case "60gg":
-      return "60 giorni d.f.";
-    case "rate":
-      return `${terms.installments ?? 3} rate mensili`;
-    case "acconto_saldo":
-      return `Acconto ${terms.depositPercent ?? 50}% + saldo`;
-    case "personalizzato":
-      return "Come concordato";
-  }
-}
-
 const BILLING_LABEL: Record<string, string> = {
-  una_tantum: "Una tantum",
+  una_tantum: "",
   mensile: "Canone mensile",
   annuale: "Canone annuale",
 };
@@ -170,6 +134,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const items = parseDbItems(quote.items);
   const ordered = [...items.filter((i) => i.isSetup), ...items.filter((i) => !i.isSetup)];
   const billingOf = (i: DbQuoteItem) => (i.isSetup ? "una_tantum" : i.billingType ?? "una_tantum");
+  const anyDiscount = ordered.some((i) => num(i.discount) > 0);
 
   const oneOffSub = ordered.filter((i) => billingOf(i) === "una_tantum").reduce((s, i) => s + lineTotal(i), 0);
   const monthlySub = ordered.filter((i) => billingOf(i) === "mensile").reduce((s, i) => s + lineTotal(i), 0);
@@ -177,9 +142,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const vatRate = num(quote.vatRate);
   const vatOf = (c: number) => Math.round((c * vatRate) / 100);
   const oneOffTotal = oneOffSub + vatOf(oneOffSub);
-  const firstYearSub = oneOffSub + monthlySub * 12 + annualSub;
-  const firstYearTotal = firstYearSub + vatOf(firstYearSub);
-  const hasRecurring = monthlySub > 0 || annualSub > 0;
 
   // --- Payment --------------------------------------------------------------
   const terms = parsePaymentTerms(quote.paymentTerms);
@@ -187,107 +149,84 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const paymentText = terms
     ? describePaymentTerms(terms)
     : company.paymentTerms || "Bonifico bancario a 30 giorni data fattura.";
+  const extraPaymentText =
+    terms && terms.method !== "personalizzato" && terms.customText ? terms.customText : "";
 
   // --- People ---------------------------------------------------------------
   const clientName = contact?.company || contact?.name || "Cliente";
   const attention = contact?.company && contact?.name ? contact.name : "";
-  const firstName = (contact?.name || "").trim().split(/\s+/)[0];
   const issued = dateIt(quote.createdAt);
   const validUntil = dateIt(quote.validUntil);
 
-  // --- Sections -------------------------------------------------------------
-  const itemRows = ordered
+  // --- Items table ----------------------------------------------------------
+  const rows = ordered
     .map((item, idx) => {
       const billing = billingOf(item);
       const suffix = BILLING_SUFFIX[billing] ?? "";
       const qty = num(item.quantity);
       const discount = num(item.discount);
-      const meta = [
-        BILLING_LABEL[billing],
-        qty > 1 ? `${qty} × ${eur(num(item.unitPrice) * (1 - discount / 100))}` : "",
-      ]
-        .filter(Boolean)
-        .join(" · ");
+      const tag = BILLING_LABEL[billing];
       return `
-      <article class="item">
-        <div class="item-n">${String(idx + 1).padStart(2, "0")}</div>
-        <div class="item-body">
-          <h3>${esc(item.description) || "Voce senza titolo"}</h3>
-          <div class="item-meta">${esc(meta)}</div>
+      <tr class="item">
+        <td class="c-n">${idx + 1}</td>
+        <td class="c-desc">
+          <div class="name">${esc(item.description) || "Voce"}${tag ? ` <span class="tag">${tag}</span>` : ""}</div>
           ${renderDetails(item.details)}
-        </div>
-        <div class="item-price">
-          ${discount > 0 ? `<div class="was"><s>${eurShort(lineGross(item))}</s> <span>−${discount}%</span></div>` : ""}
-          <div class="now">${eurShort(lineTotal(item))}<small>${suffix}</small></div>
-        </div>
-      </article>`;
+        </td>
+        <td class="c-num c-qty">${qty}</td>
+        <td class="c-num">${eur(num(item.unitPrice))}${suffix}</td>
+        ${anyDiscount ? `<td class="c-num">${discount > 0 ? `${discount}%` : "—"}</td>` : ""}
+        <td class="c-num c-tot">${eur(lineTotal(item))}${suffix}</td>
+      </tr>`;
     })
     .join("");
 
-  const summaryCells = [
-    oneOffSub > 0 && { k: "Investimento iniziale", v: eurShort(oneOffSub), n: "IVA esclusa" },
-    monthlySub > 0 && { k: "Canone mensile", v: eurShort(monthlySub), n: "al mese, IVA esclusa" },
-    annualSub > 0 && { k: "Canone annuale", v: eurShort(annualSub), n: "all'anno, IVA esclusa" },
-    { k: "Pagamento", v: esc(shortPaymentLabel(terms)), n: terms ? "bonifico bancario" : "condizioni nel dettaglio", text: true },
-  ].filter(Boolean) as { k: string; v: string; n: string; text?: boolean }[];
+  // --- Totals ---------------------------------------------------------------
+  const totals: string[] = [];
+  if (oneOffSub > 0) {
+    totals.push(
+      `<tr><td>Imponibile</td><td>${eur(oneOffSub)}</td></tr>`,
+      `<tr><td>IVA ${vatRate}%</td><td>${eur(vatOf(oneOffSub))}</td></tr>`,
+      `<tr class="grand"><td>Totale</td><td>${eur(oneOffTotal)}</td></tr>`,
+    );
+  }
+  const recurring: string[] = [];
+  if (monthlySub > 0) {
+    recurring.push(
+      `<tr><td>Canone mensile</td><td>${eur(monthlySub)}</td></tr>`,
+      `<tr class="sub"><td>IVA ${vatRate}% inclusa</td><td>${eur(monthlySub + vatOf(monthlySub))}</td></tr>`,
+    );
+  }
+  if (annualSub > 0) {
+    recurring.push(
+      `<tr><td>Canone annuale</td><td>${eur(annualSub)}</td></tr>`,
+      `<tr class="sub"><td>IVA ${vatRate}% inclusa</td><td>${eur(annualSub + vatOf(annualSub))}</td></tr>`,
+    );
+  }
 
-  const summary = `
-    <section class="summary" style="grid-template-columns: repeat(${summaryCells.length}, 1fr)">
-      ${summaryCells
-        .map(
-          (c) =>
-            `<div class="cell"><div class="k">${c.k}</div><div class="v${c.text ? " v-text" : ""}">${c.v}</div><div class="n">${c.n}</div></div>`,
-        )
-        .join("")}
-    </section>`;
-
-  const investmentRows = [
-    oneOffSub > 0 &&
-      `<tr><td>Imponibile una tantum</td><td>${eur(oneOffSub)}</td></tr>
-       <tr><td>IVA ${vatRate}%</td><td>${eur(vatOf(oneOffSub))}</td></tr>
-       <tr class="strong"><td>Totale una tantum</td><td>${eur(oneOffTotal)}</td></tr>`,
-    monthlySub > 0 &&
-      `<tr class="${oneOffSub > 0 ? "gap" : ""}"><td>Canone mensile</td><td>${eur(monthlySub)} <small>+ IVA</small></td></tr>
-       <tr class="muted"><td>IVA inclusa</td><td>${eur(monthlySub + vatOf(monthlySub))}/mese</td></tr>`,
-    annualSub > 0 &&
-      `<tr class="${oneOffSub > 0 || monthlySub > 0 ? "gap" : ""}"><td>Canone annuale</td><td>${eur(annualSub)} <small>+ IVA</small></td></tr>
-       <tr class="muted"><td>IVA inclusa</td><td>${eur(annualSub + vatOf(annualSub))}/anno</td></tr>`,
+  // --- Conditions -----------------------------------------------------------
+  const conditionRows = [
+    `<tr><th>Pagamento</th><td>${esc(paymentText)}${extraPaymentText ? `<br>${esc(extraPaymentText)}` : ""}</td></tr>`,
+    schedule.length > 1 || (schedule.length === 1 && terms?.method !== "consegna")
+      ? `<tr><th>Scadenze</th><td><table class="sched">${schedule
+          .map((r) => `<tr><td>${esc(r.label)}</td><td>${eur(r.amount)}</td></tr>`)
+          .join("")}</table><span class="note">Importi IVA inclusa${monthlySub > 0 || annualSub > 0 ? "; i canoni sono fatturati alla rispettiva scadenza" : ""}.</span></td></tr>`
+      : "",
+    `<tr><th>Modalità</th><td>Bonifico bancario${company.iban ? `<br>IBAN <strong>${esc(company.iban)}</strong>` : ""}${
+      company.bankHolder ? `<br>Intestato a ${esc(company.bankHolder)}` : ""
+    }</td></tr>`,
+    `<tr><th>Validità offerta</th><td>${validUntil ? `Fino al ${esc(validUntil)}` : "30 giorni dalla data del preventivo"}</td></tr>`,
+    `<tr><th>Prezzi</th><td>Importi in euro, IVA esclusa salvo dove indicato.</td></tr>`,
+    quote.notes ? `<tr><th>Note</th><td class="pre">${esc(quote.notes)}</td></tr>` : "",
   ]
     .filter(Boolean)
     .join("");
 
-  const firstYearNote = hasRecurring
-    ? `<p class="footnote">Spesa complessiva del primo anno, canoni compresi: <strong>${eur(firstYearTotal)}</strong> IVA inclusa. Dal secondo anno: ${eur(
-        monthlySub * 12 + annualSub,
-      )} + IVA all'anno.</p>`
-    : "";
-
-  const scheduleRows = schedule.length
-    ? `<ol class="schedule">${schedule
-        .map(
-          (r, i) =>
-            `<li><span class="dot">${i + 1}</span><span class="lbl">${esc(r.label)}</span><span class="amt">${eur(r.amount)}</span></li>`,
-        )
-        .join("")}</ol>
-       <p class="footnote">Importi IVA inclusa, calcolati sulla parte una tantum${hasRecurring ? "; i canoni ricorrenti si pagano alla rispettiva scadenza" : ""}.</p>`
-    : "";
-
-  const bank = [
-    company.iban ? `<div><span>IBAN</span>${esc(company.iban)}</div>` : "",
-    company.bankHolder ? `<div><span>Intestatario</span>${esc(company.bankHolder)}</div>` : "",
-  ].join("");
-
-  const bankBox = `<div class="bank"><div><span>Metodo</span>Bonifico bancario</div>${bank}</div>`;
-  const extraText =
-    terms && terms.method !== "personalizzato" && terms.customText ? `<p>${esc(terms.customText)}</p>` : "";
-
-  const sec = (title: string) => `<h2 class="sec">${title}</h2>`;
-
   const companyLine = [companyName, company.address, company.vatNumber ? `P.IVA ${company.vatNumber}` : ""]
     .filter(Boolean)
-    .join(" · ");
+    .join(" – ");
   const cssString = (s: string) => s.replace(/\\/g, "").replace(/"/g, "'");
-  const docTitle = `Proposta ${quote.number} - ${clientName}`;
+  const docTitle = `Preventivo ${quote.number} - ${clientName}`;
 
   const html = `<!DOCTYPE html>
 <html lang="it">
@@ -297,132 +236,121 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 <title>${esc(docTitle)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #0a0a0a; --ink-2: #3a3d44; --muted: #6b7280; --line: #e5e7eb; --soft: #f5f6f8;
-    --accent: #0038ff; --accent-soft: #eef2ff;
-    --serif: "Fraunces", "Times New Roman", serif; --sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+    --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-soft: #e5e7eb; --head: #f3f4f6;
+    --accent: #0038ff;
+    --font: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
   * { box-sizing: border-box; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { margin: 0; background: #e9ebef; color: var(--ink); font: 400 10pt/1.55 var(--sans); }
-  .sheet { width: 210mm; min-height: 297mm; margin: 72px auto 48px; background: #fff; padding: 16mm 17mm 18mm; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 12px 40px rgba(0,0,0,.08); }
+  body { margin: 0; background: #e5e7eb; color: var(--ink); font: 400 10pt/1.45 var(--font); }
+  .sheet { width: 210mm; min-height: 297mm; margin: 72px auto 48px; background: #fff; padding: 14mm 15mm 16mm; box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 10px 30px rgba(0,0,0,.08); }
   body.editing .sheet { outline: 2px dashed var(--accent); outline-offset: 6px; }
+  table { border-collapse: collapse; width: 100%; }
 
-  /* Masthead */
-  .top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 7mm; border-bottom: 1px solid var(--ink); }
-  .brand { display: flex; align-items: center; gap: 9px; font: 700 15pt/1 var(--sans); letter-spacing: -.02em; }
-  .brand .mark { width: 26px; height: 26px; }
-  .brand b { color: var(--accent); font-weight: 800; }
-  .doc-id { text-align: right; font-size: 8pt; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; line-height: 1.6; }
-  .doc-id strong { color: var(--ink); letter-spacing: .04em; }
+  /* Header */
+  .head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 5mm; border-bottom: 2px solid var(--ink); }
+  .brand { display: flex; align-items: center; gap: 8px; font: 700 17pt/1 var(--font); letter-spacing: -.01em; }
+  .brand .mark { width: 30px; height: 30px; }
+  .brand b { color: var(--accent); }
+  .issuer { text-align: right; font-size: 8.5pt; color: var(--ink-2); line-height: 1.5; }
+  .issuer strong { color: var(--ink); font-size: 9.5pt; }
 
-  /* Title */
-  .hero { padding: 9mm 0 6mm; }
-  .kicker { font: 600 8pt/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 4mm; }
-  h1 { font: 500 30pt/1.08 var(--serif); letter-spacing: -.01em; margin: 0 0 5mm; max-width: 150mm; text-wrap: balance; font-variation-settings: "opsz" 144; }
-  .lede { font: 400 11pt/1.6 var(--serif); color: var(--ink-2); max-width: 140mm; margin: 0; }
+  /* Title + parties */
+  .title-row { margin: 7mm 0 5mm; }
+  .doc-title { font: 700 20pt/1 var(--font); letter-spacing: .02em; text-transform: uppercase; }
+  .doc-no { font-size: 10pt; color: var(--ink-2); }
+  .parties { display: grid; grid-template-columns: 1fr 72mm; gap: 6mm; margin-bottom: 6mm; }
+  .box { border: 1px solid var(--line); padding: 3.5mm 4mm; }
+  .box .lab { font: 600 7.5pt/1 var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2mm; }
+  .box p { margin: 0; font-size: 9.5pt; line-height: 1.5; }
+  .box p.name { font-weight: 700; font-size: 10.5pt; }
+  table.meta td { font-size: 9.5pt; padding: .8mm 0; vertical-align: top; }
+  table.meta td:first-child { color: var(--muted); width: 26mm; }
+  table.meta td:last-child { font-weight: 600; }
 
-  /* Parties */
-  .parties { display: grid; grid-template-columns: 1.25fr 1.25fr 1fr; gap: 8mm; padding: 5mm 0 6mm; border-top: 1px solid var(--line); }
-  .parties .lab, .summary .k { font: 600 7.5pt/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-  .parties .lab { margin-bottom: 2.5mm; }
-  .parties p { margin: 0; font-size: 9pt; color: var(--ink-2); line-height: 1.55; }
-  .parties p.name { font-weight: 600; color: var(--ink); font-size: 10pt; }
-
-  /* Summary */
-  .summary { display: grid; background: var(--soft); border-radius: 2px; margin-bottom: 8mm; break-inside: avoid; }
-  .summary .cell { padding: 5mm 5mm 4.5mm; border-left: 1px solid #e3e6ea; }
-  .summary .cell:first-child { border-left: 0; }
-  .summary .v { font: 500 19pt/1.1 var(--serif); letter-spacing: -.01em; margin: 2.5mm 0 1.5mm; font-variant-numeric: tabular-nums; }
-  .summary .v-text { font-size: 13pt; padding-top: 1.5mm; }
-  .summary .n { font-size: 8pt; color: var(--muted); }
-
-  /* Sections */
-  .sec { font: 500 15pt/1.2 var(--serif); letter-spacing: -.005em; margin: 0 0 4mm; padding-top: 2mm; break-after: avoid; }
-  section.block { margin-bottom: 7mm; }
+  .subject { margin: 0 0 2mm; font-size: 10.5pt; }
+  .subject strong { font-weight: 700; }
+  .intro { margin: 0 0 5mm; font-size: 9.5pt; color: var(--ink-2); }
 
   /* Items */
-  .item { display: grid; grid-template-columns: 11mm 1fr 34mm; gap: 0 4mm; padding: 4mm 0; border-top: 1px solid var(--line); break-inside: avoid; }
-  .item:last-child { border-bottom: 1px solid var(--line); }
-  .item-n { font: 500 11pt/1.3 var(--serif); color: var(--accent); font-variant-numeric: tabular-nums; }
-  .item h3 { margin: 0; font: 600 11pt/1.35 var(--sans); letter-spacing: -.005em; }
-  .item-meta { font-size: 8pt; color: var(--muted); margin-top: 1mm; letter-spacing: .02em; }
-  .details { margin-top: 2.5mm; color: var(--ink-2); font-size: 9pt; line-height: 1.55; }
-  .details p { margin: 0 0 1.5mm; }
-  .details ul { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 6mm; }
-  .details li { position: relative; padding-left: 4mm; margin: 0 0 1.2mm; break-inside: avoid; }
-  .details li::before { content: ""; position: absolute; left: 0; top: .72em; width: 2mm; height: 1.5px; background: var(--accent); }
-  .item-price { text-align: right; }
-  .item-price .now { font: 500 13pt/1.3 var(--serif); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .item-price small { font: 400 8pt var(--sans); color: var(--muted); margin-left: 1px; }
-  .item-price .was { font-size: 8pt; color: var(--muted); white-space: nowrap; }
-  .item-price .was span { color: var(--accent); font-weight: 600; }
+  table.items thead th { background: var(--head); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); font: 700 8pt/1.2 var(--font); letter-spacing: .05em; text-transform: uppercase; text-align: left; padding: 2.2mm 2mm; }
+  table.items thead th.c-num { text-align: right; }
+  table.items td { padding: 3mm 2mm; border-bottom: 1px solid var(--line-soft); vertical-align: top; font-size: 9.5pt; }
+  table.items tr.item { break-inside: avoid; }
+  .c-n { width: 7mm; color: var(--muted); }
+  .c-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; width: 24mm; }
+  .c-tot { font-weight: 600; width: 27mm; }
+  .c-qty { width: 11mm; }
+  .name { font-weight: 700; font-size: 10pt; }
+  .tag { display: inline-block; margin-left: 4px; padding: 0 5px; border: 1px solid var(--line); border-radius: 3px; font: 600 7pt/14px var(--font); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); vertical-align: 1px; }
+  .details { margin-top: 1.5mm; color: var(--ink-2); font-size: 9pt; line-height: 1.45; }
+  .details p { margin: 0 0 1mm; }
+  .details ul { margin: 0; padding-left: 4.5mm; }
+  .details li { margin: 0 0 .5mm; }
 
-  /* Investment */
-  .inv { display: grid; grid-template-columns: 1fr 88mm; gap: 8mm; align-items: start; break-inside: avoid; }
-  .inv-copy { font-size: 9pt; color: var(--ink-2); margin: 0; }
-  table.money { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  table.money td { padding: 1.8mm 0; border-bottom: 1px solid var(--line); font-size: 9.5pt; }
-  table.money td:last-child { text-align: right; white-space: nowrap; }
-  table.money tr.strong td { font: 600 11pt var(--sans); border-bottom: 1.5px solid var(--ink); padding: 2.6mm 0; }
-  table.money tr.gap td { padding-top: 5mm; }
-  table.money tr.muted td { color: var(--muted); font-size: 8.5pt; }
-  table.money small { color: var(--muted); }
-  .footnote { font-size: 8pt; color: var(--muted); margin: 3mm 0 0; }
+  /* Totals */
+  .totals-wrap { display: flex; justify-content: flex-end; gap: 6mm; margin: 5mm 0 7mm; break-inside: avoid; }
+  table.totals { width: 72mm; font-variant-numeric: tabular-nums; }
+  table.totals td { padding: 1.5mm 2mm; font-size: 9.5pt; border-bottom: 1px solid var(--line-soft); }
+  table.totals td:last-child { text-align: right; white-space: nowrap; }
+  table.totals tr.grand td { background: var(--ink); color: #fff; font-weight: 700; font-size: 11pt; border: 0; padding: 2.4mm 2mm; }
+  table.totals tr.sub td { color: var(--muted); font-size: 8.5pt; }
+  table.totals caption { caption-side: top; text-align: left; font: 700 8pt/1 var(--font); letter-spacing: .05em; text-transform: uppercase; padding: 0 2mm 2mm; color: var(--ink-2); }
 
-  /* Payment */
-  .pay { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; break-inside: avoid; }
-  .pay p { margin: 0 0 3mm; font-size: 9.5pt; color: var(--ink-2); }
-  ol.schedule { list-style: none; margin: 0; padding: 0; }
-  ol.schedule li { display: grid; grid-template-columns: 7mm 1fr auto; align-items: center; gap: 2mm; padding: 2mm 0; border-bottom: 1px solid var(--line); font-size: 9.5pt; }
-  ol.schedule .dot { width: 5.5mm; height: 5.5mm; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 600 7.5pt/5.5mm var(--sans); text-align: center; }
-  ol.schedule .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
-  .bank { margin-top: 0; padding: 3.5mm 4mm; background: var(--soft); border-radius: 2px; font-size: 8.5pt; }
-  .bank div { display: flex; gap: 3mm; padding: .6mm 0; }
-  .bank span { width: 22mm; flex: none; color: var(--muted); font-size: 7.5pt; letter-spacing: .08em; text-transform: uppercase; padding-top: .3mm; }
+  /* Conditions */
+  h2 { font: 700 9pt/1 var(--font); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 2.5mm; padding-bottom: 1.5mm; border-bottom: 1px solid var(--ink); break-after: avoid; }
+  table.cond { margin-bottom: 7mm; }
+  table.cond tr { break-inside: avoid; }
+  table.cond th { width: 34mm; text-align: left; vertical-align: top; font-weight: 600; color: var(--ink-2); padding: 2mm 2mm 2mm 0; font-size: 9pt; border-bottom: 1px solid var(--line-soft); }
+  table.cond td { padding: 2mm 0; font-size: 9.5pt; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  table.cond td.pre { white-space: pre-line; }
+  table.sched { width: auto; min-width: 95mm; margin: .5mm 0 1mm; }
+  table.sched td { border: 0; padding: .6mm 8mm .6mm 0; font-size: 9.5pt; }
+  table.sched td:last-child { text-align: right; padding-right: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .note { font-size: 8pt; color: var(--muted); }
 
-  /* Notes & signature */
-  .notes p { margin: 0 0 2mm; font-size: 9.5pt; color: var(--ink-2); white-space: pre-line; }
-  .sign { break-inside: avoid; border-top: 1px solid var(--ink); padding-top: 5mm; margin-top: 2mm; }
-  .sign > p { font-size: 9pt; color: var(--ink-2); margin: 0 0 4mm; max-width: 140mm; }
-  .sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; }
-  .sign-grid .who { font-size: 8pt; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
-  .sign-grid .line { border-bottom: 1px solid var(--ink); height: 12mm; }
-  .sign-grid .cap { display: flex; justify-content: space-between; font-size: 8pt; color: var(--muted); margin-top: 1.5mm; }
+  /* Acceptance */
+  .accept { break-inside: avoid; }
+  .accept p { font-size: 9pt; color: var(--ink-2); margin: 0 0 8mm; }
+  .signs { display: grid; grid-template-columns: 1fr 1fr; gap: 16mm; }
+  .signs .who { font-size: 8.5pt; color: var(--muted); }
+  .signs .line { border-bottom: 1px solid var(--ink); height: 13mm; }
+  .signs .cap { font-size: 8pt; color: var(--muted); margin-top: 1.2mm; }
 
-  .colophon { margin-top: 10mm; font-size: 7.5pt; color: var(--muted); display: flex; justify-content: space-between; }
+  .colophon { margin-top: 10mm; padding-top: 2mm; border-top: 1px solid var(--line-soft); font-size: 7.5pt; color: var(--muted); display: flex; justify-content: space-between; }
 
   /* Toolbar (screen only) */
-  .toolbar { position: fixed; inset: 0 0 auto 0; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(10,10,10,.94); color: #fff; font: 500 13px/1 var(--sans); z-index: 10; }
-  .toolbar .t { color: #c9ccd3; }
+  .toolbar { position: fixed; inset: 0 0 auto 0; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #111827; color: #fff; font: 600 13px/1 var(--font); z-index: 10; }
+  .toolbar .t { color: #d1d5db; font-weight: 400; }
   .toolbar .t strong { color: #fff; font-weight: 600; }
   .toolbar .actions { display: flex; gap: 8px; }
-  .toolbar button { font: 500 13px/1 var(--sans); color: #fff; background: transparent; border: 1px solid #3a3d44; border-radius: 6px; padding: 9px 14px; cursor: pointer; }
-  .toolbar button:hover { border-color: #6b7280; }
+  .toolbar button { font: 600 13px/1 var(--font); color: #fff; background: transparent; border: 1px solid #4b5563; border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+  .toolbar button:hover { border-color: #9ca3af; }
   .toolbar button.primary { background: var(--accent); border-color: var(--accent); }
-  .toolbar button.primary:hover { background: #0029cc; }
-  .hint { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; font: 500 12px var(--sans); padding: 7px 12px; border-radius: 6px; display: none; z-index: 10; }
+  .hint { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; font: 600 12px var(--font); padding: 7px 12px; border-radius: 6px; display: none; z-index: 10; }
   body.editing .hint { display: block; }
 
   @page {
     size: A4;
-    margin: 15mm 17mm 16mm;
-    @bottom-left { content: "${cssString(companyLine)}"; font: 7pt Inter, Arial, sans-serif; color: #6b7280; }
-    @bottom-right { content: "${cssString(quote.number)} · pag. " counter(page) " di " counter(pages); font: 7pt Inter, Arial, sans-serif; color: #6b7280; }
+    margin: 13mm 15mm 15mm;
+    @bottom-left { content: "${cssString(companyLine)}"; font: 7pt Arial, sans-serif; color: #6b7280; }
+    @bottom-right { content: "Preventivo ${cssString(quote.number)} – pag. " counter(page) " di " counter(pages); font: 7pt Arial, sans-serif; color: #6b7280; }
   }
   @media print {
     body { background: #fff; }
     .toolbar, .hint { display: none !important; }
     .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; outline: none !important; }
     .colophon { display: none; }
+    table.items thead { display: table-header-group; }
   }
 </style>
 </head>
 <body>
 <div class="toolbar">
-  <div class="t"><strong>${esc(quote.number)}</strong> &nbsp;·&nbsp; ${esc(clientName)}</div>
+  <div class="t"><strong>Preventivo ${esc(quote.number)}</strong> &nbsp;·&nbsp; ${esc(clientName)}</div>
   <div class="actions">
     <button type="button" id="edit-btn" onclick="toggleEdit()">Modifica testo</button>
     <button type="button" class="primary" onclick="window.print()">Scarica PDF</button>
@@ -431,83 +359,67 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 <div class="hint">Modalità modifica: clicca su qualsiasi testo per correggerlo, poi «Scarica PDF». Le modifiche non vengono salvate nel CRM.</div>
 
 <main class="sheet">
-  <header class="top">
+  <header class="head">
     <div class="brand">${MARK_SVG}<span>Sarcon<b>X</b></span></div>
-    <div class="doc-id">Proposta commerciale<br><strong>${esc(quote.number)}</strong>${issued ? ` · ${esc(issued)}` : ""}</div>
+    <div class="issuer">
+      <strong>${esc(companyName)}</strong><br>
+      ${company.address ? `${esc(company.address)}<br>` : ""}
+      ${company.vatNumber ? `P.IVA ${esc(company.vatNumber)}<br>` : ""}
+      ${[company.phone, company.email].filter(Boolean).map((v) => esc(v)).join(" · ")}
+    </div>
   </header>
 
-  <section class="hero">
-    <div class="kicker">Proposta per ${esc(clientName)}</div>
-    <h1>${esc(quote.title)}</h1>
-    <p class="lede">${firstName ? `Gentile ${esc(firstName)}, d` : "D"}i seguito trova la nostra proposta: cosa realizziamo, cosa comprende ogni voce e come si articolano investimento e pagamenti.</p>
-  </section>
+  <div class="title-row">
+    <div class="doc-title">Preventivo</div>
+  </div>
 
   <section class="parties">
-    <div>
-      <div class="lab">Destinatario</div>
+    <div class="box">
+      <div class="lab">Spett.le</div>
       <p class="name">${esc(clientName)}</p>
       ${attention ? `<p>Alla c.a. di ${esc(attention)}</p>` : ""}
       ${contact?.address ? `<p>${esc(contact.address)}</p>` : ""}
       ${contact?.vatNumber ? `<p>P.IVA ${esc(contact.vatNumber)}</p>` : ""}
-      ${contact?.email ? `<p>${esc(contact.email)}</p>` : ""}
-      ${contact?.phone ? `<p>${esc(contact.phone)}</p>` : ""}
+      ${[contact?.email, contact?.phone].filter(Boolean).map((v) => `<p>${esc(v)}</p>`).join("")}
     </div>
-    <div>
-      <div class="lab">Proposta di</div>
-      <p class="name">${esc(companyName)}</p>
-      ${company.address ? `<p>${esc(company.address)}</p>` : ""}
-      ${company.vatNumber ? `<p>P.IVA ${esc(company.vatNumber)}</p>` : ""}
-      ${company.email ? `<p>${esc(company.email)}</p>` : ""}
-      ${company.phone ? `<p>${esc(company.phone)}</p>` : ""}
-    </div>
-    <div>
-      <div class="lab">Validità</div>
-      ${issued ? `<p>Emessa il ${esc(issued)}</p>` : ""}
-      <p>${validUntil ? `Valida fino al <strong>${esc(validUntil)}</strong>` : "Valida 30 giorni dall'emissione"}</p>
+    <div class="box">
+      <div class="lab">Dati documento</div>
+      <table class="meta">
+        <tr><td>Numero</td><td>${esc(quote.number)}</td></tr>
+        ${issued ? `<tr><td>Data</td><td>${esc(issued)}</td></tr>` : ""}
+        <tr><td>Valido fino al</td><td>${validUntil ? esc(validUntil) : "30 gg dalla data"}</td></tr>
+      </table>
     </div>
   </section>
 
-  ${ordered.length ? summary : ""}
+  <p class="subject">Oggetto: <strong>${esc(quote.title)}</strong></p>
+  <p class="intro">Con la presente sottoponiamo alla Vostra attenzione la nostra offerta per quanto in oggetto, alle condizioni di seguito riportate.</p>
 
-  <section class="block">
-    ${sec("Cosa comprende la proposta")}
-    ${itemRows || `<p class="footnote">Nessuna voce inserita.</p>`}
-  </section>
+  <table class="items">
+    <thead><tr>
+      <th class="c-n">#</th><th>Descrizione</th><th class="c-num c-qty">Q.tà</th><th class="c-num">Prezzo unit.</th>${anyDiscount ? `<th class="c-num">Sconto</th>` : ""}<th class="c-num">Importo</th>
+    </tr></thead>
+    <tbody>${rows || `<tr><td colspan="6" class="note">Nessuna voce inserita.</td></tr>`}</tbody>
+  </table>
 
-  <section class="block">
-    ${sec("Investimento")}
-    <div class="inv">
-      <p class="inv-copy">Prezzi in euro, IVA ${vatRate}% esclusa salvo dove indicato.${hasRecurring ? " Le voci una tantum si pagano secondo le modalità indicate sotto; i canoni ricorrenti si fatturano alla loro scadenza." : ""}</p>
-      <div>
-        <table class="money">${investmentRows || `<tr><td>Totale</td><td>${eur(0)}</td></tr>`}</table>
-        ${firstYearNote}
-      </div>
+  <div class="totals-wrap">
+    ${recurring.length ? `<table class="totals"><caption>Canoni ricorrenti</caption>${recurring.join("")}</table>` : ""}
+    ${totals.length ? `<table class="totals"><caption>${recurring.length ? "Una tantum" : "Riepilogo"}</caption>${totals.join("")}</table>` : ""}
+  </div>
+
+  <h2>Condizioni</h2>
+  <table class="cond">${conditionRows}</table>
+
+  <section class="accept">
+    <h2>Accettazione</h2>
+    <p>Per accettazione della presente offerta, restituire copia firmata anche via email.</p>
+    <div class="signs">
+      <div><div class="who">${esc(companyName)}</div><div class="line"></div><div class="cap">Firma</div></div>
+      <div><div class="who">Il Cliente – ${esc(clientName)}</div><div class="line"></div><div class="cap">Timbro, firma e data</div></div>
     </div>
   </section>
 
-  <section class="block">
-    ${sec("Modalità di pagamento")}
-    <div class="pay">
-      <div>
-        <p>${esc(paymentText)}</p>
-        ${extraText}
-        ${scheduleRows ? bankBox : ""}
-      </div>
-      <div>${scheduleRows || bankBox}</div>
-    </div>
-  </section>
-
-  ${quote.notes ? `<section class="block notes">${sec("Note")}<p>${esc(quote.notes)}</p></section>` : ""}
-
-  <section class="sign">
-    <p>Per accettare la proposta è sufficiente restituire questo documento firmato, anche via email.</p>
-    <div class="sign-grid">
-      <div><div class="who">Per ${esc(companyName)}</div><div class="line"></div><div class="cap"><span>Firma</span><span>Data</span></div></div>
-      <div><div class="who">Per accettazione · ${esc(clientName)}</div><div class="line"></div><div class="cap"><span>Timbro e firma</span><span>Data</span></div></div>
-    </div>
-  </section>
-
-  <footer class="colophon"><span>${esc(companyLine)}</span><span>${esc(quote.number)}</span></footer>
+  <footer class="colophon"><span>${esc(companyLine)}</span><span>Preventivo ${esc(quote.number)}</span></footer>
 </main>
 
 <script>

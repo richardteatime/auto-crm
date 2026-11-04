@@ -420,7 +420,7 @@ export default function DealsPage() {
         <DialogContent showCloseButton={false} className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Eliminare la trattativa?</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}). Questa azione è irreversibile.
+            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}) con i suoi preventivi. Questa azione è irreversibile.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingDeal(null)}>Annulla</Button>
