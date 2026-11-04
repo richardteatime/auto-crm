@@ -15,6 +15,8 @@ export interface Quote {
   notes: string | null;
   /** JSON-serialised PaymentTerms (see lib/quote-payment), null = company default. */
   paymentTerms?: string | null;
+  /** JSON QuoteClauses (see lib/quote-clauses): clauses switched off + extra text. */
+  clauses?: string | null;
   status: "bozza" | "inviato" | "accettato" | "rifiutato";
   vatRate: number;
   validUntil: string | null;
@@ -110,6 +112,7 @@ export async function createQuote(data: {
   items?: string;
   notes?: string | null;
   paymentTerms?: string | null;
+  clauses?: string | null;
   vatRate?: number;
   validUntil?: Date | string | number | null;
 }): Promise<Quote> {
@@ -134,6 +137,10 @@ export async function createQuote(data: {
 
   if (data.paymentTerms) {
     payload.paymentTerms = data.paymentTerms;
+  }
+
+  if (data.clauses) {
+    payload.clauses = data.clauses;
   }
 
   const validUntilIso = toIsoDate(data.validUntil);
@@ -161,6 +168,7 @@ export async function updateQuote(
     items: string;
     notes: string | null;
     paymentTerms: string | null;
+    clauses: string | null;
     status: string;
     vatRate: number;
     validUntil: Date | string | number | null;

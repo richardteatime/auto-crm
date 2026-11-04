@@ -5,6 +5,7 @@ import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
 import { buildPaymentSchedule, describePaymentTerms, parsePaymentTerms } from "@/lib/quote-payment";
 import { parseDbItems, type DbQuoteItem } from "@/lib/quote-items";
+import { CLAUSES_DRAFT, buildClauseSections, parseQuoteClauses } from "@/lib/quote-clauses";
 import fs from "fs";
 import path from "path";
 
@@ -222,6 +223,36 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .filter(Boolean)
     .join("");
 
+  // --- Specific + general clauses -------------------------------------------
+  const selection = parseQuoteClauses(quote.clauses);
+  const sections = buildClauseSections(ordered, quote.title, selection);
+  const extraLines = selection.extra
+    .split("\n")
+    .map((l) => l.trim().replace(/^[-*•·]\s+/, ""))
+    .filter(Boolean);
+  let clauseNo = 0;
+  const clauseHtml = [
+    ...sections.map(
+      (sct) => `
+      <div class="cl-group">
+        <h3>${esc(sct.title)}</h3>
+        ${sct.clauses
+          .map(
+            (c) =>
+              `<p class="cl"><span class="cl-n">${++clauseNo}.</span><span><strong>${esc(c.title)}.</strong> ${c.parts
+                .map((pt) => (pt.param && CLAUSES_DRAFT ? `<mark>${esc(pt.text)}</mark>` : esc(pt.text)))
+                .join("")}</span></p>`,
+          )
+          .join("")}
+      </div>`,
+    ),
+    extraLines.length
+      ? `<div class="cl-group"><h3>Condizioni particolari</h3>${extraLines
+          .map((l) => `<p class="cl"><span class="cl-n">${++clauseNo}.</span><span>${esc(l)}</span></p>`)
+          .join("")}</div>`
+      : "",
+  ].join("");
+
   const companyLine = [companyName, company.address, company.vatNumber ? `P.IVA ${company.vatNumber}` : ""]
     .filter(Boolean)
     .join(" – ");
@@ -312,6 +343,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   table.sched td:last-child { text-align: right; padding-right: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
   .note { font-size: 8pt; color: var(--muted); }
 
+  /* Clauses */
+  .clauses { margin-bottom: 7mm; }
+  .cl-group { margin-bottom: 3.5mm; }
+  .cl-group h3 { font: 700 9pt/1.3 var(--font); margin: 0 0 1.5mm; color: var(--ink); break-after: avoid; }
+  p.cl { display: grid; grid-template-columns: 6mm 1fr; margin: 0 0 1.4mm; font-size: 8.8pt; line-height: 1.45; color: var(--ink-2); break-inside: avoid; }
+  p.cl strong { color: var(--ink); font-weight: 600; }
+  .cl-n { color: var(--muted); font-variant-numeric: tabular-nums; }
+  mark { background: #fef08a; color: inherit; padding: 0 2px; border-radius: 2px; }
+
   /* Acceptance */
   .accept { break-inside: avoid; }
   .accept p { font-size: 9pt; color: var(--ink-2); margin: 0 0 8mm; }
@@ -350,7 +390,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 </head>
 <body>
 <div class="toolbar">
-  <div class="t"><strong>Preventivo ${esc(quote.number)}</strong> &nbsp;·&nbsp; ${esc(clientName)}</div>
+  <div class="t"><strong>Preventivo ${esc(quote.number)}</strong> &nbsp;·&nbsp; ${esc(clientName)}${CLAUSES_DRAFT ? ` &nbsp;·&nbsp; <span style="color:#fde047">Condizioni in bozza: i valori evidenziati sono da confermare</span>` : ""}</div>
   <div class="actions">
     <button type="button" id="edit-btn" onclick="toggleEdit()">Modifica testo</button>
     <button type="button" class="primary" onclick="window.print()">Scarica PDF</button>
@@ -407,12 +447,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ${totals.length ? `<table class="totals"><caption>${recurring.length ? "Una tantum" : "Riepilogo"}</caption>${totals.join("")}</table>` : ""}
   </div>
 
-  <h2>Condizioni</h2>
+  <h2>Condizioni economiche</h2>
   <table class="cond">${conditionRows}</table>
+
+  ${clauseHtml ? `<section class="clauses"><h2>Condizioni di fornitura</h2>${clauseHtml}</section>` : ""}
 
   <section class="accept">
     <h2>Accettazione</h2>
-    <p>Per accettazione della presente offerta, restituire copia firmata anche via email.</p>
+    <p>Per accettazione della presente offerta e delle condizioni sopra riportate, restituire copia firmata anche via email.</p>
     <div class="signs">
       <div><div class="who">${esc(companyName)}</div><div class="line"></div><div class="cap">Firma</div></div>
       <div><div class="who">Il Cliente – ${esc(clientName)}</div><div class="line"></div><div class="cap">Timbro, firma e data</div></div>

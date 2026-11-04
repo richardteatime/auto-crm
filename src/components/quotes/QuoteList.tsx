@@ -23,6 +23,7 @@ import { formatCurrency, formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 import { parseItemsForForm } from "@/lib/quote-items";
 import { parsePaymentTerms } from "@/lib/quote-payment";
+import { parseQuoteClauses } from "@/lib/quote-clauses";
 import { QuoteForm, type QuoteInitialData } from "./QuoteForm";
 
 interface DbQuoteItem {
@@ -42,6 +43,7 @@ interface QuoteRow {
   items: string;
   notes: string | null;
   paymentTerms?: string | null;
+  clauses?: string | null;
   status: string;
   vatRate: number;
   validUntil: number | Date | null;
@@ -114,6 +116,7 @@ export function QuoteList({ dealId }: QuoteListProps) {
       items: parseItemsForForm(q.items),
       notes: q.notes,
       paymentTerms: parsePaymentTerms(q.paymentTerms),
+      clauses: parseQuoteClauses(q.clauses),
       status: q.status,
       vatRate: q.vatRate,
       validUntil: toDateInputValue(q.validUntil),

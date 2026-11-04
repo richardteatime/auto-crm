@@ -3,6 +3,7 @@ import { getDeal } from "@/lib/db/deals";
 import { listQuotes, createQuote } from "@/lib/db/quotes";
 import { requireAuth } from "@/lib/auth";
 import { parsePaymentTerms, serializePaymentTerms } from "@/lib/quote-payment";
+import { serializeQuoteClauses } from "@/lib/quote-clauses";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +40,12 @@ export async function POST(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  const { title, items, notes, paymentTerms, status, vatRate, validUntil } = body as {
+  const { title, items, notes, paymentTerms, clauses, status, vatRate, validUntil } = body as {
     title?: string;
     items?: unknown[];
     notes?: string;
     paymentTerms?: unknown;
+    clauses?: unknown;
     status?: string;
     vatRate?: number;
     validUntil?: string | null;
@@ -60,6 +62,7 @@ export async function POST(
       items: items ? JSON.stringify(items) : "[]",
       notes: typeof notes === "string" ? notes.trim() : undefined,
       paymentTerms: serializePaymentTerms(parsePaymentTerms(paymentTerms)),
+      clauses: serializeQuoteClauses(clauses),
       vatRate: typeof vatRate === "number" ? vatRate : 22,
       validUntil: typeof validUntil === "string" && validUntil ? new Date(validUntil) : undefined,
     });

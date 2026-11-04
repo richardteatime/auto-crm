@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
         items: q.items,
         notes: q.notes,
         paymentTerms: q.paymentTerms ?? null,
+        clauses: q.clauses ?? null,
         status: q.status,
         vatRate: q.vatRate,
         validUntil: q.validUntil,

@@ -21,6 +21,8 @@ import {
 import { Trash2, Plus, RefreshCw, Minus, Sparkles, Loader2, History } from "lucide-react";
 import { toast } from "sonner";
 import type { FormQuoteItem } from "@/lib/quote-items";
+import { EMPTY_CLAUSES, type QuoteClauses } from "@/lib/quote-clauses";
+import { QuoteClausesEditor } from "./QuoteClausesEditor";
 import {
   PAYMENT_METHODS,
   INSTALLMENT_OPTIONS,
@@ -40,6 +42,7 @@ export interface QuoteInitialData {
   items: QuoteItem[];
   notes: string | null;
   paymentTerms?: PaymentTerms | null;
+  clauses?: QuoteClauses | null;
   status: string;
   vatRate: number;
   validUntil: string;
@@ -77,6 +80,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   const [vatRate, setVatRate] = useState(22);
   const [items, setItems] = useState<QuoteItem[]>([newItem()]);
   const [paymentTerms, setPaymentTerms] = useState<PaymentTerms>(DEFAULT_PAYMENT_TERMS);
+  const [clauses, setClauses] = useState<QuoteClauses>(EMPTY_CLAUSES);
   const [submitting, setSubmitting] = useState(false);
   const [generating, setGenerating] = useState<Record<string, boolean>>({});
   // Service name for which each row last received an automatic description,
@@ -97,6 +101,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       setNotes(initialData.notes ?? "");
       setVatRate(initialData.vatRate);
       setPaymentTerms(initialData.paymentTerms ?? DEFAULT_PAYMENT_TERMS);
+      setClauses(initialData.clauses ?? EMPTY_CLAUSES);
       const loaded = initialData.items.length > 0 ? initialData.items : [newItem()];
       setItems(loaded.map((i) => ({ ...i, details: i.details ?? "" })));
     } else {
@@ -106,6 +111,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       setNotes("");
       setVatRate(22);
       setPaymentTerms(DEFAULT_PAYMENT_TERMS);
+      setClauses(EMPTY_CLAUSES);
       setItems([newItem()]);
     }
   }, [open, initialData]);
@@ -254,6 +260,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
         })),
         notes: notes.trim() || null,
         paymentTerms,
+        clauses,
         status,
         vatRate,
         validUntil: validUntil || null,
@@ -717,6 +724,8 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
               </div>
             )}
           </div>
+
+          <QuoteClausesEditor title={title} lines={items} value={clauses} onChange={setClauses} />
 
           <div className="space-y-2">
             <Label htmlFor="q-notes">Note</Label>
