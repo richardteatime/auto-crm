@@ -5,7 +5,7 @@ import { getDeal } from "@/lib/db/deals";
 import { getContact } from "@/lib/db/contacts";
 import { buildPaymentSchedule, describePaymentTerms, parsePaymentTerms } from "@/lib/quote-payment";
 import { parseDbItems, type DbQuoteItem } from "@/lib/quote-items";
-import { CLAUSES_DRAFT, buildClauseSections, parseQuoteClauses } from "@/lib/quote-clauses";
+import { buildClauseSections, parseQuoteClauses } from "@/lib/quote-clauses";
 import fs from "fs";
 import path from "path";
 
@@ -239,9 +239,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         ${sct.clauses
           .map(
             (c) =>
-              `<p class="cl"><span class="cl-n">${++clauseNo}.</span><span><strong>${esc(c.title)}.</strong> ${c.parts
-                .map((pt) => (pt.param && CLAUSES_DRAFT ? `<mark>${esc(pt.text)}</mark>` : esc(pt.text)))
-                .join("")}</span></p>`,
+              `<p class="cl"><span class="cl-n">${++clauseNo}.</span><span><strong>${esc(c.title)}.</strong> ${esc(
+                c.parts.map((pt) => pt.text).join(""),
+              )}</span></p>`,
           )
           .join("")}
       </div>`,
@@ -350,7 +350,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   p.cl { display: grid; grid-template-columns: 6mm 1fr; margin: 0 0 1.4mm; font-size: 8.8pt; line-height: 1.45; color: var(--ink-2); break-inside: avoid; }
   p.cl strong { color: var(--ink); font-weight: 600; }
   .cl-n { color: var(--muted); font-variant-numeric: tabular-nums; }
-  mark { background: #fef08a; color: inherit; padding: 0 2px; border-radius: 2px; }
 
   /* Acceptance */
   .accept { break-inside: avoid; }
@@ -390,7 +389,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 </head>
 <body>
 <div class="toolbar">
-  <div class="t"><strong>Preventivo ${esc(quote.number)}</strong> &nbsp;·&nbsp; ${esc(clientName)}${CLAUSES_DRAFT ? ` &nbsp;·&nbsp; <span style="color:#fde047">Condizioni in bozza: i valori evidenziati sono da confermare</span>` : ""}</div>
+  <div class="t"><strong>Preventivo ${esc(quote.number)}</strong> &nbsp;·&nbsp; ${esc(clientName)}</div>
   <div class="actions">
     <button type="button" id="edit-btn" onclick="toggleEdit()">Modifica testo</button>
     <button type="button" class="primary" onclick="window.print()">Scarica PDF</button>
