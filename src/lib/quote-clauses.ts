@@ -150,7 +150,7 @@ export const SERVICE_GROUPS: ClauseGroup[] = [
       {
         id: "sito-legali",
         title: "Privacy e cookie",
-        text: "I testi legali (privacy policy, cookie policy) e la gestione del consenso sono a cura del Cliente o di un servizio dedicato, salvo diversa indicazione nel preventivo.",
+        text: "SarconX predispone privacy policy, cookie policy e banner per la gestione del consenso ai cookie, sulla base delle informazioni sul trattamento dei dati fornite dal Cliente, che ne resta titolare.",
       },
       {
         id: "sito-compatibilita",
