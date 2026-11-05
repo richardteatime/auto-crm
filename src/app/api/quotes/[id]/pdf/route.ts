@@ -163,7 +163,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const rows = ordered
     .map((item, idx) => {
       const billing = billingOf(item);
+      // Periodicity on its own small line, so amounts stay aligned on the right.
       const suffix = BILLING_SUFFIX[billing] ?? "";
+      const per = suffix ? `<span class="per">${suffix === "/mese" ? "al mese" : "all'anno"}</span>` : "";
       const qty = num(item.quantity);
       const discount = num(item.discount);
       const tag = BILLING_LABEL[billing];
@@ -175,35 +177,32 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           ${renderDetails(item.details)}
         </td>
         <td class="c-num c-qty">${qty}</td>
-        <td class="c-num">${eur(num(item.unitPrice))}${suffix}</td>
+        <td class="c-num">${eur(num(item.unitPrice))}${per}</td>
         ${anyDiscount ? `<td class="c-num">${discount > 0 ? `${discount}%` : "—"}</td>` : ""}
-        <td class="c-num c-tot">${eur(lineTotal(item))}${suffix}</td>
+        <td class="c-num c-tot">${eur(lineTotal(item))}${per}</td>
       </tr>`;
     })
     .join("");
 
   // --- Totals ---------------------------------------------------------------
-  const totals: string[] = [];
-  if (oneOffSub > 0) {
-    totals.push(
-      `<tr><td>Imponibile</td><td>${eur(oneOffSub)}</td></tr>`,
-      `<tr><td>IVA ${vatRate}%</td><td>${eur(vatOf(oneOffSub))}</td></tr>`,
-      `<tr class="grand"><td>Totale</td><td>${eur(oneOffTotal)}</td></tr>`,
-    );
-  }
-  const recurring: string[] = [];
-  if (monthlySub > 0) {
-    recurring.push(
-      `<tr><td>Canone mensile</td><td>${eur(monthlySub)}</td></tr>`,
-      `<tr class="sub"><td>IVA ${vatRate}% inclusa</td><td>${eur(monthlySub + vatOf(monthlySub))}</td></tr>`,
-    );
-  }
-  if (annualSub > 0) {
-    recurring.push(
-      `<tr><td>Canone annuale</td><td>${eur(annualSub)}</td></tr>`,
-      `<tr class="sub"><td>IVA ${vatRate}% inclusa</td><td>${eur(annualSub + vatOf(annualSub))}</td></tr>`,
-    );
-  }
+  // One table, one row per billing type, same columns: the one-off total and
+  // the recurring fees line up and are never summed together.
+  const totalRows = [
+    oneOffSub > 0 && { label: "Una tantum", net: oneOffSub },
+    monthlySub > 0 && { label: "Canone mensile", net: monthlySub },
+    annualSub > 0 && { label: "Canone annuale", net: annualSub },
+  ].filter(Boolean) as { label: string; net: number }[];
+  const totalsTable = totalRows.length
+    ? `<table class="totals">
+        <thead><tr><th></th><th>Imponibile</th><th>IVA ${vatRate}%</th><th>Totale</th></tr></thead>
+        <tbody>${totalRows
+          .map(
+            (r) =>
+              `<tr><td class="t-lab">${r.label}</td><td>${eur(r.net)}</td><td>${eur(vatOf(r.net))}</td><td class="t-tot">${eur(r.net + vatOf(r.net))}</td></tr>`,
+          )
+          .join("")}</tbody>
+      </table>`
+    : "";
 
   // --- Conditions -----------------------------------------------------------
   const conditionRows = [
@@ -323,13 +322,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   .details li { margin: 0 0 .5mm; }
 
   /* Totals */
-  .totals-wrap { display: flex; justify-content: flex-end; gap: 6mm; margin: 5mm 0 7mm; break-inside: avoid; }
-  table.totals { width: 72mm; font-variant-numeric: tabular-nums; }
-  table.totals td { padding: 1.5mm 2mm; font-size: 9.5pt; border-bottom: 1px solid var(--line-soft); }
-  table.totals td:last-child { text-align: right; white-space: nowrap; }
-  table.totals tr.grand td { background: var(--ink); color: #fff; font-weight: 700; font-size: 11pt; border: 0; padding: 2.4mm 2mm; }
-  table.totals tr.sub td { color: var(--muted); font-size: 8.5pt; }
-  table.totals caption { caption-side: top; text-align: left; font: 700 8pt/1 var(--font); letter-spacing: .05em; text-transform: uppercase; padding: 0 2mm 2mm; color: var(--ink-2); }
+  .totals-wrap { display: flex; justify-content: flex-end; margin: 5mm 0 7mm; break-inside: avoid; }
+  table.totals { width: 128mm; font-variant-numeric: tabular-nums; }
+  table.totals th { font: 700 8pt/1.2 var(--font); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); text-align: right; padding: 0 2mm 2mm; border-bottom: 1px solid var(--ink); }
+  table.totals td { padding: 2.2mm 2mm; font-size: 9.5pt; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line-soft); }
+  table.totals td.t-lab { text-align: left; font-weight: 600; color: var(--ink); }
+  table.totals th:first-child { width: 32mm; }
+  table.totals th:not(:first-child), table.totals td:not(.t-lab) { width: 32mm; }
+  table.totals td.t-tot { font-weight: 700; color: var(--ink); background: var(--head); }
+  td .per { display: block; font-size: 7.5pt; font-weight: 400; color: var(--muted); }
 
   /* Conditions */
   h2 { font: 700 9pt/1 var(--font); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 2.5mm; padding-bottom: 1.5mm; border-bottom: 1px solid var(--ink); break-after: avoid; }
@@ -442,8 +443,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   </table>
 
   <div class="totals-wrap">
-    ${recurring.length ? `<table class="totals"><caption>Canoni ricorrenti</caption>${recurring.join("")}</table>` : ""}
-    ${totals.length ? `<table class="totals"><caption>${recurring.length ? "Una tantum" : "Riepilogo"}</caption>${totals.join("")}</table>` : ""}
+    ${totalsTable}
   </div>
 
   <h2>Condizioni economiche</h2>
