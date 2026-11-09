@@ -13,6 +13,9 @@ const FINANCE_USER_IDS = [
 ];
 
 export function isFinanceUser(userId: string): boolean {
+  // Separate CRM instance: its own finance belongs to everyone allowed in
+  // (the access label is checked at finance login and on every request by the proxy)
+  if (process.env.CRM_ACCESS_LABEL) return true;
   return FINANCE_USER_IDS.includes(userId);
 }
 

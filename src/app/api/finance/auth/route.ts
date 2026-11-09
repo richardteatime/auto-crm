@@ -19,7 +19,13 @@ export async function POST(request: NextRequest) {
 
     const { userId } = await createSession(email, password);
 
-    if (!isFinanceUser(userId)) {
+    let allowed = isFinanceUser(userId);
+    if (allowed && process.env.CRM_ACCESS_LABEL) {
+      const { users } = await import("@/lib/appwrite");
+      const { canEnterCrm } = await import("@/lib/roles");
+      allowed = canEnterCrm((await users.get(userId)).labels);
+    }
+    if (!allowed) {
       return NextResponse.json(
         { error: "Accesso non autorizzato" },
         { status: 403 }
