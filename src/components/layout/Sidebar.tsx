@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { BrandMark } from "./BrandMark";
 import { UserMenu } from "./UserMenu";
 import { navSectionsFor, SETTINGS_ITEM, isActivePath, type NavItem } from "./nav-config";
-import { useRole } from "@/components/shared/CurrentUserContext";
+import { useRole, useCurrentUser } from "@/components/shared/CurrentUserContext";
 import { toggleSidebar } from "./sidebar-state";
 
 export function Sidebar() {
@@ -19,6 +19,7 @@ export function Sidebar() {
   const { counts } = useNotifications();
   const openPalette = useCommandPalette();
   const sections = navSectionsFor(useRole());
+  const crmName = useCurrentUser()?.crm;
 
   // "[" collapses / expands, like most pro tools
   useEffect(() => {
@@ -44,7 +45,7 @@ export function Sidebar() {
               Sarcon<span className="text-primary">X</span>
             </span>
             <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {process.env.NEXT_PUBLIC_CRM_INSTANCE_NAME || "CRM"}
+              {crmName || "CRM"}
             </span>
           </span>
         </Link>

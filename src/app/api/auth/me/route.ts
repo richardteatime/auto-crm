@@ -6,5 +6,6 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
   }
-  return NextResponse.json(user);
+  const { CRM_INSTANCE_NAME } = await import("@/lib/instance");
+  return NextResponse.json({ ...user, crm: CRM_INSTANCE_NAME || undefined });
 }

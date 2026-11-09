@@ -47,7 +47,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const u = await getServerUser();
-  const initialUser = u ? { id: u.id, name: u.name, email: u.email, role: u.role } : null;
+  const crm = process.env.CRM_INSTANCE_NAME || undefined;
+  const initialUser = u ? { id: u.id, name: u.name, email: u.email, role: u.role, crm } : null;
   return (
     <html
       lang="it"
