@@ -19,6 +19,16 @@ export async function POST(request: NextRequest) {
     const { users } = await import("@/lib/appwrite");
     const user = await users.get(userId);
 
+    // Separate CRM instance: only the people it belongs to may enter
+    const { canEnterCrm } = await import("@/lib/roles");
+    if (!canEnterCrm(user.labels)) {
+      await users.deleteSession(userId, sessionId).catch(() => undefined);
+      return NextResponse.json(
+        { success: false, error: "Questo account non ha accesso a questo CRM." },
+        { status: 403 }
+      );
+    }
+
     const response = NextResponse.json({
       success: true,
       user: { id: user.$id, email: user.email, name: user.name },

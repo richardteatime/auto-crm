@@ -43,7 +43,9 @@ export function Sidebar() {
             <span className="text-[15px] font-extrabold tracking-tight text-foreground">
               Sarcon<span className="text-primary">X</span>
             </span>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">CRM</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              {process.env.NEXT_PUBLIC_CRM_INSTANCE_NAME || "CRM"}
+            </span>
           </span>
         </Link>
         <button

@@ -102,6 +102,12 @@ export interface Lead {
   dealId: string | null;
   escalatedAt: string | null;
   remindedAt: string | null;
+  /** CRM instance where the lead was entered by hand (null = SarconX CRM / intake) */
+  crmInstance: string | null;
+  /** CRM instance holding the deal it was converted into (null = SarconX CRM) */
+  dealCrm: string | null;
+  /** Set when the deal lives in another CRM instance: its name, e.g. "CRM Matteo" */
+  dealElsewhere?: string | null;
   createdAt: string;
   updatedAt: string;
 }

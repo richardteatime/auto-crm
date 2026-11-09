@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const res = await users.list();
-    const list = res.users.map((u) => ({
+    const { canEnterCrm } = await import("@/lib/roles");
+    const list = res.users.filter((u) => canEnterCrm(u.labels)).map((u) => ({
       id: u.$id,
       name: u.name,
       email: u.email,

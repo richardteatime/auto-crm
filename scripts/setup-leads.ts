@@ -97,6 +97,8 @@ async function main() {
       ["str", "dealId", 64],
       ["dt", "escalatedAt"],
       ["dt", "remindedAt"],
+      ["str", "crmInstance", 32],
+      ["str", "dealCrm", 32],
     ],
     [
       ["leads_external_id", IndexType.Unique, ["externalId"]],

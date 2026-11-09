@@ -2,6 +2,7 @@ import { createLead, updateLead, addLeadEvent, findLeadsByPhone, type NewLead } 
 import { createContact, createDeal, getStages } from "@/lib/db";
 import { normalizePhone, type NormalizedLead } from "@/lib/leads/intake";
 import { notifyNewLead } from "@/lib/leads/notify";
+import { CRM_INSTANCE_ID, crmLabel } from "@/lib/instance";
 import {
   OUTCOME_CONFIG,
   LEAD_STATUS_CONFIG,
@@ -189,14 +190,19 @@ export async function convertLead(lead: Lead, actor: Actor, opts: { value?: numb
     notes: `Dal lead del ${new Date(lead.createdAt).toLocaleDateString("it-IT", { timeZone: "Europe/Rome" })}`,
   });
 
-  const updated = await updateLead(lead.id, { contactId, dealId: deal.id, value: value || lead.value });
+  const updated = await updateLead(lead.id, {
+    contactId,
+    dealId: deal.id,
+    value: value || lead.value,
+    ...(CRM_INSTANCE_ID ? { dealCrm: CRM_INSTANCE_ID } : {}),
+  });
   await addLeadEvent({
     leadId: lead.id,
     type: "converted",
     outcome: null,
     fromStatus: null,
     toStatus: null,
-    note: `Creata la trattativa «${deal.title}»`,
+    note: `Creata la trattativa «${deal.title}»${CRM_INSTANCE_ID ? ` nel ${crmLabel(CRM_INSTANCE_ID)}` : ""}`,
     actorId: actor.id,
     actorName: actor.name,
   });

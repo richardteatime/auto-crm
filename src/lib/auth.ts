@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
-import { roleFromLabels, type Role } from "@/lib/roles";
+import { roleFromLabels, canEnterCrm, type Role } from "@/lib/roles";
 
 const APPWRITE_ENDPOINT =
   process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
@@ -122,6 +122,7 @@ export async function getCurrentUser(
     if (!res.ok) return null;
     const data = await res.json();
     const labels: string[] = Array.isArray(data.labels) ? data.labels : [];
+    if (!canEnterCrm(labels)) return null;
     return {
       id: data.$id,
       email: data.email,

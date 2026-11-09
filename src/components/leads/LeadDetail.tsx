@@ -504,6 +504,16 @@ function ConvertCard({ lead, onDone }: { lead: Lead; onDone: (l: Lead) => void }
   const [busy, setBusy] = useState(false);
   const [valueEur, setValueEur] = useState(lead.value ? String(Math.round(lead.value / 100)) : "");
 
+  if (lead.dealId && lead.dealElsewhere) {
+    return (
+      <Card icon={Handshake} title="Nel CRM">
+        <p className="text-sm text-muted-foreground">
+          Già convertito in trattativa nel <span className="font-medium text-foreground">{lead.dealElsewhere}</span>.
+        </p>
+      </Card>
+    );
+  }
+
   if (lead.dealId) {
     return (
       <Card icon={Handshake} title="Nel CRM">

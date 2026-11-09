@@ -7,7 +7,18 @@ export const SALES_LABEL = "commerciale";
 export type Role = "admin" | "commerciale";
 
 export function roleFromLabels(labels: readonly string[] | null | undefined): Role {
+  // Separate CRM instance (server only): whoever is let in has full access there
+  if (typeof process !== "undefined" && process.env.CRM_ACCESS_LABEL) return "admin";
   return labels?.includes(SALES_LABEL) ? "commerciale" : "admin";
+}
+
+/**
+ * Separate CRM instance (CRM_ACCESS_LABEL set, server only): only users carrying
+ * that Appwrite label may enter. The SarconX CRM lets every account in.
+ */
+export function canEnterCrm(labels: readonly string[] | null | undefined): boolean {
+  const access = typeof process !== "undefined" ? (process.env.CRM_ACCESS_LABEL || "").trim() : "";
+  return !access || !!labels?.includes(access);
 }
 
 /** Everything a salesperson may open: the Lead section, own settings (password, notifications), auth */

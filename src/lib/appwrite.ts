@@ -5,6 +5,8 @@ const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
 const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
 
 export const DB_ID = process.env.APPWRITE_DATABASE_ID || "crm";
+/** Leads, lead events and push subscriptions: shared between CRM instances (see lib/instance.ts) */
+export const LEADS_DB_ID = process.env.LEADS_DATABASE_ID || DB_ID;
 
 export const COLLECTIONS = {
   contacts: "contacts",

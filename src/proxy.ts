@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { roleFromLabels, salesCanAccess, SALES_HOME, type Role } from "@/lib/roles";
+import { roleFromLabels, canEnterCrm, salesCanAccess, SALES_HOME, type Role } from "@/lib/roles";
 
 const SESSION_COOKIE = "appwrite-session";
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KEY || "";
@@ -80,6 +80,7 @@ async function roleOf(userId: string): Promise<Role | null> {
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { labels?: string[] };
+    if (!canEnterCrm(data.labels)) return null; // no access to this CRM instance
     const role = roleFromLabels(data.labels);
     roleCache.set(userId, { role, exp: Date.now() + ROLE_TTL_MS });
     return role;
@@ -128,7 +129,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // A salesperson only reaches the Lead section: everything else is refused server-side.
-  if (!salesCanAccess(pathname)) {
+  // In a separate CRM instance every page needs a user with access to it.
+  if (process.env.CRM_ACCESS_LABEL || !salesCanAccess(pathname)) {
     const role = await roleOf(valid.userId);
     if (role !== "admin") {
       if (pathname.startsWith("/api/")) {

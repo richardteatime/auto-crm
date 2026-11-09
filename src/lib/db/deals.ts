@@ -4,6 +4,7 @@ import { Query } from "@/lib/query17";
 import type { Deal, DealWithContact, PipelineStage } from "@/types";
 import { getContact } from "./contacts";
 import { getStage } from "./pipeline";
+import { unlinkLeadsFromDeal } from "./leads";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -255,7 +256,8 @@ export async function deleteDeal(id: string): Promise<void> {
   for (const q of await linked(COLLECTIONS.quotes)) {
     await databases.deleteDocument(DB_ID, COLLECTIONS.quotes, q.$id);
   }
-  for (const col of [COLLECTIONS.activities, COLLECTIONS.calendarEvents, COLLECTIONS.leads]) {
+  await unlinkLeadsFromDeal(id).catch(() => undefined);
+  for (const col of [COLLECTIONS.activities, COLLECTIONS.calendarEvents]) {
     for (const doc of await linked(col)) {
       await databases.updateDocument(DB_ID, col, doc.$id, { dealId: null }).catch(() => undefined);
     }

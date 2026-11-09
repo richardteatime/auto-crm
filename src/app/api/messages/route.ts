@@ -40,9 +40,10 @@ export async function POST(req: NextRequest) {
     // Create notifications for all other users
     try {
       const allUsers = await users.list();
+      const { canEnterCrm } = await import("@/lib/roles");
       await Promise.all(
         allUsers.users
-          .filter((u) => u.$id !== auth.user.id)
+          .filter((u) => u.$id !== auth.user.id && canEnterCrm(u.labels))
           .map((u) =>
             createNotification({
               userId: u.$id,
