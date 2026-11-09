@@ -72,6 +72,8 @@ async function main() {
     () => db.createIntegerAttribute(DB_ID, col, key, def !== undefined ? false : req, min, max, def);
   const bool = (col: string, key: string, req: boolean, def?: boolean) =>
     () => db.createBooleanAttribute(DB_ID, col, key, def !== undefined ? false : req, def);
+  const flt = (col: string, key: string, req: boolean, min?: number, max?: number) =>
+    () => db.createFloatAttribute(DB_ID, col, key, req, min, max);
   const dt = (col: string, key: string, req: boolean) =>
     () => db.createDatetimeAttribute(DB_ID, col, key, req);
   const enm = (col: string, key: string, elements: string[], req: boolean, def?: string) =>
@@ -116,6 +118,8 @@ async function main() {
   await addAttr("deals", str("deals", "stageName", 128, false));
   await addAttr("deals", str("deals", "stageColor", 7, false));
   await addAttr("deals", dt("deals", "expectedClose", false));
+  // Partner fee % (VAT excluded), only used where PARTNER_FEE_NAME is set (CRM Matteo); null = default
+  await addAttr("deals", flt("deals", "partnerFeePct", false, 0, 100));
   await addAttr("deals", int("deals", "probability", true, 0, 0, 100));
   await addAttr("deals", text("deals", "notes", false));
   await addAttr("deals", text("deals", "attachments", false));

@@ -4,6 +4,8 @@ import { listExpenses } from "@/lib/db/expenses";
 import { listRevenues } from "@/lib/db/revenues";
 import { getStages } from "@/lib/db/pipeline";
 import { requireAuth } from "@/lib/auth";
+import { partnerFeeConfig } from "@/lib/partner-fee";
+import { dealFeePct } from "@/lib/partner-fee-shared";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +52,9 @@ export async function GET(req: NextRequest) {
   ]);
 
   const wonStageIds = new Set(stages.filter((s) => s.isWon).map((s) => s.id));
+  const feeCfg = partnerFeeConfig();
+  // Partner fee on deal revenue in period (e.g. Matteo's %), VAT excluded like deal values
+  let partnerFee = 0;
 
   // One-time won revenue in period (won_at in [start, end])
   let oneTimeRevenue = 0;
@@ -68,6 +73,7 @@ export async function GET(req: NextRequest) {
       const wonMs = toMs(d.wonAt as Date | number | null) || toMs(d.updatedAt as Date | number | null);
       if (wonMs >= periodStart.getTime() && wonMs <= periodEnd.getTime()) {
         oneTimeRevenue += d.value;
+        partnerFee += (d.value * dealFeePct(d, feeCfg)) / 100;
       }
     } else if (d.billingType === "mensile") {
       const startMs =
@@ -85,7 +91,10 @@ export async function GET(req: NextRequest) {
 
       // Monthly revenue in period
       const overlap = clampMonths(dStart, recurMonths, periodStart, periodEnd);
-      if (overlap > 0) monthlyRevenue += d.value * overlap;
+      if (overlap > 0) {
+        monthlyRevenue += d.value * overlap;
+        partnerFee += (d.value * overlap * dealFeePct(d, feeCfg)) / 100;
+      }
     } else if (d.billingType === "annuale") {
       const startMs =
         toMs(d.recurringStartDate as Date | number | null) ||
@@ -104,9 +113,13 @@ export async function GET(req: NextRequest) {
 
       // Annual revenue in period (pro-rata mensile)
       const overlap = clampMonths(dStart, recurMonths, periodStart, periodEnd);
-      if (overlap > 0) annualRevenue += monthlyValue * overlap;
+      if (overlap > 0) {
+        annualRevenue += monthlyValue * overlap;
+        partnerFee += (monthlyValue * overlap * dealFeePct(d, feeCfg)) / 100;
+      }
     }
   }
+  partnerFee = Math.round(partnerFee);
 
   // External revenues
   for (const r of allRevenues) {
@@ -231,7 +244,10 @@ export async function GET(req: NextRequest) {
     totalRevenue,
     mrr,
     totalExpenses,
-    cashFlow: totalRevenue - totalExpenses,
+    cashFlow: totalRevenue - partnerFee - totalExpenses,
+    partnerFee: feeCfg.enabled ? partnerFee : undefined,
+    partnerFeeName: feeCfg.enabled ? feeCfg.name : undefined,
+    netRevenue: totalRevenue - partnerFee,
     expenseByCategory,
     monthly,
   });

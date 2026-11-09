@@ -35,7 +35,7 @@ import { RevenueForm } from "@/components/finance/RevenueForm";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, ArrowRight, Banknote } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw, Wallet, Search, X, Receipt, Rocket, User, ArrowRight, Banknote, HandCoins, PiggyBank } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import type { FinanceSummary, Expense, Revenue } from "@/types";
@@ -347,11 +347,36 @@ export function FinanceDashboard() {
         <KpiCard
           title="Cash Flow"
           value={loading ? "..." : formatCurrency(summary?.cashFlow ?? 0)}
-          sub="Fatturato - Spese"
+          sub={summary?.partnerFeeName ? `Fatturato - Fee ${summary.partnerFeeName} - Spese` : "Fatturato - Spese"}
           icon={Wallet}
           color={(summary?.cashFlow ?? 0) >= 0 ? "text-green-400" : "text-red-400"}
         />
       </div>
+
+      {/* Partner fee split (only where configured, e.g. CRM Matteo) */}
+      {summary?.partnerFeeName && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <KpiCard
+            title={`Fee ${summary.partnerFeeName}`}
+            value={loading ? "..." : formatCurrency(summary.partnerFee ?? 0)}
+            sub="Quota delle trattative incassate che va a lui (prezzi senza IVA)"
+            icon={HandCoins}
+            color="text-violet-400"
+            onClick={() => {
+              if (loading) return;
+              const { start, end } = getRange();
+              router.push(`/finance/fatturato?start=${start}&end=${end}`);
+            }}
+          />
+          <KpiCard
+            title="Netto nostro"
+            value={loading ? "..." : formatCurrency(summary.netRevenue ?? 0)}
+            sub={`Fatturato - Fee ${summary.partnerFeeName}`}
+            icon={PiggyBank}
+            color="text-emerald-400"
+          />
+        </div>
+      )}
 
       {/* Chart */}
       <Card>

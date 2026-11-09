@@ -47,6 +47,8 @@ export interface Deal {
   recurringStartDate?: Date | null;
   wonAt?: Date | null;
   isPaid?: boolean;
+  /** Partner fee % (VAT excluded) for this deal; null = instance default */
+  partnerFeePct?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +75,10 @@ export interface FinanceSummary {
   mrr: number;
   totalExpenses: number;
   cashFlow: number;
+  /** Only where a partner fee is configured (CRM Matteo) */
+  partnerFee?: number;
+  partnerFeeName?: string;
+  netRevenue?: number;
   expenseByCategory: Record<string, number>;
   monthly: Array<{ month: string; oneTime: number; monthly: number; annual: number; expenses: number }>;
 }

@@ -26,6 +26,8 @@ import { DealForm, type DealInitialData } from "@/components/deals/DealForm";
 import { ReportDialog } from "@/components/shared/ReportDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { usePartnerFee } from "@/components/deals/usePartnerFee";
+import { dealFeePct, feeOf } from "@/lib/partner-fee-shared";
 
 interface DealRow {
   id: string;
@@ -42,6 +44,7 @@ interface DealRow {
   attachments: string | null;
   billingType: import("@/types").BillingType;
   recurringMonths: number | null;
+  partnerFeePct?: number | null;
   createdAt: number | Date;
 }
 
@@ -55,6 +58,7 @@ const PROB_OPTIONS = [
 
 export default function DealsPage() {
   const router = useRouter();
+  const fee = usePartnerFee();
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingDeal, setEditingDeal] = useState<DealInitialData | undefined>(undefined);
@@ -316,6 +320,7 @@ export default function DealsPage() {
                   <TableHead>Titolo</TableHead>
                   <TableHead>Contatto</TableHead>
                   <TableHead>Valore</TableHead>
+                  {fee.enabled && <TableHead className="hidden md:table-cell">Fee {fee.name}</TableHead>}
                   <TableHead>Fase</TableHead>
                   <TableHead className="hidden md:table-cell">Probabilità</TableHead>
                   <TableHead className="hidden lg:table-cell">Chiusura stim.</TableHead>
@@ -325,7 +330,7 @@ export default function DealsPage() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8 text-sm">
+                    <TableCell colSpan={fee.enabled ? 8 : 7} className="text-center text-muted-foreground py-8 text-sm">
                       Nessuna trattativa corrisponde ai filtri applicati.
                     </TableCell>
                   </TableRow>
@@ -362,6 +367,17 @@ export default function DealsPage() {
                           </span>
                         )}
                       </TableCell>
+                      {fee.enabled && (
+                        <TableCell className="hidden md:table-cell tabular-nums">
+                          <span className="font-medium text-violet-700 dark:text-violet-300">
+                            {formatCurrencyShort(feeOf(deal.value, dealFeePct(deal, fee)))}
+                          </span>
+                          {deal.billingType !== "una_tantum" && (
+                            <span className="text-xs text-muted-foreground">{deal.billingType === "mensile" ? "/mese" : "/anno"}</span>
+                          )}
+                          <span className="ml-1 text-xs text-muted-foreground">{dealFeePct(deal, fee)}%</span>
+                        </TableCell>
+                      )}
                       <TableCell>
                         {deal.stageName && (
                           <span

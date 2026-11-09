@@ -176,6 +176,7 @@ export async function updateDeal(
     billingType: import("@/types").BillingType;
     recurringMonths: number | null;
     isPaid: boolean;
+    partnerFeePct: number | null;
   }>,
 ): Promise<DealWithContact> {
   // Resolve denormalized fields if contact or stage changed

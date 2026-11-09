@@ -4,6 +4,8 @@ import { listRevenues } from "@/lib/db/revenues";
 import { requireAuth } from "@/lib/auth";
 import type { DealWithContact } from "@/types";
 import { getStages } from "@/lib/db/pipeline";
+import { partnerFeeConfig } from "@/lib/partner-fee";
+import { dealFeePct } from "@/lib/partner-fee-shared";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +59,10 @@ export async function GET(req: NextRequest) {
     overlapMonths: number | null;
     wonAt: string | null;
     isPaid: boolean;
+    partnerFeePct: number;
+    partnerFee: number;
   }> = [];
+  const feeCfg = partnerFeeConfig();
 
   for (const d of allDeals) {
     if (!wonStageIds.has(d.stageId)) continue;
@@ -77,6 +82,8 @@ export async function GET(req: NextRequest) {
           overlapMonths: null,
           wonAt: d.wonAt ? new Date(toMs(d.wonAt as Date | number | null)).toISOString() : null,
           isPaid: d.isPaid ?? false,
+          partnerFeePct: dealFeePct(d, feeCfg),
+          partnerFee: Math.round((d.value * dealFeePct(d, feeCfg)) / 100),
         });
       }
     } else {
@@ -101,6 +108,8 @@ export async function GET(req: NextRequest) {
           overlapMonths: overlap,
           wonAt: d.wonAt ? new Date(toMs(d.wonAt as Date | number | null)).toISOString() : null,
           isPaid: d.isPaid ?? false,
+          partnerFeePct: dealFeePct(d, feeCfg),
+          partnerFee: Math.round((monthlyValue * overlap * dealFeePct(d, feeCfg)) / 100),
         });
       }
     }
@@ -123,6 +132,8 @@ export async function GET(req: NextRequest) {
         overlapMonths: null,
         wonAt: new Date(dateMs).toISOString(),
         isPaid: true,
+        partnerFeePct: 0,
+        partnerFee: 0,
       });
     }
   }
@@ -135,5 +146,11 @@ export async function GET(req: NextRequest) {
     annuale: result.filter((d) => d.billingType === "annuale").reduce((s, d) => s + d.revenueContribution, 0),
   };
 
-  return NextResponse.json({ deals: result, totals });
+  return NextResponse.json({
+    deals: result,
+    totals,
+    partnerFee: feeCfg.enabled
+      ? { name: feeCfg.name, total: result.reduce((s, d) => s + d.partnerFee, 0) }
+      : null,
+  });
 }

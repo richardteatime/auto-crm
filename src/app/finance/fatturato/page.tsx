@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, TrendingUp, RefreshCw, Zap, Loader2 } from "lucide-react";
+import { ArrowLeft, TrendingUp, RefreshCw, Zap, Loader2, HandCoins, PiggyBank } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 
 interface RevenueDeal {
@@ -18,6 +18,8 @@ interface RevenueDeal {
   overlapMonths: number | null;
   wonAt: string | null;
   isPaid: boolean;
+  partnerFeePct?: number;
+  partnerFee?: number;
 }
 
 function FatturatoContent() {
@@ -28,17 +30,22 @@ function FatturatoContent() {
 
   const [deals, setDeals] = useState<RevenueDeal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feeName, setFeeName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!start || !end) return;
     setLoading(true);
     fetch(`/api/finance/deals?start=${start}&end=${end}`)
       .then((r) => r.json())
-      .then((data) => setDeals(data.deals ?? []))
+      .then((data) => {
+        setDeals(data.deals ?? []);
+        setFeeName(data.partnerFee?.name ?? null);
+      })
       .finally(() => setLoading(false));
   }, [start, end]);
 
   const totalRevenue = deals.reduce((s, d) => s + d.revenueContribution, 0);
+  const totalFee = deals.reduce((s, d) => s + (d.partnerFee ?? 0), 0);
   const totalOneTime = deals.filter((d) => d.billingType === "una_tantum").reduce((s, d) => s + d.revenueContribution, 0);
   const totalMensile = deals.filter((d) => d.billingType === "mensile").reduce((s, d) => s + d.revenueContribution, 0);
   const totalAnnuale = deals.filter((d) => d.billingType === "annuale").reduce((s, d) => s + d.revenueContribution, 0);
@@ -71,6 +78,20 @@ function FatturatoContent() {
               <span className="text-sm text-muted-foreground">Totale periodo</span>
               <span className="text-xl font-bold text-green-500">{formatCurrency(totalRevenue)}</span>
             </div>
+            {feeName && (
+              <>
+                <div className="flex items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/10 px-4 py-2.5">
+                  <HandCoins className="h-4 w-4 text-violet-500" />
+                  <span className="text-sm text-muted-foreground">Fee {feeName}</span>
+                  <span className="text-lg font-semibold text-violet-600 dark:text-violet-300">{formatCurrency(totalFee)}</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-2.5">
+                  <PiggyBank className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm text-muted-foreground">Netto nostro</span>
+                  <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-300">{formatCurrency(totalRevenue - totalFee)}</span>
+                </div>
+              </>
+            )}
             {totalOneTime > 0 && (
               <div className="flex items-center gap-2 rounded-xl bg-muted/60 border px-4 py-2.5">
                 <Zap className="h-4 w-4 text-green-600" />
@@ -161,6 +182,16 @@ function FatturatoContent() {
                 <div className="shrink-0 text-right min-w-[120px]">
                   <p className="text-xs text-muted-foreground">Totale periodo</p>
                   <p className="text-xl font-bold text-green-500">{formatCurrency(d.revenueContribution)}</p>
+                  {feeName && (d.partnerFee ?? 0) > 0 && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {feeName} {d.partnerFeePct}%:{" "}
+                      <span className="font-medium text-violet-600 dark:text-violet-300">{formatCurrency(d.partnerFee ?? 0)}</span>
+                      {" · "}a noi{" "}
+                      <span className="font-medium text-emerald-600 dark:text-emerald-300">
+                        {formatCurrency(d.revenueContribution - (d.partnerFee ?? 0))}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -170,7 +201,10 @@ function FatturatoContent() {
         {/* Footer total */}
         {!loading && deals.length > 0 && (
           <div className="flex items-center justify-between border-t pt-4 text-sm text-muted-foreground">
-            <span>{deals.length} opportunità vinte</span>
+            <span>
+              {deals.length} opportunità vinte
+              {feeName && ` · fee ${feeName} ${formatCurrency(totalFee)} · netto nostro ${formatCurrency(totalRevenue - totalFee)}`}
+            </span>
             <span className="text-xl font-bold text-green-500">{formatCurrency(totalRevenue)}</span>
           </div>
         )}

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canEditPartnerFee } from "@/lib/partner-fee";
+import { clampPct } from "@/lib/partner-fee-shared";
 import { getDeal, updateDeal, deleteDeal } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
@@ -71,6 +73,16 @@ export async function PUT(
     if (body.billingType !== undefined) updateData.billingType = ["una_tantum", "mensile", "annuale"].includes(body.billingType) ? body.billingType : "una_tantum";
     if (body.recurringMonths !== undefined) updateData.recurringMonths = Number(body.recurringMonths) || 12;
     if (body.isPaid !== undefined) updateData.isPaid = !!body.isPaid;
+    if (body.partnerFeePct !== undefined) {
+      if (!canEditPartnerFee(auth.user.id)) {
+        return NextResponse.json({ error: "Non puoi cambiare la percentuale della fee" }, { status: 403 });
+      }
+      const pct = body.partnerFeePct === null ? null : clampPct(body.partnerFeePct);
+      if (body.partnerFeePct !== null && pct === null) {
+        return NextResponse.json({ error: "Percentuale non valida" }, { status: 400 });
+      }
+      updateData.partnerFeePct = pct;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(existing);

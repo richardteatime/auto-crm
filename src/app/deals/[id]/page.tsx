@@ -13,6 +13,10 @@ import { StageStepper } from "@/components/deals/StageStepper";
 import { QuoteList } from "@/components/quotes/QuoteList";
 import { ContactAvatar } from "@/components/shared/ContactAvatar";
 import { NotesPanel } from "@/components/shared/NotesPanel";
+import { PartnerFeeCard } from "@/components/deals/PartnerFeeCard";
+import { partnerFeeConfig } from "@/lib/partner-fee";
+import { dealFeePct } from "@/lib/partner-fee-shared";
+import { getServerUser } from "@/lib/auth-server";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import type { Temperature } from "@/types";
 
@@ -38,11 +42,13 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
   const deal = await getDeal(id);
   if (!deal) notFound();
 
-  const [stages, dealActivities, contact] = await Promise.all([
+  const [stages, dealActivities, contact, me] = await Promise.all([
     getStages(),
     listActivities({ dealId: id }),
     deal.contactId ? getContact(deal.contactId) : Promise.resolve(null),
+    getServerUser(),
   ]);
+  const feeCfg = partnerFeeConfig(me?.id);
 
   const stage = stages.find((s) => s.id === deal.stageId) ?? null;
   const value = deal.value ?? 0;
@@ -199,6 +205,17 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           </div>
           <DealPaymentToggle dealId={deal.id} isPaid={deal.isPaid ?? false} />
         </section>
+      )}
+
+      {feeCfg.enabled && (
+        <PartnerFeeCard
+          dealId={deal.id}
+          value={value}
+          pct={dealFeePct(deal, feeCfg)}
+          isCustom={typeof deal.partnerFeePct === "number"}
+          recurring={recurring ? BILLING_LABEL[deal.billingType]?.toLowerCase() ?? null : null}
+          cfg={feeCfg}
+        />
       )}
 
       <NotesPanel
