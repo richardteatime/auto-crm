@@ -198,6 +198,11 @@ async function main() {
   await addAttr("quotes", str("quotes", "paymentTerms", 2000, false));
   // JSON QuoteClauses (src/lib/quote-clauses.ts): switched-off clauses + extra text
   await addAttr("quotes", str("quotes", "clauses", 5000, false));
+  // Internal notes (never on the PDF), "Segna come pagato", expiry alert stage ("pre" | "due")
+  await addAttr("quotes", text("quotes", "internalNotes", false, 20000));
+  await addAttr("quotes", bool("quotes", "isPaid", false));
+  await addAttr("quotes", dt("quotes", "paidAt", false));
+  await addAttr("quotes", str("quotes", "expiryAlert", 16, false));
   await addAttr("quotes", enm("quotes", "status", ["bozza", "inviato", "accettato", "rifiutato"], true, "bozza"));
   await addAttr("quotes", int("quotes", "vatRate", true, 22));
   await addAttr("quotes", dt("quotes", "validUntil", false));

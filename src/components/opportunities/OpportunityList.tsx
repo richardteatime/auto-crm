@@ -252,7 +252,9 @@ function OppCard({
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{opp.description}</p>
           )}
           {opp.notes && (
-            <p className="text-xs text-muted-foreground italic mt-0.5 line-clamp-1">{opp.notes}</p>
+            <p className="mt-2 whitespace-pre-line rounded-md border bg-muted/40 px-2.5 py-2 text-[13px] leading-relaxed line-clamp-6">
+              {opp.notes}
+            </p>
           )}
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">

@@ -41,6 +41,7 @@ export interface QuoteInitialData {
   title: string;
   items: QuoteItem[];
   notes: string | null;
+  internalNotes?: string | null;
   paymentTerms?: PaymentTerms | null;
   clauses?: QuoteClauses | null;
   status: string;
@@ -77,6 +78,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
   const [status, setStatus] = useState("bozza");
   const [validUntil, setValidUntil] = useState("");
   const [notes, setNotes] = useState("");
+  const [internalNotes, setInternalNotes] = useState("");
   const [vatRate, setVatRate] = useState(22);
   const [items, setItems] = useState<QuoteItem[]>([newItem()]);
   const [paymentTerms, setPaymentTerms] = useState<PaymentTerms>(DEFAULT_PAYMENT_TERMS);
@@ -99,6 +101,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       setStatus(initialData.status);
       setValidUntil(initialData.validUntil);
       setNotes(initialData.notes ?? "");
+      setInternalNotes(initialData.internalNotes ?? "");
       setVatRate(initialData.vatRate);
       setPaymentTerms(initialData.paymentTerms ?? DEFAULT_PAYMENT_TERMS);
       setClauses(initialData.clauses ?? EMPTY_CLAUSES);
@@ -109,6 +112,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
       setStatus("bozza");
       setValidUntil("");
       setNotes("");
+      setInternalNotes("");
       setVatRate(22);
       setPaymentTerms(DEFAULT_PAYMENT_TERMS);
       setClauses(EMPTY_CLAUSES);
@@ -259,6 +263,7 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
           isSetup: i.isSetup,
         })),
         notes: notes.trim() || null,
+        internalNotes: internalNotes.trim() || null,
         paymentTerms,
         clauses,
         status,
@@ -382,6 +387,21 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
                 onChange={(e) => setValidUntil(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+            <Label htmlFor="q-internal-notes" className="flex items-center gap-2">
+              Note interne
+              <span className="text-xs font-normal text-muted-foreground">solo per noi, non finiscono nel PDF</span>
+            </Label>
+            <Textarea
+              id="q-internal-notes"
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+              rows={5}
+              className="min-h-36 bg-background text-sm leading-relaxed"
+              placeholder="Accordi a voce, cosa ha chiesto il cliente, quando richiamarlo..."
+            />
           </div>
 
           {/* SETUP OPZIONALE */}
@@ -728,7 +748,10 @@ export function QuoteForm({ open, onClose, dealId, initialData }: QuoteFormProps
           <QuoteClausesEditor title={title} lines={items} value={clauses} onChange={setClauses} />
 
           <div className="space-y-2">
-            <Label htmlFor="q-notes">Note</Label>
+            <Label htmlFor="q-notes" className="flex items-center gap-2">
+              Note nel preventivo
+              <span className="text-xs font-normal text-muted-foreground">stampate nel PDF, le vede il cliente</span>
+            </Label>
             <Textarea
               id="q-notes"
               value={notes}

@@ -18,11 +18,13 @@ export async function GET(request: NextRequest) {
       let dealTitle: string | null = null;
       let contactName: string | null = null;
       let contactCompany: string | null = null;
+      let dealIsPaid = false;
 
       if (q.dealId) {
         const deal = await getDeal(q.dealId);
         if (deal) {
           dealTitle = deal.title;
+          dealIsPaid = !!deal.isPaid;
           if (deal.contactId) {
             const contact = await getContact(deal.contactId);
             if (contact) {
@@ -39,6 +41,8 @@ export async function GET(request: NextRequest) {
         title: q.title,
         items: q.items,
         notes: q.notes,
+        internalNotes: q.internalNotes ?? null,
+        isPaid: q.isPaid ?? false,
         paymentTerms: q.paymentTerms ?? null,
         clauses: q.clauses ?? null,
         status: q.status,
@@ -47,6 +51,7 @@ export async function GET(request: NextRequest) {
         createdAt: q.createdAt,
         dealId: q.dealId,
         dealTitle,
+        dealIsPaid,
         contactName,
         contactCompany,
       };

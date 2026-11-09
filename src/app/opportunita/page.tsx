@@ -266,6 +266,9 @@ export default function OpportunitaPage() {
                       <TableCell>
                         <div>
                           <p className="font-medium text-sm">{o.title}</p>
+                          {o.notes && (
+                            <p className="mt-0.5 max-w-72 whitespace-pre-line text-xs leading-snug text-foreground/80 line-clamp-3">{o.notes}</p>
+                          )}
                           {o.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-52">{o.description}</p>
                           )}

@@ -115,7 +115,7 @@ export function OpportunityForm({ open, onClose, contactId, initialData }: Oppor
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Modifica Opportunità" : "Nuova Opportunità"}</DialogTitle>
         </DialogHeader>
@@ -155,13 +155,14 @@ export function OpportunityForm({ open, onClose, contactId, initialData }: Oppor
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="opp-notes">Note interne</Label>
+          <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+            <Label htmlFor="opp-notes">Note</Label>
             <Textarea
               id="opp-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={2}
+              rows={7}
+              className="min-h-40 bg-background text-sm leading-relaxed"
               placeholder="Note private, prossimi passi, obiezioni..."
             />
           </div>

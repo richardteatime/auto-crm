@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getDeal, getStages, listActivities, getContact } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, Gauge, RefreshCw, Scale, Wallet, StickyNote, Euro } from "lucide-react";
+import { ArrowLeft, CalendarClock, Gauge, RefreshCw, Scale, Wallet, Euro } from "lucide-react";
 import { formatCurrency } from "@/lib/constants";
 import { formatDayMonth, romeDayDiff } from "@/lib/dates";
 import { toMs, cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { DealActivities } from "@/components/deals/DealActivities";
 import { StageStepper } from "@/components/deals/StageStepper";
 import { QuoteList } from "@/components/quotes/QuoteList";
 import { ContactAvatar } from "@/components/shared/ContactAvatar";
+import { NotesPanel } from "@/components/shared/NotesPanel";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import type { Temperature } from "@/types";
 
@@ -200,24 +201,15 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <DealActivities dealId={deal.id} contactId={deal.contactId} activities={dealActivities} />
-        </div>
-        <section className="rounded-xl border bg-card p-4 shadow-card">
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <StickyNote className="size-4 text-muted-foreground" />
-            Note
-          </h2>
-          {deal.notes ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed">{deal.notes}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground">Nessuna nota. Aggiungile da «Modifica».</p>
-          )}
-        </section>
-      </div>
+      <NotesPanel
+        endpoint={`/api/deals/${deal.id}`}
+        initial={deal.notes}
+        placeholder="Cosa si è detto, cosa manca per chiudere, accordi su tempi e pagamenti…"
+      />
 
-      <QuoteList dealId={deal.id} />
+      <DealActivities dealId={deal.id} contactId={deal.contactId} activities={dealActivities} />
+
+      <QuoteList dealId={deal.id} dealPaid={!!deal.isPaid} />
     </div>
   );
 }

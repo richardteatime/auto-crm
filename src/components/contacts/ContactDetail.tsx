@@ -14,7 +14,6 @@ import {
   MessageCircle,
   Copy,
   Check,
-  NotebookPen,
   MoreHorizontal,
   MapPin,
   Receipt,
@@ -32,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ContactAvatar } from "@/components/shared/ContactAvatar";
+import { NotesPanel } from "@/components/shared/NotesPanel";
 import { ContactForm } from "./ContactForm";
 import { ContactTimeline, type TimelineActivity } from "./ContactTimeline";
 import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
@@ -78,32 +78,11 @@ export function ContactDetailClient({ contact, deals, activities, nowMs }: Conta
   const [editingActivity, setEditingActivity] = useState<ActivityInitialData | undefined>(undefined);
   const [showDealForm, setShowDealForm] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [internalNotes, setInternalNotes] = useState(contact.notes || "");
-  const [savingNotes, setSavingNotes] = useState(false);
-
-  const notesDirty = internalNotes !== (contact.notes || "");
   const openDeals = deals.filter((d) => !d.isWon && !d.isLost);
   const openValue = openDeals.reduce((s, d) => s + d.value, 0);
   const wonValue = deals.filter((d) => d.isWon).reduce((s, d) => s + d.value, 0);
   const lastTouch = activities.reduce((max, a) => Math.max(max, toMs(a.completedAt ?? a.createdAt)), 0);
 
-  const handleSaveNotes = async () => {
-    setSavingNotes(true);
-    try {
-      const res = await fetch(`/api/contacts/${contact.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: internalNotes }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success("Note salvate");
-      router.refresh();
-    } catch {
-      toast.error("Errore durante il salvataggio");
-    } finally {
-      setSavingNotes(false);
-    }
-  };
 
   const handleCopy = async (value: string, field: string) => {
     try {
@@ -248,6 +227,12 @@ export function ContactDetailClient({ contact, deals, activities, nowMs }: Conta
         </dl>
       </section>
 
+      <NotesPanel
+        endpoint={`/api/contacts/${contact.id}`}
+        initial={contact.notes}
+        placeholder="Come stanno andando le cose con questo cliente, accordi, cosa ricordare…"
+      />
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           <ContactTimeline
@@ -312,22 +297,6 @@ export function ContactDetailClient({ contact, deals, activities, nowMs }: Conta
             )}
           </section>
 
-          <section className="rounded-xl border bg-card p-4 shadow-card">
-            <div className="mb-2 flex items-center gap-2">
-              <NotebookPen className="size-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold">Note</h2>
-              {notesDirty && <span className="text-[11px] text-amber-600 dark:text-amber-400">modifiche non salvate</span>}
-            </div>
-            <textarea
-              value={internalNotes}
-              onChange={(e) => setInternalNotes(e.target.value)}
-              placeholder="Come stanno andando le cose con questo contatto…"
-              className="min-h-[140px] w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15"
-            />
-            <Button size="sm" onClick={handleSaveNotes} disabled={savingNotes || !notesDirty} className="mt-2 w-full">
-              {savingNotes ? "Salvataggio…" : "Salva note"}
-            </Button>
-          </section>
         </aside>
       </div>
 

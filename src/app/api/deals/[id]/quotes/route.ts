@@ -40,10 +40,11 @@ export async function POST(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  const { title, items, notes, paymentTerms, clauses, status, vatRate, validUntil } = body as {
+  const { title, items, notes, internalNotes, paymentTerms, clauses, status, vatRate, validUntil } = body as {
     title?: string;
     items?: unknown[];
     notes?: string;
+    internalNotes?: string | null;
     paymentTerms?: unknown;
     clauses?: unknown;
     status?: string;
@@ -61,6 +62,7 @@ export async function POST(
       title: title.trim(),
       items: items ? JSON.stringify(items) : "[]",
       notes: typeof notes === "string" ? notes.trim() : undefined,
+      internalNotes: typeof internalNotes === "string" ? internalNotes.trim() : undefined,
       paymentTerms: serializePaymentTerms(parsePaymentTerms(paymentTerms)),
       clauses: serializeQuoteClauses(clauses),
       vatRate: typeof vatRate === "number" ? vatRate : 22,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, ListChecks, FolderKanban, CalendarDays, MessageSquare, CheckCheck, BellOff } from "lucide-react";
+import { Bell, ListChecks, FolderKanban, CalendarDays, MessageSquare, CheckCheck, BellOff, FileWarning } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -16,6 +16,7 @@ const TYPE_STYLE: Record<AppNotification["type"], { icon: typeof Bell; tone: str
   project_assigned: { icon: FolderKanban, tone: "bg-violet-500/12 text-violet-600 dark:text-violet-300" },
   calendar_assigned: { icon: CalendarDays, tone: "bg-amber-500/12 text-amber-600 dark:text-amber-300" },
   chat_message: { icon: MessageSquare, tone: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300" },
+  quote_expiring: { icon: FileWarning, tone: "bg-rose-500/12 text-rose-600 dark:text-rose-300" },
 };
 
 function hrefFor(n: AppNotification): string | null {
@@ -28,6 +29,8 @@ function hrefFor(n: AppNotification): string | null {
       return "/calendar";
     case "message":
       return "/messages";
+    case "deal":
+      return n.relatedId ? `/deals/${n.relatedId}` : "/preventivi";
     default:
       return null;
   }

@@ -41,10 +41,12 @@ export async function PUT(
     return NextResponse.json({ error: "JSON non valido" }, { status: 400 });
   }
 
-  const { title, items, notes, paymentTerms, clauses, status, vatRate, validUntil } = body as {
+  const { title, items, notes, internalNotes, isPaid, paymentTerms, clauses, status, vatRate, validUntil } = body as {
     title?: string;
     items?: unknown[];
     notes?: string | null;
+    internalNotes?: string | null;
+    isPaid?: boolean;
     paymentTerms?: unknown;
     clauses?: unknown;
     status?: string;
@@ -56,11 +58,21 @@ export async function PUT(
   if (title !== undefined) updates.title = title.trim();
   if (items !== undefined) updates.items = JSON.stringify(items);
   if (notes !== undefined) updates.notes = notes?.trim() || null;
+  if (internalNotes !== undefined) updates.internalNotes = internalNotes?.trim() || null;
+  if (isPaid !== undefined && !!isPaid !== !!quote.isPaid) {
+    updates.isPaid = !!isPaid;
+    updates.paidAt = isPaid ? new Date().toISOString() : null;
+  }
   if (paymentTerms !== undefined) updates.paymentTerms = serializePaymentTerms(parsePaymentTerms(paymentTerms));
   if (clauses !== undefined) updates.clauses = serializeQuoteClauses(clauses);
   if (status !== undefined) updates.status = status;
   if (vatRate !== undefined) updates.vatRate = vatRate;
-  if (validUntil !== undefined) updates.validUntil = validUntil ? new Date(validUntil) : null;
+  if (validUntil !== undefined) {
+    updates.validUntil = validUntil ? new Date(validUntil) : null;
+    // New date = new deadline: the 3-day / expiry alerts may fire again
+    const before = quote.validUntil ? new Date(quote.validUntil).toISOString().slice(0, 10) : "";
+    if ((validUntil || "").slice(0, 10) !== before) updates.expiryAlert = null;
+  }
 
   const updated = await updateQuote(id, updates);
 

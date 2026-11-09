@@ -25,6 +25,7 @@ import { parseItemsForForm } from "@/lib/quote-items";
 import { parsePaymentTerms } from "@/lib/quote-payment";
 import { parseQuoteClauses } from "@/lib/quote-clauses";
 import { QuoteForm, type QuoteInitialData } from "./QuoteForm";
+import { QuoteExpiryBadge, QuotePaidButton, quoteRowClass } from "./QuotePaidControls";
 
 interface DbQuoteItem {
   id: string;
@@ -42,6 +43,8 @@ interface QuoteRow {
   title: string;
   items: string;
   notes: string | null;
+  internalNotes?: string | null;
+  isPaid?: boolean | null;
   paymentTerms?: string | null;
   clauses?: string | null;
   status: string;
@@ -81,9 +84,11 @@ function toDateInputValue(val: number | Date | null | undefined): string {
 
 interface QuoteListProps {
   dealId: string;
+  /** Deal marked paid: its quotes count as paid (no red, no alerts) */
+  dealPaid?: boolean;
 }
 
-export function QuoteList({ dealId }: QuoteListProps) {
+export function QuoteList({ dealId, dealPaid = false }: QuoteListProps) {
   const [quoteList, setQuoteList] = useState<QuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -115,6 +120,7 @@ export function QuoteList({ dealId }: QuoteListProps) {
       title: q.title,
       items: parseItemsForForm(q.items),
       notes: q.notes,
+      internalNotes: q.internalNotes ?? null,
       paymentTerms: parsePaymentTerms(q.paymentTerms),
       clauses: parseQuoteClauses(q.clauses),
       status: q.status,
@@ -171,20 +177,23 @@ export function QuoteList({ dealId }: QuoteListProps) {
                   <TableHead>Stato</TableHead>
                   <TableHead className="text-right">Totale</TableHead>
                   <TableHead className="hidden md:table-cell">Valido fino</TableHead>
-                  <TableHead className="w-28" />
+                  <TableHead className="w-44" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {quoteList.map((q) => {
                   const cfg = STATUS_CONFIG[q.status] ?? STATUS_CONFIG.bozza;
                   return (
-                    <TableRow key={q.id}>
+                    <TableRow key={q.id} className={quoteRowClass({ ...q, dealIsPaid: dealPaid })}>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {q.number}
                       </TableCell>
                       <TableCell className="font-medium">{q.title}</TableCell>
                       <TableCell>
-                        <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                          <QuoteExpiryBadge quote={{ ...q, dealIsPaid: dealPaid }} />
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold text-primary">
                         {formatCurrency(calcTotal(q))}
@@ -194,6 +203,13 @@ export function QuoteList({ dealId }: QuoteListProps) {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 justify-end">
+                          <QuotePaidButton
+                            quote={{ ...q, dealIsPaid: dealPaid }}
+                            size="xs"
+                            onChange={(isPaid) =>
+                              setQuoteList((prev) => prev.map((x) => (x.id === q.id ? { ...x, isPaid } : x)))
+                            }
+                          />
                           <Button
                             variant="ghost"
                             size="icon"

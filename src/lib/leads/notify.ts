@@ -16,7 +16,7 @@ import { TIME_ZONE } from "@/lib/dates";
 // plus an email backup. A periodic check escalates leads nobody called and
 // reminds the salesperson of due call-backs.
 
-const APP_URL = (process.env.APP_URL || "https://crm.app.easlydev.online").replace(/\/$/, "");
+export const APP_URL = (process.env.APP_URL || "https://crm.app.easlydev.online").replace(/\/$/, "");
 
 // ---------------------------------------------------------------------------
 // Web push
@@ -92,7 +92,7 @@ const emailList = (v: string | undefined) =>
     .map((s) => s.trim())
     .filter((s) => s.includes("@"));
 
-async function sendMail(to: string[], subject: string, html: string, text: string) {
+export async function sendMail(to: string[], subject: string, html: string, text: string) {
   const t = mailer();
   if (!t || to.length === 0) return false;
   try {
@@ -110,7 +110,7 @@ async function sendMail(to: string[], subject: string, html: string, text: strin
   }
 }
 
-const esc = (s: string | null | undefined) =>
+export const esc = (s: string | null | undefined) =>
   (s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 function leadSummary(lead: Lead): string {
@@ -165,8 +165,8 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 // Working hours (Europe/Rome). LEAD_WORK_HOURS="1-5 09:00-19:00" (days 1=Mon … 7=Sun)
 // ---------------------------------------------------------------------------
 
-function parseHours() {
-  const raw = process.env.LEAD_WORK_HOURS || "1-5 09:00-19:00";
+function parseHours(spec?: string) {
+  const raw = spec || process.env.LEAD_WORK_HOURS || "1-5 09:00-19:00";
   const m = raw.match(/^(\d)-(\d)\s+(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
   if (!m) return { d0: 1, d1: 5, start: 9 * 60, end: 19 * 60 };
   return { d0: +m[1], d1: +m[2], start: +m[3] * 60 + +m[4], end: +m[5] * 60 + +m[6] };
@@ -180,8 +180,9 @@ function romeClock(ms: number) {
   return { dow: DOW[p.weekday] ?? 1, minutes: Number(p.hour) * 60 + Number(p.minute) };
 }
 
-export function isWorkingTime(ms: number): boolean {
-  const h = parseHours();
+/** spec overrides LEAD_WORK_HOURS, same format ("1-7 08:00-20:00") */
+export function isWorkingTime(ms: number, spec?: string): boolean {
+  const h = parseHours(spec);
   const { dow, minutes } = romeClock(ms);
   return dow >= h.d0 && dow <= h.d1 && minutes >= h.start && minutes < h.end;
 }

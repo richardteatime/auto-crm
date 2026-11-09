@@ -4,7 +4,7 @@ import { useNotifications } from "@/components/shared/NotificationContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Activity, GitBranch, CalendarDays, MessageSquare, Bell, CheckCheck, Trash2 } from "lucide-react";
+import { Activity, GitBranch, CalendarDays, MessageSquare, Bell, CheckCheck, Trash2, FileWarning } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ const typeConfig = {
   project_assigned: { label: "Progetto", icon: GitBranch, color: "text-purple-600", bg: "bg-purple-500/15" },
   calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-500/15" },
   chat_message: { label: "Chat", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-500/15" },
+  quote_expiring: { label: "Preventivo", icon: FileWarning, color: "text-rose-600", bg: "bg-rose-500/15" },
 };
 
 export default function NotificationsPage() {
@@ -86,7 +87,9 @@ export default function NotificationsPage() {
                         ? "/calendar"
                         : n.relatedType === "message"
                           ? "/messages"
-                          : null;
+                          : n.relatedType === "deal"
+                            ? n.relatedId ? `/deals/${n.relatedId}` : "/preventivi"
+                            : null;
 
                 return (
                   <div

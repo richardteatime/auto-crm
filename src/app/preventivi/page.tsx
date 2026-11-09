@@ -28,7 +28,6 @@ import {
   TrendingUp,
   CheckCircle2,
   AlertCircle,
-  Clock,
   FileDown,
   Pencil,
   Search,
@@ -41,6 +40,8 @@ import { parseItemsForForm } from "@/lib/quote-items";
 import { parsePaymentTerms } from "@/lib/quote-payment";
 import { parseQuoteClauses } from "@/lib/quote-clauses";
 import { QuoteForm, type QuoteInitialData } from "@/components/quotes/QuoteForm";
+import { QuoteExpiryBadge, QuotePaidButton, quoteRowClass } from "@/components/quotes/QuotePaidControls";
+import { quoteExpiry } from "@/lib/quote-expiry";
 
 interface QuoteRow {
   id: string;
@@ -48,6 +49,8 @@ interface QuoteRow {
   title: string;
   items: string;
   notes: string | null;
+  internalNotes?: string | null;
+  isPaid?: boolean | null;
   paymentTerms?: string | null;
   clauses?: string | null;
   status: string;
@@ -56,6 +59,7 @@ interface QuoteRow {
   createdAt: number | Date;
   dealId: string;
   dealTitle: string | null;
+  dealIsPaid?: boolean;
   contactName: string | null;
   contactCompany: string | null;
 }
@@ -76,15 +80,9 @@ function calcTotal(itemsJson: string, vatRate: number): number {
   }
 }
 
-function toMs(val: number | Date): number {
-  if (val instanceof Date) return val.getTime();
-  return val < 1e12 ? val * 1000 : val;
-}
-
+/** Past its validity date and not yet paid (rejected quotes don't count) */
 function isOverdue(q: QuoteRow): boolean {
-  if (!q.validUntil) return false;
-  if (q.status !== "bozza" && q.status !== "inviato") return false;
-  return toMs(q.validUntil as number | Date) < Date.now();
+  return quoteExpiry(q).state === "expired";
 }
 
 const STATUS_CFG = {
@@ -127,6 +125,7 @@ export default function PreventiviPage() {
       title: q.title,
       items: parseItemsForForm(q.items),
       notes: q.notes,
+      internalNotes: q.internalNotes ?? null,
       paymentTerms: parsePaymentTerms(q.paymentTerms),
       clauses: parseQuoteClauses(q.clauses),
       status: q.status,
@@ -409,31 +408,34 @@ export default function PreventiviPage() {
                   <TableHead>Numero</TableHead>
                   <TableHead>Titolo</TableHead>
                   <TableHead className="hidden md:table-cell">Cliente</TableHead>
-                  <TableHead className="hidden lg:table-cell">Trattativa</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Trattativa</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead className="text-right">Valore</TableHead>
                   <TableHead className="hidden lg:table-cell">Valido fino</TableHead>
-                  <TableHead className="w-10" />
+                  <TableHead className="w-40" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visible.map((q) => {
                   const cfg =
                     STATUS_CFG[q.status as keyof typeof STATUS_CFG] ?? STATUS_CFG.bozza;
-                  const overdue = isOverdue(q);
                   return (
-                    <TableRow key={q.id}>
+                    <TableRow key={q.id} className={quoteRowClass(q)}>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {q.number}
                       </TableCell>
-                      <TableCell className="font-medium">{q.title}</TableCell>
+                      <TableCell className="font-medium max-w-[15rem] whitespace-normal leading-snug">
+                        <Link href={`/deals/${q.dealId}`} className="hover:text-primary hover:underline">
+                          {q.title}
+                        </Link>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell text-sm">
                         <div>{q.contactName ?? "—"}</div>
                         {q.contactCompany && (
                           <div className="text-muted-foreground text-xs">{q.contactCompany}</div>
                         )}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm">
+                      <TableCell className="hidden 2xl:table-cell text-sm">
                         {q.dealTitle ? (
                           <Link
                             href={`/deals/${q.dealId}`}
@@ -448,12 +450,7 @@ export default function PreventiviPage() {
                       <TableCell>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <Badge variant={cfg.variant}>{cfg.label}</Badge>
-                          {overdue && (
-                            <span className="text-xs text-destructive font-medium flex items-center gap-0.5">
-                              <Clock className="h-3 w-3" />
-                              scaduto
-                            </span>
-                          )}
+                          <QuoteExpiryBadge quote={q} />
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold text-primary">
@@ -464,6 +461,13 @@ export default function PreventiviPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 justify-end">
+                          <QuotePaidButton
+                            quote={q}
+                            size="xs"
+                            onChange={(isPaid) =>
+                              setQuotes((prev) => prev.map((x) => (x.id === q.id ? { ...x, isPaid } : x)))
+                            }
+                          />
                           <Button
                             variant="ghost"
                             size="icon"

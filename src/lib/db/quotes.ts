@@ -13,6 +13,13 @@ export interface Quote {
   title: string;
   items: string; // JSON string
   notes: string | null;
+  /** Internal notes, never printed on the PDF */
+  internalNotes?: string | null;
+  /** Marked as paid with "Segna come pagato" */
+  isPaid?: boolean | null;
+  paidAt?: string | null;
+  /** Last expiry alert sent: "pre" (3 days before) or "due" (expiry day) */
+  expiryAlert?: string | null;
   /** JSON-serialised PaymentTerms (see lib/quote-payment), null = company default. */
   paymentTerms?: string | null;
   /** JSON QuoteClauses (see lib/quote-clauses): clauses switched off + extra text. */
@@ -111,6 +118,7 @@ export async function createQuote(data: {
   title: string;
   items?: string;
   notes?: string | null;
+  internalNotes?: string | null;
   paymentTerms?: string | null;
   clauses?: string | null;
   vatRate?: number;
@@ -133,6 +141,10 @@ export async function createQuote(data: {
 
   if (data.notes?.trim()) {
     payload.notes = data.notes.trim();
+  }
+
+  if (data.internalNotes?.trim()) {
+    payload.internalNotes = data.internalNotes.trim();
   }
 
   if (data.paymentTerms) {
@@ -167,6 +179,10 @@ export async function updateQuote(
     title: string;
     items: string;
     notes: string | null;
+    internalNotes: string | null;
+    isPaid: boolean;
+    paidAt: string | null;
+    expiryAlert: string | null;
     paymentTerms: string | null;
     clauses: string | null;
     status: string;
