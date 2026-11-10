@@ -2,8 +2,8 @@ import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
 import { ID, type Models } from "node-appwrite";
 import { Query } from "@/lib/query17";
 
-export type NotificationType = "activity_assigned" | "project_assigned" | "calendar_assigned" | "chat_message" | "quote_expiring";
-export type NotificationRelatedType = "activity" | "project" | "calendar_event" | "message" | "deal";
+export type NotificationType = "activity_assigned" | "project_assigned" | "calendar_assigned" | "chat_message" | "quote_expiring" | "lead_whatsapp";
+export type NotificationRelatedType = "activity" | "project" | "calendar_event" | "message" | "deal" | "lead";
 
 export interface AppNotification {
   id: string;

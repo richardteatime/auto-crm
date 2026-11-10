@@ -4,7 +4,7 @@ import { useNotifications } from "@/components/shared/NotificationContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Activity, GitBranch, CalendarDays, MessageSquare, Bell, CheckCheck, Trash2, FileWarning } from "lucide-react";
+import { Activity, GitBranch, CalendarDays, MessageSquare, Bell, CheckCheck, Trash2, FileWarning, MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ const typeConfig = {
   calendar_assigned: { label: "Calendario", icon: CalendarDays, color: "text-emerald-600", bg: "bg-emerald-500/15" },
   chat_message: { label: "Chat", icon: MessageSquare, color: "text-orange-600", bg: "bg-orange-500/15" },
   quote_expiring: { label: "Preventivo", icon: FileWarning, color: "text-rose-600", bg: "bg-rose-500/15" },
+  lead_whatsapp: { label: "WhatsApp", icon: MessageCircle, color: "text-emerald-600", bg: "bg-emerald-500/15" },
 };
 
 export default function NotificationsPage() {
@@ -89,7 +90,9 @@ export default function NotificationsPage() {
                           ? "/messages"
                           : n.relatedType === "deal"
                             ? n.relatedId ? `/deals/${n.relatedId}` : "/preventivi"
-                            : null;
+                            : n.relatedType === "lead"
+                              ? n.relatedId ? `/leads/${n.relatedId}` : "/leads"
+                              : null;
 
                 return (
                   <div

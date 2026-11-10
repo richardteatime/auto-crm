@@ -19,13 +19,14 @@ type Tab = { href: string; label: string; icon: typeof Sun; badge?: NavBadge };
 
 const TABS: Tab[] = [
   { href: "/", label: "Oggi", icon: Sun },
-  { href: "/leads", label: "Lead", icon: PhoneCall, badge: "leads" },
+  { href: "/vendiora", label: "Vendiora", icon: PhoneCall, badge: "leads" },
   { href: "/pipeline", label: "Pipeline", icon: SquareKanban },
   { href: "/activities", label: "Attività", icon: ListChecks, badge: "activities" },
 ];
 
 const SALES_TABS: Tab[] = [
   { href: "/leads", label: "Lead", icon: PhoneCall, badge: "leads" },
+  { href: "/vendiora/whatsapp", label: "WhatsApp", icon: PhoneCall },
   { href: "/settings", label: "Profilo", icon: Settings },
 ];
 
@@ -102,7 +103,7 @@ export function MobileNav({ onNavigate }: { onNavigate?: () => void }) {
   const { counts } = useNotifications();
   const openPalette = useCommandPalette();
   const user = useCurrentUser();
-  const sections = navSectionsFor(user?.role);
+  const sections = navSectionsFor(user?.role, pathname);
 
   return (
     <div className="flex h-full flex-col text-sidebar-foreground">
@@ -138,7 +139,7 @@ export function MobileNav({ onNavigate }: { onNavigate?: () => void }) {
             )}
             <ul className="space-y-0.5">
               {[...section.items, ...(i === sections.length - 1 ? [SETTINGS_ITEM] : [])].map((item) => {
-                const active = isActivePath(pathname, item.href);
+                const active = isActivePath(pathname, item.href, item.exact);
                 const count = item.badge ? counts[item.badge] : 0;
                 return (
                   <li key={item.href}>

@@ -51,6 +51,8 @@ import {
 import { LeadStatusPill, QuickContact, datePresets, dueText, shortDuration, toLocalInput, waitTone } from "./lead-ui";
 import { OutcomeDialog } from "./OutcomeDialog";
 import { LeadFormDialog, LostReasonDialog } from "./LeadDialogs";
+import { LeadPackageCard } from "@/components/vendiora/LeadPackageCard";
+import { LeadWhatsappCard } from "@/components/vendiora/LeadWhatsappCard";
 
 const fullFmt = new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 const shortFmt = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
@@ -224,6 +226,8 @@ export function LeadDetail({
         <div className="space-y-5">
           <NextStepCard lead={lead} now={now} onSave={(iso, note) => patch({ nextActionAt: iso, nextActionNote: note }, iso ? "Prossimo contatto salvato" : "Prossimo contatto rimosso")} />
 
+          <LeadWhatsappCard leadId={lead.id} />
+
           <Card icon={ClipboardList} title="Risposte del modulo">
             {answers.length ? (
               <dl className="divide-y">
@@ -280,6 +284,7 @@ export function LeadDetail({
             )}
           </Card>
 
+          {isAdmin && <LeadPackageCard lead={lead} />}
           {isAdmin && <ConvertCard lead={lead} onDone={refreshWith} />}
         </div>
       </div>

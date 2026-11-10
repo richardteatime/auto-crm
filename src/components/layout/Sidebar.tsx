@@ -10,7 +10,7 @@ import { useCommandPalette, Kbd } from "@/components/shared/CommandPalette";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BrandMark } from "./BrandMark";
 import { UserMenu } from "./UserMenu";
-import { navSectionsFor, SETTINGS_ITEM, isActivePath, type NavItem } from "./nav-config";
+import { navSectionsFor, SETTINGS_ITEM, isActivePath, isVendioraPath, type NavItem } from "./nav-config";
 import { useRole, useCurrentUser } from "@/components/shared/CurrentUserContext";
 import { toggleSidebar } from "./sidebar-state";
 
@@ -18,7 +18,8 @@ export function Sidebar() {
   const pathname = usePathname();
   const { counts } = useNotifications();
   const openPalette = useCommandPalette();
-  const sections = navSectionsFor(useRole());
+  const sections = navSectionsFor(useRole(), pathname);
+  const inVendiora = isVendioraPath(pathname);
   const crmName = useCurrentUser()?.crm;
 
   // "[" collapses / expands, like most pro tools
@@ -38,17 +39,29 @@ export function Sidebar() {
       className="hidden h-dvh w-[248px] shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out md:flex sidebar-collapsed:w-[68px]"
     >
       <div className="flex h-14 items-center gap-2 px-4 sidebar-collapsed:justify-center sidebar-collapsed:px-0">
-        <Link href="/" className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <BrandMark className="size-7" />
-          <span className="flex items-baseline gap-1.5 truncate sidebar-collapsed:hidden">
-            <span className="text-[15px] font-extrabold tracking-tight text-foreground">
-              Sarcon<span className="text-primary">X</span>
+        {inVendiora ? (
+          <Link href="/vendiora" className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-[13px] font-black text-white shadow-sm">V</span>
+            <span className="flex items-baseline gap-1.5 truncate sidebar-collapsed:hidden">
+              <span className="text-[15px] font-extrabold tracking-tight text-foreground">
+                Vendi<span className="text-orange-500">Ora</span>
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">CRM</span>
             </span>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              {crmName || "CRM"}
+          </Link>
+        ) : (
+          <Link href="/" className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <BrandMark className="size-7" />
+            <span className="flex items-baseline gap-1.5 truncate sidebar-collapsed:hidden">
+              <span className="text-[15px] font-extrabold tracking-tight text-foreground">
+                Sarcon<span className="text-primary">X</span>
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                {crmName || "CRM"}
+              </span>
             </span>
-          </span>
-        </Link>
+          </Link>
+        )}
         <button
           type="button"
           onClick={toggleSidebar}
@@ -92,7 +105,7 @@ export function Sidebar() {
                 <SidebarLink
                   key={item.href}
                   item={item}
-                  active={isActivePath(pathname, item.href)}
+                  active={isActivePath(pathname, item.href, item.exact)}
                   count={item.badge ? counts[item.badge] : 0}
                 />
               ))}

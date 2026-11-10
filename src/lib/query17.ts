@@ -64,6 +64,10 @@ export const Query = {
     return qAttr("isNull", attribute, []);
   },
 
+  contains(attribute: string, value: string): string {
+    return qAttr("contains", attribute, [value]);
+  },
+
   startsWith(attribute: string, value: string): string {
     return qAttr("startsWith", attribute, [value]);
   },

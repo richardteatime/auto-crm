@@ -7,6 +7,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KE
 const PUBLIC_PATHS = [
   "/api/webhook",
   "/api/leads/intake",
+  "/api/vendiora/wa/inbound",
   "/sw.js",
   "/manifest.webmanifest",
   "/api/auth",

@@ -75,6 +75,11 @@ export async function ingestLead(
   if (opts.notify !== false) {
     await notifyNewLead(result.lead).catch((e) => console.error("[lead notify]", e));
   }
+  if (opts.notify !== false) {
+    // Vendiora: WhatsApp bot contacts the lead right away (no-op when the bot is off)
+    // (fire and forget: the intake answers immediately, the server process keeps running)
+    void import("@/lib/vendiora/bot").then(({ onNewLead }) => onNewLead(result.lead));
+  }
   return result;
 }
 

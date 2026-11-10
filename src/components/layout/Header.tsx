@@ -29,6 +29,7 @@ const DETAIL_LABELS: Record<string, string> = {
   "/deals": "Scheda trattativa",
   "/timeline": "Progetto",
   "/leads": "Scheda lead",
+  "/vendiora/clienti": "Scheda cliente",
 };
 
 function useBreadcrumb() {

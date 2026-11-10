@@ -22,10 +22,15 @@ export function canEnterCrm(labels: readonly string[] | null | undefined): boole
 }
 
 /** Everything a salesperson may open: the Lead section, own settings (password, notifications), auth */
-const SALES_ALLOWED = ["/leads", "/settings", "/api/leads", "/api/push", "/api/auth", "/api/health"];
+const SALES_ALLOWED = [
+  "/leads", "/settings", "/api/leads", "/api/push", "/api/auth", "/api/health",
+  // Vendiora: salespeople see the dashboard and the WhatsApp chats (packages, clients, contracts stay founder-only)
+  "/vendiora", "/vendiora/whatsapp", "/api/vendiora/wa", "/api/vendiora/chat", "/api/vendiora/inbox", "/api/vendiora/dashboard",
+];
+const SALES_EXACT = new Set(["/vendiora"]);
 
 export function salesCanAccess(pathname: string): boolean {
-  return SALES_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return SALES_ALLOWED.some((p) => pathname === p || (!SALES_EXACT.has(p) && pathname.startsWith(p + "/")));
 }
 
 /** Where a salesperson lands */
