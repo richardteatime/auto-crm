@@ -129,8 +129,13 @@ export const VENDIORA_SECTIONS: NavSection[] = [
   },
 ];
 
-/** A salesperson sees Vendiora's leads and WhatsApp chats */
-const VENDIORA_SALES_SECTIONS: NavSection[] = [{ label: "Vendiora", items: [VD_HOME, VD_LEADS, VD_WHATSAPP] }];
+/** A salesperson only sees the Lead section (Vendiora is founders-only) */
+const SALES_SECTIONS: NavSection[] = [{ label: null, items: [LEADS_ITEM] }];
+
+/** Where Vendiora is off (separate CRM instances) the menu keeps the plain Lead section */
+const NAV_SECTIONS_NO_VENDIORA: NavSection[] = NAV_SECTIONS.map((s) =>
+  s.label === "Vendiora" ? { label: "Lead", items: [LEADS_ITEM] } : s,
+);
 
 export const SETTINGS_ITEM: NavItem = {
   href: "/settings",
@@ -147,15 +152,18 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   SETTINGS_ITEM,
 ];
 
-export function navSectionsFor(role: Role | null | undefined, pathname = ""): NavSection[] {
-  if (role === "commerciale") return VENDIORA_SALES_SECTIONS;
+const ALL_NAV_ITEMS_NO_VENDIORA: NavItem[] = [...NAV_SECTIONS_NO_VENDIORA.flatMap((s) => s.items), SETTINGS_ITEM];
+
+/** `vendiora` = this user may open Vendiora (founders in the SarconX CRM) */
+export function navSectionsFor(role: Role | null | undefined, pathname = "", vendiora = false): NavSection[] {
+  if (role === "commerciale") return SALES_SECTIONS;
+  if (!vendiora) return NAV_SECTIONS_NO_VENDIORA;
   return isVendioraPath(pathname) ? VENDIORA_SECTIONS : NAV_SECTIONS;
 }
 
-export function allNavItemsFor(role: Role | null | undefined): NavItem[] {
-  return role === "commerciale"
-    ? [VD_HOME, VD_LEADS, VD_WHATSAPP, SETTINGS_ITEM].map((i) => (i === SETTINGS_ITEM ? i : { ...i, label: `Vendiora · ${i.label}` }))
-    : ALL_NAV_ITEMS;
+export function allNavItemsFor(role: Role | null | undefined, vendiora = false): NavItem[] {
+  if (role === "commerciale") return [LEADS_ITEM, SETTINGS_ITEM];
+  return vendiora ? ALL_NAV_ITEMS : ALL_NAV_ITEMS_NO_VENDIORA;
 }
 
 export function isActivePath(pathname: string, href: string, exact = false): boolean {

@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/components/shared/NotificationContext";
 import { useCommandPalette } from "@/components/shared/CommandPalette";
-import { useCurrentUser, useRole } from "@/components/shared/CurrentUserContext";
+import { useCurrentUser, useRole, useVendiora } from "@/components/shared/CurrentUserContext";
 import { ContactAvatar } from "@/components/shared/ContactAvatar";
 import { ThemeSwitch } from "@/components/shared/ThemeProvider";
 import { BrandMark } from "./BrandMark";
@@ -24,9 +24,11 @@ const TABS: Tab[] = [
   { href: "/activities", label: "Attività", icon: ListChecks, badge: "activities" },
 ];
 
+/** Where Vendiora is off the second tab is the plain Lead list */
+const TABS_NO_VENDIORA: Tab[] = TABS.map((t) => (t.href === "/vendiora" ? { href: "/leads", label: "Lead", icon: PhoneCall, badge: "leads" } : t));
+
 const SALES_TABS: Tab[] = [
   { href: "/leads", label: "Lead", icon: PhoneCall, badge: "leads" },
-  { href: "/vendiora/whatsapp", label: "WhatsApp", icon: PhoneCall },
   { href: "/settings", label: "Profilo", icon: Settings },
 ];
 
@@ -36,7 +38,8 @@ export function BottomNav() {
   const { counts } = useNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
   const isSales = useRole() === "commerciale";
-  const tabs = isSales ? SALES_TABS : TABS;
+  const vendiora = useVendiora();
+  const tabs = isSales ? SALES_TABS : vendiora ? TABS : TABS_NO_VENDIORA;
 
   const inTabs = tabs.some((t) => isActivePath(pathname, t.href));
 
@@ -103,7 +106,8 @@ export function MobileNav({ onNavigate }: { onNavigate?: () => void }) {
   const { counts } = useNotifications();
   const openPalette = useCommandPalette();
   const user = useCurrentUser();
-  const sections = navSectionsFor(user?.role, pathname);
+  const vendiora = useVendiora();
+  const sections = navSectionsFor(user?.role, pathname, vendiora);
 
   return (
     <div className="flex h-full flex-col text-sidebar-foreground">

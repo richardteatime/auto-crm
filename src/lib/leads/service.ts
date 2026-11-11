@@ -1,4 +1,5 @@
 import { createLead, updateLead, addLeadEvent, findLeadsByPhone, type NewLead } from "@/lib/db/leads";
+import { vendioraEnabled } from "@/lib/roles";
 import { createContact, createDeal, getStages } from "@/lib/db";
 import { normalizePhone, type NormalizedLead } from "@/lib/leads/intake";
 import { notifyNewLead } from "@/lib/leads/notify";
@@ -78,7 +79,7 @@ export async function ingestLead(
   if (opts.notify !== false) {
     // Vendiora: WhatsApp bot contacts the lead right away (no-op when the bot is off)
     // (fire and forget: the intake answers immediately, the server process keeps running)
-    void import("@/lib/vendiora/bot").then(({ onNewLead }) => onNewLead(result.lead));
+    if (vendioraEnabled()) void import("@/lib/vendiora/bot").then(({ onNewLead }) => onNewLead(result.lead));
   }
   return result;
 }

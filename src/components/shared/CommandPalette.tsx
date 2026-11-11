@@ -16,7 +16,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { allNavItemsFor } from "@/components/layout/nav-config";
-import { useRole } from "./CurrentUserContext";
+import { useRole, useVendiora } from "./CurrentUserContext";
 import { QUICK_CREATE_ITEMS, useQuickCreate } from "./QuickCreate";
 import { ContactAvatar } from "./ContactAvatar";
 import { formatCurrencyShort } from "@/lib/constants";
@@ -83,6 +83,7 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
   const [deals, setDeals] = useState<SearchDeal[]>([]);
   const [leads, setLeads] = useState<Array<{ id: string; name: string; company: string | null; phone: string | null; email: string | null }>>([]);
   const role = useRole();
+  const vendiora = useVendiora();
   const isSales = role === "commerciale";
 
   // Refresh the searchable records every time the palette opens
@@ -210,7 +211,7 @@ function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (
 
         <CommandSeparator />
         <CommandGroup heading="Vai a">
-          {allNavItemsFor(role).map((item) => (
+          {allNavItemsFor(role, vendiora).map((item) => (
             <CommandItem
               key={item.href}
               value={`vai ${item.label} ${item.keywords ?? ""}`}

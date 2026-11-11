@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { vendioraEnabled } from "@/lib/roles";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
@@ -48,7 +49,8 @@ export default async function RootLayout({
 }>) {
   const u = await getServerUser();
   const crm = process.env.CRM_INSTANCE_NAME || undefined;
-  const initialUser = u ? { id: u.id, name: u.name, email: u.email, role: u.role, crm } : null;
+  const vendiora = !!u && u.role === "admin" && vendioraEnabled();
+  const initialUser = u ? { id: u.id, name: u.name, email: u.email, role: u.role, crm, vendiora } : null;
   return (
     <html
       lang="it"

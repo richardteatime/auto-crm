@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { users } from "@/lib/appwrite";
 import { verifyToken, type AuthUser } from "@/lib/auth";
-import { roleFromLabels, canEnterCrm } from "@/lib/roles";
+import { roleFromLabels, canEnterCrm, isBlockedUser } from "@/lib/roles";
 
 /** Current user for Server Components (route handlers keep using getCurrentUser) */
 export async function getServerUser(): Promise<AuthUser | null> {
@@ -9,7 +9,7 @@ export async function getServerUser(): Promise<AuthUser | null> {
   const raw = store.get("appwrite-session")?.value;
   if (!raw) return null;
   const parsed = verifyToken(raw);
-  if (!parsed) return null;
+  if (!parsed || isBlockedUser(parsed.userId)) return null;
   try {
     const u = await users.get(parsed.userId);
     if (!canEnterCrm(u.labels)) return null;

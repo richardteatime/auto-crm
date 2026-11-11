@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     const user = await users.get(userId);
 
     // Separate CRM instance: only the people it belongs to may enter
-    const { canEnterCrm } = await import("@/lib/roles");
-    if (!canEnterCrm(user.labels)) {
+    const { canEnterCrm, isBlockedUser } = await import("@/lib/roles");
+    if (!canEnterCrm(user.labels) || isBlockedUser(userId)) {
       await users.deleteSession(userId, sessionId).catch(() => undefined);
       return NextResponse.json(
         { success: false, error: "Questo account non ha accesso a questo CRM." },

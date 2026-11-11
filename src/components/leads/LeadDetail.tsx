@@ -51,6 +51,7 @@ import {
 import { LeadStatusPill, QuickContact, datePresets, dueText, shortDuration, toLocalInput, waitTone } from "./lead-ui";
 import { OutcomeDialog } from "./OutcomeDialog";
 import { LeadFormDialog, LostReasonDialog } from "./LeadDialogs";
+import { useVendiora } from "@/components/shared/CurrentUserContext";
 import { LeadPackageCard } from "@/components/vendiora/LeadPackageCard";
 import { LeadWhatsappCard } from "@/components/vendiora/LeadWhatsappCard";
 
@@ -83,6 +84,7 @@ export function LeadDetail({
   userFirstName: string | null;
 }) {
   const router = useRouter();
+  const vendiora = useVendiora();
   const [lead, setLead] = useState(serverLead);
   const [prevServer, setPrevServer] = useState(serverLead);
   const [now, setNow] = useState(nowMs);
@@ -284,7 +286,7 @@ export function LeadDetail({
             )}
           </Card>
 
-          {isAdmin && <LeadPackageCard lead={lead} />}
+          {isAdmin && vendiora && <LeadPackageCard lead={lead} />}
           {isAdmin && <ConvertCard lead={lead} onDone={refreshWith} />}
         </div>
       </div>

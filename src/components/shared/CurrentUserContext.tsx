@@ -10,6 +10,8 @@ export interface CurrentUser {
   role: Role;
   /** Name of this CRM instance shown next to the logo (separate instances only) */
   crm?: string;
+  /** Vendiora (sub-CRM) is on in this CRM and open to this user */
+  vendiora?: boolean;
 }
 
 const CurrentUserContext = createContext<CurrentUser | null>(null);
@@ -29,7 +31,7 @@ export function CurrentUserProvider({
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!cancelled && data?.id) setUser({ id: data.id, name: data.name, email: data.email, role: data.role ?? "admin", crm: data.crm || undefined });
+        if (!cancelled && data?.id) setUser({ id: data.id, name: data.name, email: data.email, role: data.role ?? "admin", crm: data.crm || undefined, vendiora: data.vendiora === true });
       })
       .catch(() => {});
     return () => {
@@ -42,6 +44,12 @@ export function CurrentUserProvider({
 
 export function useCurrentUser() {
   return useContext(CurrentUserContext);
+}
+
+/** True when this user may open Vendiora (founders, in the SarconX CRM) */
+export function useVendiora(): boolean {
+  const u = useContext(CurrentUserContext);
+  return !!u && u.role === "admin" && u.vendiora === true;
 }
 
 export function useRole(): Role | null {

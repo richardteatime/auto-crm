@@ -11,15 +11,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { BrandMark } from "./BrandMark";
 import { UserMenu } from "./UserMenu";
 import { navSectionsFor, SETTINGS_ITEM, isActivePath, isVendioraPath, type NavItem } from "./nav-config";
-import { useRole, useCurrentUser } from "@/components/shared/CurrentUserContext";
+import { useRole, useCurrentUser, useVendiora } from "@/components/shared/CurrentUserContext";
 import { toggleSidebar } from "./sidebar-state";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { counts } = useNotifications();
   const openPalette = useCommandPalette();
-  const sections = navSectionsFor(useRole(), pathname);
-  const inVendiora = isVendioraPath(pathname);
+  const vendiora = useVendiora();
+  const sections = navSectionsFor(useRole(), pathname, vendiora);
+  const inVendiora = vendiora && isVendioraPath(pathname);
   const crmName = useCurrentUser()?.crm;
 
   // "[" collapses / expands, like most pro tools

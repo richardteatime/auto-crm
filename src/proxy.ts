@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { roleFromLabels, canEnterCrm, salesCanAccess, SALES_HOME, type Role } from "@/lib/roles";
+import { roleFromLabels, canEnterCrm, salesCanAccess, isBlockedUser, vendioraEnabled, SALES_HOME, type Role } from "@/lib/roles";
 
 const SESSION_COOKIE = "appwrite-session";
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.APPWRITE_API_KEY || "";
@@ -127,6 +127,21 @@ export async function proxy(request: NextRequest) {
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Account shut out of this CRM (CRM_BLOCKED_USERS): drop the session and send to login
+  if (isBlockedUser(valid.userId)) {
+    const res = pathname.startsWith("/api/")
+      ? NextResponse.json({ success: false, error: "Questo account non ha accesso a questo CRM." }, { status: 403 })
+      : NextResponse.redirect(new URL("/login", request.url));
+    res.cookies.delete(SESSION_COOKIE);
+    return res;
+  }
+
+  // Vendiora switched off here (separate instances, VENDIORA_ENABLED=0): back to the leads
+  if (!vendioraEnabled() && (pathname === "/vendiora" || pathname.startsWith("/vendiora/") || pathname.startsWith("/api/vendiora/"))) {
+    if (pathname.startsWith("/api/")) return NextResponse.json({ success: false, error: "Vendiora non è attiva in questo CRM" }, { status: 404 });
+    return NextResponse.redirect(new URL("/leads", request.url));
   }
 
   // A salesperson only reaches the Lead section: everything else is refused server-side.

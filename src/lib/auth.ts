@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
-import { roleFromLabels, canEnterCrm, type Role } from "@/lib/roles";
+import { roleFromLabels, canEnterCrm, isBlockedUser, type Role } from "@/lib/roles";
 
 const APPWRITE_ENDPOINT =
   process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "http://localhost:80/v1";
@@ -108,7 +108,7 @@ export async function getCurrentUser(
   if (!raw) return null;
 
   const parsed = verifyToken(raw);
-  if (!parsed) return null;
+  if (!parsed || isBlockedUser(parsed.userId)) return null;
 
   try {
     const baseUrl = APPWRITE_ENDPOINT.replace(/\/v1\/?$/, "");

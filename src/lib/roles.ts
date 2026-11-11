@@ -21,16 +21,33 @@ export function canEnterCrm(labels: readonly string[] | null | undefined): boole
   return !access || !!labels?.includes(access);
 }
 
+/**
+ * Accounts shut out of this CRM (comma list of Appwrite user ids in CRM_BLOCKED_USERS).
+ * Used to keep someone who has their own CRM instance out of the SarconX one.
+ */
+export function isBlockedUser(userId: string | null | undefined): boolean {
+  if (!userId || typeof process === "undefined") return false;
+  return (process.env.CRM_BLOCKED_USERS || "").split(",").map((s) => s.trim()).filter(Boolean).includes(userId);
+}
+
+/**
+ * Vendiora (the sub-CRM for the infobusiness) runs only in the SarconX CRM, never in a
+ * separate instance; VENDIORA_ENABLED=0 switches it off. Server only.
+ */
+export function vendioraEnabled(): boolean {
+  if (typeof process === "undefined") return false;
+  if ((process.env.CRM_ACCESS_LABEL || "").trim()) return false;
+  return process.env.VENDIORA_ENABLED !== "0";
+}
+
 /** Everything a salesperson may open: the Lead section, own settings (password, notifications), auth */
 const SALES_ALLOWED = [
   "/leads", "/settings", "/api/leads", "/api/push", "/api/auth", "/api/health",
-  // Vendiora: salespeople see the dashboard and the WhatsApp chats (packages, clients, contracts stay founder-only)
-  "/vendiora", "/vendiora/whatsapp", "/api/vendiora/wa", "/api/vendiora/chat", "/api/vendiora/inbox", "/api/vendiora/dashboard",
 ];
-const SALES_EXACT = new Set(["/vendiora"]);
+// Vendiora is founders-only: salespeople never reach it
 
 export function salesCanAccess(pathname: string): boolean {
-  return SALES_ALLOWED.some((p) => pathname === p || (!SALES_EXACT.has(p) && pathname.startsWith(p + "/")));
+  return SALES_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 /** Where a salesperson lands */

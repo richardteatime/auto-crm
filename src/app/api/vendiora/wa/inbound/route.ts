@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waInboundAuthorized } from "@/lib/vendiora/wa";
 import { handleInbound } from "@/lib/vendiora/bot";
+import { vendioraEnabled } from "@/lib/roles";
 
 // Called by the WhatsApp gateway for every message (in, and out when typed on the phone).
 export async function POST(request: NextRequest) {
+  if (!vendioraEnabled()) return NextResponse.json({ error: "Vendiora non attiva" }, { status: 404 });
   if (!waInboundAuthorized(request.headers.get("x-wa-secret"))) {
     return NextResponse.json({ error: "non autorizzato" }, { status: 401 });
   }
