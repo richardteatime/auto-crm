@@ -6,10 +6,12 @@
 // - Quote expiry alerts (3 days before + expiry day, unpaid quotes): where
 //   LEAD_CRON_ENABLED=1 or QUOTE_CRON_ENABLED=1. Each CRM instance with its own
 //   database (e.g. CRM Matteo) sets QUOTE_CRON_ENABLED=1; the preview sets neither.
+// - Vendiora automatic WhatsApp (call reminders, offer follow-ups/expiry, end of coaching):
+//   only with LEAD_CRON_ENABLED=1 and Vendiora on, so one instance sends them.
 
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const g = globalThis as unknown as { __leadChecks?: NodeJS.Timeout; __quoteChecks?: NodeJS.Timeout };
+  const g = globalThis as unknown as { __leadChecks?: NodeJS.Timeout; __quoteChecks?: NodeJS.Timeout; __vdChecks?: NodeJS.Timeout };
 
   if (process.env.LEAD_CRON_ENABLED === "1" && !g.__leadChecks) {
     const everyMs = Math.max(60_000, Number(process.env.LEAD_CHECK_INTERVAL_MS || 120_000));
@@ -49,5 +51,26 @@ export async function register() {
     };
     g.__quoteChecks = setInterval(tick, 30 * 60_000);
     setTimeout(tick, 60_000);
+  }
+
+  if (process.env.LEAD_CRON_ENABLED === "1" && process.env.VENDIORA_CRON_ENABLED !== "0" && !g.__vdChecks) {
+    let running = false;
+    const tick = async () => {
+      if (running) return;
+      running = true;
+      try {
+        const { vendioraEnabled } = await import("@/lib/roles");
+        if (!vendioraEnabled()) return;
+        const { runVendioraAutomations } = await import("@/lib/vendiora/automations");
+        const r = await runVendioraAutomations();
+        if (r.reminders || r.followups || r.expired || r.coachingEnd) console.log(`[vendiora auto] ${JSON.stringify(r)}`);
+      } catch (e) {
+        console.error("[vendiora auto]", e instanceof Error ? e.message : e);
+      } finally {
+        running = false;
+      }
+    };
+    g.__vdChecks = setInterval(tick, Math.max(60_000, Number(process.env.VENDIORA_CHECK_INTERVAL_MS || 10 * 60_000)));
+    setTimeout(tick, 90_000);
   }
 }

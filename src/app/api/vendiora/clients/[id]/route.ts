@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getClient, updateClient, deleteClient, listCalls, type ClientPatch } from "@/lib/vendiora/db";
+import { sendClientAuto } from "@/lib/vendiora/automations";
 import { readBody, str, int, iso, fail } from "@/lib/vendiora/http";
 import { isClientStatus } from "@/lib/vendiora/types";
 import { normalizePhone } from "@/lib/leads/intake";
@@ -37,7 +38,31 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   // Natural flow: kick-off → building; store online → coaching
   if (p.kickoffAt && !cur.kickoffAt && cur.status === "onboarding" && !("status" in b)) p.status = "costruzione";
   if (p.storeLiveAt && !cur.storeLiveAt && ["onboarding", "costruzione"].includes(cur.status) && !("status" in b)) p.status = "affiancamento";
-  try { return NextResponse.json({ client: await updateClient(id, p) }); } catch (e) { return fail(e); }
+  try {
+    const client = await updateClient(id, p);
+    // Store just went online → automatic "store online" WhatsApp (once)
+    const auto = p.storeLiveAt && !cur.storeLiveAt ? await sendClientAuto("storeLive", client) : undefined;
+    return NextResponse.json({ client: auto?.sent ? (await getClient(id)) ?? client : client, auto });
+  } catch (e) { return fail(e); }
+}
+
+/** { send: "welcome" | "storeLive" | "coachingEnd", force?: true } → (re)send a journey message now */
+export async function POST(request: NextRequest, { params }: Ctx) {
+  const auth = await requireAdmin(request);
+  if (auth.error) return auth.error;
+  const { id } = await params;
+  const cur = await getClient(id);
+  if (!cur) return NextResponse.json({ error: "Cliente non trovato" }, { status: 404 });
+  const b = await readBody(request);
+  if (b instanceof NextResponse) return b;
+  const key = b.send;
+  if (key !== "welcome" && key !== "storeLive" && key !== "coachingEnd") return NextResponse.json({ error: "Messaggio non valido" }, { status: 400 });
+  const autoLog = { ...cur.autoLog };
+  if (b.force === true) delete autoLog[key];
+  const target = { ...cur, autoLog };
+  const r = await sendClientAuto(key, target);
+  if (!r.sent) return NextResponse.json({ error: r.reason || "Invio non riuscito" }, { status: 409 });
+  return NextResponse.json({ ok: true, client: await getClient(id) });
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {

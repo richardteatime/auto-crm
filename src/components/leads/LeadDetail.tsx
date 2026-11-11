@@ -287,7 +287,7 @@ export function LeadDetail({
           </Card>
 
           {isAdmin && vendiora && <LeadPackageCard lead={lead} />}
-          {isAdmin && <ConvertCard lead={lead} onDone={refreshWith} />}
+          {isAdmin && (!vendiora || lead.dealId) && <ConvertCard lead={lead} onDone={refreshWith} />}
         </div>
       </div>
 

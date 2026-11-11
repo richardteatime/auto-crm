@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/api/webhook",
   "/api/leads/intake",
   "/api/vendiora/wa/inbound",
+  "/offerta",
   "/sw.js",
   "/manifest.webmanifest",
   "/api/auth",

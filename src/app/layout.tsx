@@ -50,7 +50,7 @@ export default async function RootLayout({
   const u = await getServerUser();
   const crm = process.env.CRM_INSTANCE_NAME || undefined;
   const vendiora = !!u && u.role === "admin" && vendioraEnabled();
-  const initialUser = u ? { id: u.id, name: u.name, email: u.email, role: u.role, crm, vendiora } : null;
+  const initialUser = u ? { id: u.id, name: u.name, email: u.email, role: u.role, crm, vendiora, leadBrand: vendioraEnabled() ? "VendiOra" : undefined } : null;
   return (
     <html
       lang="it"

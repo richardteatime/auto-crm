@@ -12,7 +12,11 @@ import {
   type Conversation,
   type VendioraSettings,
   type BotState,
+  type VdOffer,
+  type OfferStatus,
+  OFFER_STATUSES,
 } from "@/lib/vendiora/types";
+import { randomBytes } from "node:crypto";
 
 // Vendiora lives next to the leads (LEADS_DB_ID), so every CRM sharing the leads sees the same data.
 export const VD = {
@@ -22,6 +26,7 @@ export const VD = {
   messages: "vd_messages",
   conversations: "vd_conversations",
   settings: "vd_settings",
+  offers: "vd_offers",
 } as const;
 
 type Doc = Models.Document & Record<string, unknown>;
@@ -126,7 +131,7 @@ export async function deletePackage(id: string): Promise<void> {
 const CLIENT_FIELDS = [
   "leadId", "name", "email", "phone", "phoneE164", "taxId", "address", "packageId", "packageSnapshot", "packageName",
   "price", "vatRate", "paymentTerms", "status", "contractNumber", "contractDate", "contractSignedAt", "isPaid", "paidAt",
-  "kickoffAt", "storeLiveAt", "storeUrl", "coach", "notes",
+  "kickoffAt", "storeLiveAt", "storeUrl", "coach", "notes", "autoLog",
 ] as const;
 
 function toClient(d: Doc): VdClient {
@@ -156,6 +161,7 @@ function toClient(d: Doc): VdClient {
     storeUrl: s(d.storeUrl),
     coach: s(d.coach),
     notes: s(d.notes),
+    autoLog: json<Record<string, string>>(d.autoLog, {}),
     createdAt: d.$createdAt,
   };
 }
@@ -165,6 +171,7 @@ export type ClientPatch = Partial<Pick<VdClient, (typeof CLIENT_FIELDS)[number]>
 function pickClient(p: ClientPatch): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const k of CLIENT_FIELDS) if (k in p && p[k] !== undefined) out[k] = p[k];
+  if (out.autoLog && typeof out.autoLog === "object") out.autoLog = JSON.stringify(out.autoLog).slice(0, 4000);
   return out;
 }
 
@@ -220,6 +227,7 @@ function toCall(d: Doc): VdCall {
     scheduledAt: s(d.scheduledAt),
     doneAt: s(d.doneAt),
     notes: s(d.notes),
+    reminderAt: s(d.reminderAt),
   };
 }
 
@@ -233,7 +241,7 @@ export async function getCall(id: string): Promise<VdCall | null> {
   try { return toCall((await databases.getDocument(LEADS_DB_ID, VD.calls, id)) as Doc); } catch { return null; }
 }
 
-export async function createCall(c: Omit<VdCall, "id">): Promise<VdCall> {
+export async function createCall(c: Omit<VdCall, "id" | "reminderAt">): Promise<VdCall> {
   return toCall((await databases.createDocument(LEADS_DB_ID, VD.calls, ID.unique(), clean({ ...c }))) as Doc);
 }
 
@@ -339,4 +347,76 @@ export async function saveConversation(c: Omit<Conversation, "id"> & { id?: stri
     ? await databases.updateDocument(LEADS_DB_ID, VD.conversations, c.id, data)
     : await databases.createDocument(LEADS_DB_ID, VD.conversations, ID.unique(), data);
   return toConversation(doc as Doc);
+}
+
+// ---------------------------------------------------------------------------
+// Offers
+// ---------------------------------------------------------------------------
+
+function toOffer(d: Doc): VdOffer {
+  const st = d.status as OfferStatus;
+  return {
+    id: d.$id,
+    number: (d.number as string) || "",
+    token: (d.token as string) || "",
+    leadId: s(d.leadId),
+    clientId: s(d.clientId),
+    name: (d.name as string) || "Cliente",
+    email: s(d.email),
+    phoneE164: s(d.phoneE164),
+    packageId: s(d.packageId),
+    packageSnapshot: s(d.packageSnapshot),
+    packageName: (d.packageName as string) || "Pacchetto",
+    price: n(d.price),
+    vatRate: n(d.vatRate, 22),
+    message: s(d.message),
+    status: (OFFER_STATUSES as readonly string[]).includes(st) ? st : "bozza",
+    validUntil: s(d.validUntil),
+    sentAt: s(d.sentAt),
+    viewedAt: s(d.viewedAt),
+    answeredAt: s(d.answeredAt),
+    followupAt: s(d.followupAt),
+    createdAt: d.$createdAt,
+  };
+}
+
+export type OfferPatch = Partial<Omit<VdOffer, "id" | "createdAt" | "token">>;
+
+export async function listOffers(f: { leadId?: string } = {}): Promise<VdOffer[]> {
+  const q = [Query.orderDesc("$createdAt")];
+  if (f.leadId) q.push(Query.equal("leadId", f.leadId));
+  return (await listAll(VD.offers, q, 3000)).map(toOffer);
+}
+
+export async function getOffer(id: string): Promise<VdOffer | null> {
+  try { return toOffer((await databases.getDocument(LEADS_DB_ID, VD.offers, id)) as Doc); } catch { return null; }
+}
+
+export async function getOfferByToken(token: string): Promise<VdOffer | null> {
+  if (!/^[a-f0-9]{32,64}$/.test(token)) return null;
+  const res = await databases.listDocuments(LEADS_DB_ID, VD.offers, [Query.equal("token", token), Query.limit(1)]);
+  return res.documents[0] ? toOffer(res.documents[0] as Doc) : null;
+}
+
+async function nextOfferNumber(year = new Date().getFullYear()): Promise<string> {
+  const res = await databases.listDocuments(LEADS_DB_ID, VD.offers, [
+    Query.startsWith("number", `OF-${year}-`), Query.orderDesc("number"), Query.limit(1),
+  ]).catch(() => ({ documents: [] as Models.Document[] }));
+  const last = (res.documents[0] as Doc | undefined)?.number as string | undefined;
+  const prog = last ? Number(last.split("-")[2]) || 0 : 0;
+  return `OF-${year}-${String(prog + 1).padStart(3, "0")}`;
+}
+
+export async function createOffer(o: OfferPatch & { name: string; price: number }): Promise<VdOffer> {
+  const number = await nextOfferNumber();
+  const token = randomBytes(20).toString("hex");
+  return toOffer((await databases.createDocument(LEADS_DB_ID, VD.offers, ID.unique(), clean({ ...o, number, token, status: o.status ?? "bozza" }))) as Doc);
+}
+
+export async function updateOffer(id: string, p: OfferPatch): Promise<VdOffer> {
+  return toOffer((await databases.updateDocument(LEADS_DB_ID, VD.offers, id, clean({ ...p }))) as Doc);
+}
+
+export async function deleteOffer(id: string): Promise<void> {
+  await databases.deleteDocument(LEADS_DB_ID, VD.offers, id);
 }

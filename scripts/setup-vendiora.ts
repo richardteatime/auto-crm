@@ -40,13 +40,13 @@ const SCHEMA: Record<string, { name: string; attrs: Attr[]; indexes: Array<[stri
       S("leadId", 64), S("name", 255, true), S("email", 255), S("phone", 64), S("phoneE164", 32), S("taxId", 64), S("address", 500),
       S("packageId", 64), S("packageSnapshot", 20000), S("packageName", 200), I("price"), F("vatRate"), S("paymentTerms", 2000),
       S("status", 32), S("contractNumber", 32), D("contractDate"), D("contractSignedAt"), B("isPaid"), D("paidAt"),
-      D("kickoffAt"), D("storeLiveAt"), S("storeUrl", 500), S("coach", 120), S("notes", 20000),
+      D("kickoffAt"), D("storeLiveAt"), S("storeUrl", 500), S("coach", 120), S("notes", 20000), S("autoLog", 4000),
     ],
     indexes: [["idx_lead", ["leadId"]], ["idx_contract", ["contractNumber"]], ["idx_status", ["status"]]],
   },
   vd_calls: {
     name: "Vendiora call",
-    attrs: [S("clientId", 64, true), S("clientName", 255), I("number"), S("title", 200), S("status", 32), D("scheduledAt"), D("doneAt"), S("notes", 4000)],
+    attrs: [S("clientId", 64, true), S("clientName", 255), I("number"), S("title", 200), S("status", 32), D("scheduledAt"), D("doneAt"), S("notes", 4000), D("reminderAt")],
     indexes: [["idx_client", ["clientId"]], ["idx_sched", ["scheduledAt"]], ["idx_number", ["number"]]],
   },
   vd_messages: {
@@ -58,6 +58,15 @@ const SCHEMA: Record<string, { name: string; attrs: Attr[]; indexes: Array<[stri
     name: "Vendiora bot conversazioni",
     attrs: [S("leadId", 64, true), S("phoneE164", 32), S("chatIds", 1000), S("state", 20), I("step"), S("answers", 20000), D("lastInboundAt"), D("handoffAt")],
     indexes: [["idx_lead", ["leadId"]], ["idx_phone", ["phoneE164"]]],
+  },
+  vd_offers: {
+    name: "Vendiora offerte",
+    attrs: [
+      S("number", 32), S("token", 64, true), S("leadId", 64), S("clientId", 64), S("name", 255), S("email", 255), S("phoneE164", 32),
+      S("packageId", 64), S("packageSnapshot", 20000), S("packageName", 200), I("price"), F("vatRate"), S("message", 4000),
+      S("status", 20), D("validUntil"), D("sentAt"), D("viewedAt"), D("answeredAt"), D("followupAt"),
+    ],
+    indexes: [["idx_token", ["token"]], ["idx_lead", ["leadId"]], ["idx_status", ["status"]], ["idx_number", ["number"]]],
   },
   vd_settings: { name: "Vendiora impostazioni", attrs: [S("data", 30000)], indexes: [] },
 };

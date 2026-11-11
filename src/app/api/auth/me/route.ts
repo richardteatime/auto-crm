@@ -8,5 +8,5 @@ export async function GET(request: NextRequest) {
   }
   const { CRM_INSTANCE_NAME } = await import("@/lib/instance");
   const { vendioraEnabled } = await import("@/lib/roles");
-  return NextResponse.json({ ...user, crm: CRM_INSTANCE_NAME || undefined, vendiora: vendioraEnabled() && user.role === "admin" });
+  return NextResponse.json({ ...user, crm: CRM_INSTANCE_NAME || undefined, vendiora: vendioraEnabled() && user.role === "admin", leadBrand: vendioraEnabled() ? "VendiOra" : undefined });
 }

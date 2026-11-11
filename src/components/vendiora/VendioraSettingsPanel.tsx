@@ -6,7 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fillTemplate, type VendioraSettings } from "@/lib/vendiora/types";
+import { fillTemplate, AUTO_INFO, AUTO_KEYS, type AutoKey, type VendioraSettings } from "@/lib/vendiora/types";
 import { api, Field, Panel, inputCls, textareaCls } from "./ui";
 import { WaConnection } from "./WaConnection";
 
@@ -24,6 +24,13 @@ export function VendioraSettingsPanel() {
   const bot = s.bot, co = s.company;
   const setBot = (p: Partial<typeof bot>) => setS({ ...s, bot: { ...bot, ...p } });
   const setCo = (p: Partial<typeof co>) => setS({ ...s, company: { ...co, ...p } });
+  const au = s.automations;
+  const setAuto = (k: AutoKey, p: Partial<(typeof au)[AutoKey]>) => setS({ ...s, automations: { ...au, [k]: { ...au[k], ...p } } });
+  const sample: Record<string, string> = {
+    nome: "Marco", referente: bot.handoffName || "il nostro team", prenota: bot.coachingBookingUrl || bot.calendlyUrl || "[link prenotazione]",
+    pacchetto: "Store Pro", prezzo: "1.797 €", link: "https://…/offerta/…", scadenza: "18 novembre 2026", contratto: "VO-2026-001",
+    call: "Call di avvio", data: "giovedì 19 novembre", ora: "15:00", store: "https://negozio-marco.it",
+  };
 
   async function save() {
     setBusy(true);
@@ -39,7 +46,7 @@ export function VendioraSettingsPanel() {
 
   return (
     <div className="space-y-6 pb-16">
-      <PageHeader title="Bot e azienda" description="Collegamento WhatsApp, cosa scrive il bot ai nuovi lead e i dati che finiscono nei contratti." actions={<Button onClick={save} disabled={busy}>{busy ? "Salvo…" : "Salva modifiche"}</Button>} />
+      <PageHeader title="Bot e azienda" description="Collegamento WhatsApp, bot ai nuovi lead, messaggi automatici del percorso cliente e dati per i contratti." actions={<Button onClick={save} disabled={busy}>{busy ? "Salvo…" : "Salva modifiche"}</Button>} />
 
       <Panel title="WhatsApp"><WaConnection /></Panel>
 
@@ -98,6 +105,29 @@ export function VendioraSettingsPanel() {
           <p className="mt-2 text-[11.5px] text-muted-foreground">Tra un messaggio e l&apos;altro il bot aspetta la risposta del lead.</p>
         </Panel>
       </div>
+
+      <Panel title="Messaggi automatici su WhatsApp">
+        <p className="mb-4 text-[13px] text-muted-foreground">Partono dal numero WhatsApp collegato sopra, ognuno una sola volta per cliente. Se WhatsApp non è collegato o il cliente non ha il numero, non parte niente (lo vedi scritto nella scheda). Togli la spunta per spegnere un messaggio.</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {AUTO_KEYS.map((k) => (
+            <div key={k} className={`rounded-xl border p-3.5 ${au[k].enabled ? "" : "opacity-60"}`}>
+              <label className="mb-1 flex cursor-pointer items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" className="size-4 accent-orange-500" checked={au[k].enabled} onChange={(e) => setAuto(k, { enabled: e.target.checked })} />
+                {AUTO_INFO[k].label}
+              </label>
+              <p className="mb-2 text-[12.5px] text-muted-foreground">{AUTO_INFO[k].when}. Segnaposto: <code className="text-[11.5px]">{AUTO_INFO[k].vars}</code></p>
+              <textarea className={textareaCls} rows={5} value={au[k].text} onChange={(e) => setAuto(k, { text: e.target.value })} />
+              <details className="mt-2 text-[12.5px]">
+                <summary className="cursor-pointer text-muted-foreground">Anteprima</summary>
+                <p className="mt-1.5 whitespace-pre-wrap rounded-lg bg-emerald-500/10 p-2.5">{fillTemplate(au[k].text, sample)}</p>
+              </details>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 max-w-xs">
+          <Field label="Validità delle offerte (giorni)"><input className={inputCls} inputMode="numeric" value={String(au.offerValidDays)} onChange={(e) => setS({ ...s, automations: { ...au, offerValidDays: Number(e.target.value.replace(/\D/g, "")) || 0 } })} /></Field>
+        </div>
+      </Panel>
 
       <Panel title="Dati di VendiOra per i contratti">
         <p className="mb-4 text-[13px] text-muted-foreground">Compaiono come «Fornitore». Quelli vuoti escono nel contratto evidenziati in giallo come «da inserire».</p>

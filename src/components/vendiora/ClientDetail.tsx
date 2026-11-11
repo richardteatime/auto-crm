@@ -11,10 +11,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   CALL_STATUS_CONFIG, CLIENT_STATUSES, CLIENT_STATUS_CONFIG, eur, guaranteeDeadline,
-  type CallStatus, type VdCall, type VdClient, type VdPackage,
+  AUTO_INFO, type CallStatus, type VdCall, type VdClient, type VdPackage,
 } from "@/lib/vendiora/types";
 import { api, Field, Panel, Pill, fmtDate, inputCls, textareaCls, toDateInputValue, toLocalInputValue } from "./ui";
 import { WaChat } from "./WaChat";
+import { JourneyTimeline } from "./JourneyTimeline";
 
 export function ClientDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -23,11 +24,22 @@ export function ClientDetail({ id }: { id: string }) {
   const [notes, setNotes] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
+  const [tick, setTick] = useState(0);
   const load = useCallback(() => api<{ client: VdClient; calls: VdCall[] }>(`/api/vendiora/clients/${id}`).then((r) => { setC(r.client); setCalls(r.calls); setNotes(r.client.notes ?? ""); }).catch((e) => setErr(e.message)), [id]);
   useEffect(() => { load(); }, [load]);
 
   async function patch(p: Record<string, unknown>, msg = "Salvato") {
-    try { const r = await api<{ client: VdClient }>(`/api/vendiora/clients/${id}`, { method: "PUT", json: p }); setC(r.client); toast.success(msg); } catch (e) { toast.error((e as Error).message); }
+    try {
+      const r = await api<{ client: VdClient; auto?: { sent: boolean; reason?: string } }>(`/api/vendiora/clients/${id}`, { method: "PUT", json: p });
+      setC(r.client);
+      toast.success(msg, { description: r.auto ? (r.auto.sent ? "Messaggio «store online» inviato su WhatsApp" : `Messaggio «store online» non inviato: ${r.auto.reason}`) : undefined });
+      setTick((t) => t + 1);
+    } catch (e) { toast.error((e as Error).message); }
+  }
+  async function sendAuto(key: "welcome" | "storeLive" | "coachingEnd") {
+    const already = c?.autoLog[key];
+    if (already && !confirm(`«${AUTO_INFO[key].label}» è già stato inviato il ${fmtDate(already, true)}. Lo rimando?`)) return;
+    try { const r = await api<{ client: VdClient }>(`/api/vendiora/clients/${id}`, { json: { send: key, force: !!already } }); setC(r.client); setTick((t) => t + 1); toast.success("Inviato su WhatsApp"); } catch (e) { toast.error((e as Error).message); }
   }
   async function patchCall(callId: string, p: Record<string, unknown>) {
     try { const r = await api<{ call: VdCall }>(`/api/vendiora/calls/${callId}`, { method: "PUT", json: p }); setCalls((cs) => cs.map((x) => (x.id === callId ? r.call : x))); } catch (e) { toast.error((e as Error).message); }
@@ -102,6 +114,7 @@ export function ClientDetail({ id }: { id: string }) {
             <div className="mt-2 flex justify-end"><Button size="sm" disabled={notes === (c.notes ?? "")} onClick={() => patch({ notes })}>Salva note</Button></div>
           </Panel>
           {c.leadId && <Panel title="WhatsApp"><WaChat leadId={c.leadId} /></Panel>}
+          <Panel title="Percorso del cliente"><JourneyTimeline clientId={c.id} refreshKey={tick} /></Panel>
         </div>
         <div className="space-y-6">
           <Panel title="Stato">
@@ -112,6 +125,20 @@ export function ClientDetail({ id }: { id: string }) {
                   {s === c.status && <Check className="size-4 text-orange-500" />}
                 </button>
               ))}
+            </div>
+          </Panel>
+          <Panel title="Messaggi automatici">
+            <div className="space-y-2">
+              {(["welcome", "storeLive", "coachingEnd"] as const).map((k) => (
+                <div key={k} className="flex items-center justify-between gap-2 text-[13px]">
+                  <span className="min-w-0">
+                    <span className="font-medium">{AUTO_INFO[k].label}</span>
+                    <span className="block text-[11.5px] text-muted-foreground">{c.autoLog[k] ? `Inviato ${fmtDate(c.autoLog[k], true)}` : "Non ancora inviato"}</span>
+                  </span>
+                  <Button size="sm" variant="outline" className="h-7 shrink-0 text-[12px]" onClick={() => sendAuto(k)}>{c.autoLog[k] ? "Rimanda" : "Invia ora"}</Button>
+                </div>
+              ))}
+              <p className="pt-1 text-[11.5px] text-muted-foreground">I promemoria delle call partono da soli il giorno prima. Testi in <Link className="underline" href="/vendiora/impostazioni">Impostazioni</Link>.</p>
             </div>
           </Panel>
           <ClientDataPanel key={[c.name, c.email, c.phone, c.taxId, c.address, c.storeUrl, c.coach].join("|")} c={c} onSave={(p) => patch(p)} />

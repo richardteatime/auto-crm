@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getSettings, saveSettings } from "@/lib/vendiora/db";
-import { mergeSettings, DEFAULT_SETTINGS } from "@/lib/vendiora/types";
+import { mergeSettings, DEFAULT_SETTINGS, AUTO_KEYS } from "@/lib/vendiora/types";
 import { users } from "@/lib/appwrite";
 import { Query } from "@/lib/query17";
 import { readBody, fail } from "@/lib/vendiora/http";
@@ -27,7 +27,10 @@ export async function PUT(request: NextRequest) {
   const next = mergeSettings({
     bot: { ...cur.bot, ...((body.bot as object) ?? {}) },
     company: { ...cur.company, ...((body.company as object) ?? {}) },
+    automations: { ...cur.automations, ...((body.automations as object) ?? {}) },
   });
+  for (const k of AUTO_KEYS) next.automations[k] = { enabled: next.automations[k].enabled === true, text: String(next.automations[k].text ?? "").slice(0, 1500) };
+  next.automations.offerValidDays = Math.min(90, Math.max(1, Math.round(Number(next.automations.offerValidDays) || 7)));
   next.bot.questions = (Array.isArray(next.bot.questions) ? next.bot.questions : [])
     .map((q) => String(q).trim()).filter(Boolean).slice(0, 10);
   next.bot.handoffUserIds = (Array.isArray(next.bot.handoffUserIds) ? next.bot.handoffUserIds : []).map(String).slice(0, 10);

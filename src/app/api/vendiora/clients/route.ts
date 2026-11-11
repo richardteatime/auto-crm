@@ -4,8 +4,9 @@ import { getLead, leadInScope, addLeadEvent } from "@/lib/db/leads";
 import { changeStatus, convertLead } from "@/lib/leads/service";
 import { normalizePhone } from "@/lib/leads/intake";
 import {
-  listClients, createClient, getPackage, nextContractNumber, findClientByLead, createCall, listCalls,
+  listClients, createClient, getPackage, nextContractNumber, findClientByLead, createCall, listCalls, getOffer, updateOffer, listOffers,
 } from "@/lib/vendiora/db";
+import { sendClientAuto } from "@/lib/vendiora/automations";
 import { readBody, str, int, fail } from "@/lib/vendiora/http";
 import { eur } from "@/lib/vendiora/types";
 
@@ -90,12 +91,22 @@ export async function POST(request: NextRequest) {
         leadId: lead.id, type: "note", outcome: null, fromStatus: null, toStatus: null,
         note: `Venduto «${pkg.name}» a ${eur(price)} + IVA · contratto ${contractNumber}`, actorId: actor.id, actorName: actor.name,
       });
-      if (body.finance !== false && !updated.dealId) {
+      // Vendiora sales stay in Vendiora: the SarconX pipeline only on explicit request
+      if (body.finance === true && !updated.dealId) {
         const r = await convertLead(updated, actor, { value: price, title: `${name} · ${pkg.name}` });
         updated = r.lead;
       }
     }
-    return NextResponse.json({ client });
+
+    // The accepted (or latest open) offer becomes this contract
+    const offer = typeof body.offerId === "string" && body.offerId ? await getOffer(body.offerId)
+      : lead ? (await listOffers({ leadId: lead.id })).find((o) => !o.clientId && (o.status === "accettata" || o.status === "vista" || o.status === "inviata")) ?? null : null;
+    if (offer && !offer.clientId) {
+      await updateOffer(offer.id, { clientId: client.id, status: "accettata", answeredAt: offer.answeredAt ?? today }).catch(() => {});
+    }
+
+    const welcome = body.welcome === false ? { sent: false, reason: "non richiesto" } : await sendClientAuto("welcome", client);
+    return NextResponse.json({ client, welcome });
   } catch (e) {
     return fail(e);
   }

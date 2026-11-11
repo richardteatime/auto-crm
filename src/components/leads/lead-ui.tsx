@@ -4,6 +4,7 @@ import { Phone, MessageCircle, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { cleanPhoneForWhatsApp } from "@/lib/constants";
 import { LEAD_STATUS_CONFIG, type Lead, type LeadStatus } from "@/lib/leads/types";
+import { useLeadBrand } from "@/components/shared/CurrentUserContext";
 
 export function LeadStatusPill({ status, className }: { status: LeadStatus; className?: string }) {
   const cfg = LEAD_STATUS_CONFIG[status];
@@ -25,11 +26,11 @@ export function telHref(lead: Pick<Lead, "phone" | "phoneE164">): string | null 
   return n ? `tel:${n.replace(/\s+/g, "")}` : null;
 }
 
-export function whatsappHref(lead: Pick<Lead, "phone" | "phoneE164" | "name">, senderFirstName?: string | null): string | null {
+export function whatsappHref(lead: Pick<Lead, "phone" | "phoneE164" | "name">, senderFirstName?: string | null, brand = "SarconX"): string | null {
   const n = lead.phoneE164 || lead.phone;
   if (!n) return null;
   const first = lead.name.split(/\s+/)[0];
-  const text = `Buongiorno ${first}, sono ${senderFirstName || "il team"} di SarconX: la contatto per la richiesta che ci ha inviato. Quando le è comodo sentirci?`;
+  const text = `Buongiorno ${first}, sono ${senderFirstName || "il team"} di ${brand}: la contatto per la richiesta che ci ha inviato. Quando le è comodo sentirci?`;
   return `https://wa.me/${cleanPhoneForWhatsApp(n)}?text=${encodeURIComponent(text)}`;
 }
 
@@ -63,7 +64,7 @@ export function QuickContact({
   onCall?: () => void;
 }) {
   const tel = telHref(lead);
-  const wa = whatsappHref(lead, senderFirstName);
+  const wa = whatsappHref(lead, senderFirstName, useLeadBrand());
   const base = cn(
     "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     compact ? "size-9" : "h-10 px-3.5 text-sm"

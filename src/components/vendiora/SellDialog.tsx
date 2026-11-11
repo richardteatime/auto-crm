@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { eur, type VdPackage } from "@/lib/vendiora/types";
 import { api, Field, inputCls, textareaCls, parseEuro, euroInput } from "./ui";
 
-export interface SellPrefill { leadId?: string; name?: string; email?: string | null; phone?: string | null }
+export interface SellPrefill { leadId?: string; name?: string; email?: string | null; phone?: string | null; offerId?: string; packageId?: string | null; price?: number }
 
 /** "Ha comprato": choose the package → client + contract + included calls (+ won lead and deal in Finance) */
 export function SellDialog({ open, onOpenChange, prefill }: { open: boolean; onOpenChange: (o: boolean) => void; prefill?: SellPrefill }) {
@@ -18,6 +18,7 @@ export function SellDialog({ open, onOpenChange, prefill }: { open: boolean; onO
   const [price, setPrice] = useState("");
   const [f, setF] = useState({ name: "", email: "", phone: "", taxId: "", address: "", notes: "" });
   const [busy, setBusy] = useState(false);
+  const [welcome, setWelcome] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -25,7 +26,9 @@ export function SellDialog({ open, onOpenChange, prefill }: { open: boolean; onO
     api<{ packages: VdPackage[] }>("/api/vendiora/packages").then((r) => {
       const act = r.packages.filter((p) => p.active);
       setPkgs(act);
-      if (act[0]) { setPkgId(act[0].id); setPrice(euroInput(act[0].price)); }
+      const pre = prefill?.packageId ? act.find((p) => p.id === prefill.packageId) : undefined;
+      const first = pre ?? act[0];
+      if (first) { setPkgId(first.id); setPrice(euroInput(prefill?.price ?? first.price)); }
     }).catch((e) => toast.error(e.message));
   }, [open, prefill]);
 
@@ -37,8 +40,10 @@ export function SellDialog({ open, onOpenChange, prefill }: { open: boolean; onO
     if (cents == null) return toast.error("Inserisci il prezzo di vendita");
     setBusy(true);
     try {
-      const r = await api<{ client: { id: string; contractNumber: string } }>("/api/vendiora/clients", { json: { ...f, leadId: prefill?.leadId, packageId: pkgId, price: cents } });
-      toast.success(`Cliente creato · contratto ${r.client.contractNumber}`);
+      const r = await api<{ client: { id: string; contractNumber: string }; welcome?: { sent: boolean; reason?: string } }>("/api/vendiora/clients", { json: { ...f, leadId: prefill?.leadId, offerId: prefill?.offerId, packageId: pkgId, price: cents, welcome } });
+      toast.success(`Cliente creato · contratto ${r.client.contractNumber}`, {
+        description: r.welcome?.sent ? "Messaggio di benvenuto inviato su WhatsApp" : welcome && r.welcome?.reason ? `Benvenuto non inviato: ${r.welcome.reason}` : undefined,
+      });
       onOpenChange(false);
       router.push(`/vendiora/clienti/${r.client.id}`);
     } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); }
@@ -49,7 +54,7 @@ export function SellDialog({ open, onOpenChange, prefill }: { open: boolean; onO
       <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Ha comprato un pacchetto</DialogTitle>
-          <DialogDescription>Crea il cliente, il contratto e le call incluse.{prefill?.leadId ? " Il lead passa a «Vinto» e la trattativa va in Finance." : ""}</DialogDescription>
+          <DialogDescription>Crea il cliente, il contratto e le call incluse.{prefill?.leadId ? " Il lead passa a «Vinto»." : ""}</DialogDescription>
         </DialogHeader>
         {pkgs && pkgs.length === 0 ? (
           <p className="text-sm text-muted-foreground">Prima crea un pacchetto in <a className="font-semibold text-orange-600 underline" href="/vendiora/pacchetti">Pacchetti</a>.</p>
@@ -77,6 +82,10 @@ export function SellDialog({ open, onOpenChange, prefill }: { open: boolean; onO
               <Field label="Indirizzo"><input className={inputCls} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></Field>
             </div>
             <Field label="Note"><textarea className={textareaCls} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
+            <label className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3 text-[13px]">
+              <input type="checkbox" className="mt-0.5 accent-orange-500" checked={welcome} onChange={(e) => setWelcome(e.target.checked)} />
+              <span><span className="font-medium">Manda il messaggio di benvenuto su WhatsApp</span><br /><span className="text-muted-foreground">Con il numero del contratto e il link per prenotare la call di avvio (testo in Impostazioni → Messaggi automatici).</span></span>
+            </label>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
               <Button type="submit" disabled={busy || !pkgId}>{busy ? "Creo…" : "Crea cliente e contratto"}</Button>
