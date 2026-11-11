@@ -6,19 +6,18 @@ import {
   findClientByLead, getClient, getConversationByLead, listCalls, listClients, listConversations, listMessages, listOffers,
 } from "@/lib/vendiora/db";
 import { AUTO_INFO, eur, type AutoKey, type Conversation, type VdClient, type VdOffer } from "@/lib/vendiora/types";
+import { CONSULENZA_STAGES, DFY_STAGES, SALES_STAGES, UPSELL_STAGES, lineOf, playbookPackage, stageLabel } from "@/lib/vendiora/playbook";
 
-export const STAGES = [
-  { key: "nuovo", label: "Nuovo lead", hint: "Appena arrivato" },
-  { key: "bot", label: "In chat col bot", hint: "Sta rispondendo alle domande" },
-  { key: "qualificato", label: "Da chiamare", hint: "Ha risposto, tocca al commerciale" },
-  { key: "offerta", label: "Offerta inviata", hint: "In attesa di risposta" },
-  { key: "accettata", label: "Offerta accettata", hint: "Prepara il contratto" },
-  { key: "onboarding", label: "Onboarding", hint: "Contratto, pagamento, call di avvio" },
-  { key: "costruzione", label: "Store in costruzione", hint: "Corrono i giorni della garanzia" },
-  { key: "affiancamento", label: "Affiancamento", hint: "Store online, call" },
-  { key: "concluso", label: "Concluso", hint: "Percorso finito" },
-] as const;
-export type StageKey = (typeof STAGES)[number]["key"] | "perso";
+export type Pipeline = "vendite" | "consulenza" | "dfy" | "upsell";
+export const PIPELINES: { id: Pipeline; label: string; hint: string; stages: { id: string; label: string; hint?: string }[] }[] = [
+  { id: "vendite", label: "Vendite (S)", hint: "Dal lead alla firma", stages: SALES_STAGES.map((s) => ({ id: s.id, label: `${s.id.startsWith("S") ? s.id + " · " : ""}${s.label}` })) },
+  { id: "consulenza", label: "Consulenza (O1–O7)", hint: "Base ed Elite", stages: [...CONSULENZA_STAGES.map((s) => ({ id: s.id, label: `${s.id} · ${s.label}`, hint: s.exit })), { id: "SOSP", label: "Sospeso" }, { id: "RIMB", label: "Rimborsato" }] },
+  { id: "dfy", label: "Done For You (D1–D8)", hint: "Store, Store + Ads, Full", stages: [...DFY_STAGES.map((s) => ({ id: s.id, label: `${s.id} · ${s.label}`, hint: s.exit })), { id: "SOSP", label: "Sospeso" }, { id: "RIMB", label: "Rimborsato" }] },
+  { id: "upsell", label: "Upsell (U1–U6)", hint: "Dal segnale a metà percorso al nuovo pacchetto", stages: UPSELL_STAGES.map((s) => ({ id: s.id, label: `${s.id} · ${s.label}`, hint: s.hint })) },
+];
+/** Old flat list kept for the timeline badge */
+export const STAGES = PIPELINES.flatMap((p) => p.stages.map((s) => ({ key: s.id, label: s.label, hint: s.hint ?? "" })));
+export type StageKey = string;
 
 export interface JourneyCard {
   stage: StageKey;
@@ -28,16 +27,35 @@ export interface JourneyCard {
   detail: string;
   since: string;
   href: string;
+  health?: "verde" | "giallo" | "rosso" | null;
+  badges?: string[];
+}
+
+/** Sales stage S1–S7 / PERSO / NURT */
+function salesStage(lead: Lead | null, conv: Conversation | null, offers: VdOffer[], client: VdClient | null): StageKey {
+  if (client || offers.some((o) => o.paidAt || o.status === "accettata")) return "S7";
+  if (lead?.status === "vinto") return "S7";
+  if (lead?.status === "perso" || offers.some((o) => o.status === "scaduta" && o.autoLog?.["M3.lost"])) return "PERSO";
+  if (offers.some((o) => o.status === "inviata" || o.status === "vista")) return "S6";
+  if (conv?.seqLog?.noShowAt && lead?.status !== "appuntamento") return "S4b";
+  if (lead?.status === "proposta") return "S5";
+  if (lead?.status === "appuntamento") return "S4";
+  if (conv?.qual === "nurturing") return "NURT";
+  if (conv?.qual === "qualificato") return "S3";
+  if (conv && (conv.state === "attivo" || conv.state === "in_attesa" || conv.state === "programmato")) return "S2";
+  if (lead && lead.status !== "nuovo") return "S3";
+  return "S1";
+}
+
+function clientStage(client: VdClient): StageKey {
+  if (client.status === "sospeso") return "SOSP";
+  if (client.status === "rimborsato") return "RIMB";
+  if (client.stage) return client.stage;
+  return lineOf(client.packageCode) === "dfy" ? "D1" : "O1";
 }
 
 function stageOf(lead: Lead | null, conv: Conversation | null, offers: VdOffer[], client: VdClient | null): StageKey {
-  if (client) return client.status === "sospeso" ? "perso" : client.status;
-  if (offers.some((o) => o.status === "accettata")) return "accettata";
-  if (offers.some((o) => o.status === "inviata" || o.status === "vista")) return "offerta";
-  if (lead?.status === "perso") return "perso";
-  if (conv && (conv.state === "attivo" || conv.state === "in_attesa")) return "bot";
-  if (conv || (lead && lead.status !== "nuovo")) return "qualificato";
-  return "nuovo";
+  return client ? clientStage(client) : salesStage(lead, conv, offers, client);
 }
 
 const ago = (iso: string) => {
@@ -45,37 +63,51 @@ const ago = (iso: string) => {
   return d <= 0 ? "oggi" : d === 1 ? "ieri" : `${d} g fa`;
 };
 
-/** Board: every Vendiora lead and client in its current stage (last 120 days of leads) */
-export async function journeyBoard(): Promise<{ stages: typeof STAGES; cards: JourneyCard[]; lost: number }> {
+/** Board of one pipeline (leads of the last 120 days for Vendite) */
+export async function journeyBoard(pipeline: Pipeline = "vendite"): Promise<{ pipelines: typeof PIPELINES; pipeline: Pipeline; stages: { id: string; label: string; hint?: string }[]; cards: JourneyCard[]; lost: number; counts: Record<Pipeline, number> }> {
   const [leads, convs, offers, clients] = await Promise.all([listLeads({ max: 3000 }), listConversations(), listOffers(), listClients()]);
   const since = Date.now() - 120 * 86_400_000;
   const convBy = new Map(convs.map((c) => [c.leadId, c]));
   const offersBy = new Map<string, VdOffer[]>();
   for (const o of offers) if (o.leadId) offersBy.set(o.leadId, [...(offersBy.get(o.leadId) ?? []), o]);
   const clientBy = new Map(clients.filter((c) => c.leadId).map((c) => [c.leadId!, c]));
-  const cards: JourneyCard[] = [];
+  const sales: JourneyCard[] = [];
   let lost = 0;
   for (const l of leads) {
     if (!leadInScope(l)) continue;
     const client = clientBy.get(l.id) ?? null;
-    if (!client && Date.parse(l.createdAt) < since) continue;
+    if (Date.parse(l.createdAt) < since && !client) continue;
     const lo = offersBy.get(l.id) ?? [];
-    const stage = stageOf(l, convBy.get(l.id) ?? null, lo, client);
-    if (stage === "perso") { lost++; continue; }
+    const conv = convBy.get(l.id) ?? null;
+    const stage = salesStage(l, conv, lo, client);
+    if (stage === "PERSO") lost++;
     const offer = lo[0];
-    cards.push({
+    const badges = [conv?.angle, conv?.score != null ? `${conv.score}/100` : null, conv?.pkg ? `→ ${playbookPackage(conv.pkg)?.name ?? conv.pkg}` : null].filter((x): x is string => !!x);
+    sales.push({
       stage, leadId: l.id, clientId: client?.id ?? null, name: client?.name ?? l.name,
-      detail: client ? `${client.packageName} · ${eur(client.price)}` : offer ? `${offer.packageName} · ${eur(offer.price)}` : l.service || l.campaign || l.source,
+      detail: client ? `${client.packageName} · ${eur(client.price)}` : offer ? `${offer.packageName} · ${eur(offer.price)}${offer.signedAt ? " · firmata" : ""}` : l.service || l.campaign || l.source,
       since: ago(client?.contractDate ?? offer?.sentAt ?? l.lastContactAt ?? l.createdAt),
-      href: client ? `/vendiora/clienti/${client.id}` : `/leads/${l.id}`,
+      href: client ? `/vendiora/clienti/${client.id}` : `/leads/${l.id}`, badges,
     });
   }
-  // Clients sold without a lead
-  for (const c of clients) {
-    if (c.leadId || c.status === "sospeso") continue;
-    cards.push({ stage: c.status, leadId: null, clientId: c.id, name: c.name, detail: `${c.packageName} · ${eur(c.price)}`, since: ago(c.contractDate), href: `/vendiora/clienti/${c.id}` });
-  }
-  return { stages: STAGES, cards, lost };
+  const del = (line: "consulenza" | "dfy") => clients
+    .filter((c) => (lineOf(c.packageCode) ?? "consulenza") === line)
+    .map((c) => ({
+      stage: clientStage(c), leadId: c.leadId, clientId: c.id, name: c.name, detail: `${c.packageName} · ${eur(c.price)}`,
+      since: ago(c.ops.activatedAt ?? c.contractDate), href: `/vendiora/clienti/${c.id}`, health: c.health,
+      badges: [c.coach ? `coach ${c.coach}` : "senza coach", c.ops.paymentStatus === "a_rischio" ? "rata a rischio" : null].filter((x): x is string => !!x),
+    }));
+  const up = clients.filter((c) => c.ops.upsell?.stage).map((c) => ({
+    stage: c.ops.upsell!.stage, leadId: c.leadId, clientId: c.id, name: c.name,
+    detail: `${c.packageName}${c.ops.upsell?.suggested ? ` → ${c.ops.upsell.suggested}` : ""}`, since: ago(c.ops.upsell!.at), href: `/vendiora/clienti/${c.id}`, health: c.health,
+    badges: [c.ops.upsell?.readiness ? `pronto: ${c.ops.upsell.readiness}` : null].filter((x): x is string => !!x),
+  }));
+  const all: Record<Pipeline, JourneyCard[]> = { vendite: sales, consulenza: del("consulenza"), dfy: del("dfy"), upsell: up };
+  const def = PIPELINES.find((p) => p.id === pipeline) ?? PIPELINES[0];
+  return {
+    pipelines: PIPELINES, pipeline: def.id, stages: def.stages, cards: all[def.id], lost,
+    counts: { vendite: sales.length, consulenza: all.consulenza.length, dfy: all.dfy.length, upsell: up.length },
+  };
 }
 
 export interface TimelineItem { at: string; kind: "lead" | "bot" | "offer" | "contract" | "pay" | "call" | "auto" | "store" | "note"; title: string; detail?: string }
@@ -110,6 +142,8 @@ export async function journeyTimeline(ref: { leadId?: string | null; clientId?: 
     items.push({ at: o.createdAt, kind: "offer", title: `Offerta ${o.number} preparata`, detail: `${o.packageName} · ${eur(o.price)} + IVA` });
     if (o.sentAt) items.push({ at: o.sentAt, kind: "offer", title: `Offerta ${o.number} inviata` });
     if (o.viewedAt) items.push({ at: o.viewedAt, kind: "offer", title: `Offerta ${o.number} aperta dal lead` });
+    if (o.signedAt) items.push({ at: o.signedAt, kind: "contract", title: `Offerta ${o.number} firmata da ${o.signName ?? o.name}`, detail: o.signIp ? `IP ${o.signIp}` : undefined });
+    if (o.paidAt) items.push({ at: o.paidAt, kind: "pay", title: `Pagamento dell'offerta ${o.number} ricevuto` });
     if (o.answeredAt) items.push({ at: o.answeredAt, kind: "offer", title: `Offerta ${o.number} ${o.status === "rifiutata" ? "rifiutata" : "accettata"}` });
   }
   if (client) {
@@ -121,11 +155,14 @@ export async function journeyTimeline(ref: { leadId?: string | null; clientId?: 
     const hasAutoMsgs = msgs.some((m) => m.author === "automatico");
     if (!hasAutoMsgs) for (const [k, at] of Object.entries(client.autoLog)) if (at) items.push({ at, kind: "auto", title: AUTO_TITLE(k) });
     for (const c of calls) {
-      if (c.status === "fatta" && (c.doneAt || c.scheduledAt)) items.push({ at: (c.doneAt || c.scheduledAt)!, kind: "call", title: `${c.title} fatta` });
+      if (c.status === "fatta" && (c.doneAt || c.scheduledAt)) items.push({ at: (c.doneAt || c.scheduledAt)!, kind: "call", title: `${c.title} fatta`, detail: c.summary ? c.summary.slice(0, 200) + (c.summary.length > 200 ? "…" : "") : undefined });
       else if (c.status === "prenotata" && c.scheduledAt) items.push({ at: c.scheduledAt, kind: "call", title: `${c.title} prenotata`, detail: Date.parse(c.scheduledAt) > Date.now() ? "in programma" : undefined });
     }
   }
+  if (client?.ops.activatedAt) items.push({ at: client.ops.activatedAt, kind: "contract", title: "Percorso attivato: call create col calendario del pacchetto" });
+  for (const ci of client?.ops.checkins ?? []) items.push({ at: ci.at, kind: "note", title: "Check-in del venerdì", detail: ci.answers.join(" · ").slice(0, 200) });
+  if (client?.ops.npsAt) items.push({ at: client.ops.npsAt, kind: "note", title: `NPS: ${client.ops.nps}/10` });
   items.sort((a, b) => b.at.localeCompare(a.at));
   const stage = stageOf(lead, conv, offers, client);
-  return { stage, items };
+  return { stage, stageLabel: stageLabel(stage), items };
 }

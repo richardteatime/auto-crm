@@ -61,16 +61,24 @@ export async function register() {
       try {
         const { vendioraEnabled } = await import("@/lib/roles");
         if (!vendioraEnabled()) return;
-        const { runVendioraAutomations } = await import("@/lib/vendiora/automations");
-        const r = await runVendioraAutomations();
-        if (r.reminders || r.followups || r.expired || r.coachingEnd) console.log(`[vendiora auto] ${JSON.stringify(r)}`);
+        const { getSettings } = await import("@/lib/vendiora/db");
+        if ((await getSettings()).playbook.enabled) {
+          // Playbook on: it replaces the simple automations (same moments, more steps)
+          const { runPlaybook } = await import("@/lib/vendiora/engine");
+          const r = await runPlaybook();
+          if (Object.keys(r).length) console.log(`[vendiora playbook] ${JSON.stringify(r)}`);
+        } else {
+          const { runVendioraAutomations } = await import("@/lib/vendiora/automations");
+          const r = await runVendioraAutomations();
+          if (r.reminders || r.followups || r.expired || r.coachingEnd) console.log(`[vendiora auto] ${JSON.stringify(r)}`);
+        }
       } catch (e) {
         console.error("[vendiora auto]", e instanceof Error ? e.message : e);
       } finally {
         running = false;
       }
     };
-    g.__vdChecks = setInterval(tick, Math.max(60_000, Number(process.env.VENDIORA_CHECK_INTERVAL_MS || 10 * 60_000)));
+    g.__vdChecks = setInterval(tick, Math.max(60_000, Number(process.env.VENDIORA_CHECK_INTERVAL_MS || 2 * 60_000)));
     setTimeout(tick, 90_000);
   }
 }

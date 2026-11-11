@@ -17,6 +17,11 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   const p: Parameters<typeof updateCall>[1] = {};
   if ("title" in b) p.title = str(b.title, 200) || cur.title;
   if ("notes" in b) p.notes = str(b.notes, 4000);
+  if ("summary" in b) p.summary = str(b.summary, 20000);
+  if ("homework" in b) p.homework = str(b.homework, 4000);
+  if ("homeworkAt" in b) p.homeworkAt = iso(b.homeworkAt);
+  if ("recordingUrl" in b) p.recordingUrl = str(b.recordingUrl, 1000);
+  if ("dueAt" in b) p.dueAt = iso(b.dueAt);
   if ("scheduledAt" in b) {
     p.scheduledAt = iso(b.scheduledAt);
     if (p.scheduledAt && cur.status === "da_prenotare" && !("status" in b)) p.status = "prenotata";

@@ -22,8 +22,7 @@ import {
   Package,
   Bot,
   ArrowLeft,
-  type LucideIcon,
-} from "lucide-react";
+  type LucideIcon, ListTodo } from "lucide-react";
 
 export type NavBadge = "activities" | "timeline" | "calendar" | "chat" | "total" | "leads";
 import type { Role } from "@/lib/roles";
@@ -110,7 +109,7 @@ export function isVendioraPath(pathname: string): boolean {
 const VD_HOME: NavItem = { href: "/vendiora", label: "Panoramica", icon: LayoutDashboard, exact: true, keywords: "vendiora dashboard" };
 const VD_WHATSAPP: NavItem = { href: "/vendiora/whatsapp", label: "WhatsApp", icon: MessageCircle, keywords: "chat bot messaggi vendiora" };
 const VD_LEADS: NavItem = { ...LEADS_ITEM, keywords: `${LEADS_ITEM.keywords} vendiora` };
-const VD_JOURNEY: NavItem = { href: "/vendiora/percorso", label: "Percorso clienti", icon: Route, keywords: "flusso fasi offerte pipeline kanban vendiora" };
+const VD_JOURNEY: NavItem = { href: "/vendiora/percorso", label: "Pipeline", icon: Route, keywords: "flusso fasi offerte pipeline kanban vendiora" };
 
 export const VENDIORA_SECTIONS: NavSection[] = [
   { label: null, items: [{ href: "/", label: "Torna al CRM", icon: ArrowLeft, exact: true, keywords: "sarconx" }] },
@@ -120,13 +119,14 @@ export const VENDIORA_SECTIONS: NavSection[] = [
     items: [
       { href: "/vendiora/clienti", label: "Clienti", icon: UserRoundCheck, keywords: "contratti venduti onboarding store" },
       { href: "/vendiora/call", label: "Call", icon: Video, keywords: "coaching affiancamento appuntamenti" },
+      { href: "/vendiora/task", label: "Da fare", icon: ListTodo, keywords: "task team playbook chiamate vocali escalation" },
     ],
   },
   {
     label: "Configura",
     items: [
       { href: "/vendiora/pacchetti", label: "Pacchetti", icon: Package, keywords: "prezzi offerta listino" },
-      { href: "/vendiora/impostazioni", label: "Bot e messaggi", icon: Bot, keywords: "whatsapp qr domande dati contratto messaggi automatici promemoria benvenuto" },
+      { href: "/vendiora/impostazioni", label: "Playbook e messaggi", icon: Bot, keywords: "whatsapp qr domande dati contratto messaggi automatici promemoria benvenuto" },
     ],
   },
 ];

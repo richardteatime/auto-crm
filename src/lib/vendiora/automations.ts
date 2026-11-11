@@ -7,6 +7,7 @@ import {
   addMessage, getSettings, listCalls, listClients, listOffers, updateCall, updateClient, updateOffer, getConversationByLead, saveConversation,
 } from "@/lib/vendiora/db";
 import { waConfigured, waSend } from "@/lib/vendiora/wa";
+import { pbText } from "@/lib/vendiora/playbook-messages";
 import {
   eur, fillTemplate, type AutoKey, type VdCall, type VdClient, type VdOffer, type VdPackage, type VendioraSettings,
 } from "@/lib/vendiora/types";
@@ -51,6 +52,10 @@ export function offerVars(s: VendioraSettings, o: VdOffer) {
 }
 
 export function offerText(s: VendioraSettings, o: VdOffer, key: "offer" | "offerFollowup" = "offer") {
+  if (s.playbook.enabled && key === "offer") {
+    const t = pbText("OF.send", s.playbook.messages);
+    if (t) return render(t, { ...offerVars(s, o), brand: s.playbook.brand || "VendiOra", pagamento: o.paymentLink ? `\n\nPagamento 👉 ${o.paymentLink}` : "" }).replace(/\{\w+\}/g, "");
+  }
   return render(s.automations[key].text, offerVars(s, o));
 }
 
@@ -90,6 +95,11 @@ export async function sendOffer(o: VdOffer): Promise<AutoResult> {
   if (!o.phoneE164) return { sent: false, reason: "Il lead non ha un numero valido" };
   try {
     await deliver({ phoneE164: o.phoneE164, text: offerText(s, o), leadId: o.leadId, clientId: null, note: `offerta ${o.number} inviata` });
+    if (s.playbook.enabled && o.email) {
+      const { sendMail, esc } = await import("@/lib/leads/notify");
+      const txt = offerText(s, o);
+      await sendMail([o.email], `${s.playbook.brand || "VendiOra"} · la tua offerta ${o.number}`, `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55">${esc(txt).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>")}</div>`, txt).catch(() => false);
+    }
     return { sent: true };
   } catch (e) {
     return { sent: false, reason: e instanceof Error ? e.message : "invio fallito" };
@@ -151,7 +161,8 @@ export async function runVendioraAutomations(now = Date.now()): Promise<Record<s
       out.expired++;
       continue;
     }
-    if (!o.followupAt && o.sentAt && now - Date.parse(o.sentAt) > 48 * 3_600_000 && !canSend(s, "offerFollowup", o.phoneE164)) {
+    // With the playbook on, offer reminders are the playbook's (4/24/48 h), not this one
+    if (!s.playbook.enabled && !o.followupAt && o.sentAt && now - Date.parse(o.sentAt) > 48 * 3_600_000 && !canSend(s, "offerFollowup", o.phoneE164)) {
       try {
         await deliver({ phoneE164: o.phoneE164!, text: offerText(s, o, "offerFollowup"), leadId: o.leadId, clientId: null, note: `promemoria offerta ${o.number}` });
         await updateOffer(o.id, { followupAt: new Date().toISOString() });
@@ -170,11 +181,13 @@ export async function runVendioraAutomations(now = Date.now()): Promise<Record<s
     if (t <= now || t - now > 24 * 3_600_000) continue;
     const client = byId.get(call.clientId);
     if (!client || client.status === "sospeso") continue;
+    if (s.playbook.enabled && client.packageCode) continue; // playbook sends its own (M6)
     try { if ((await sendCallReminder(s, call, client)).sent) out.reminders++; } catch (e) { console.error("[vendiora reminder]", e instanceof Error ? e.message : e); }
   }
 
   // End of coaching: store live + coachingDays
   for (const c of clients) {
+    if (s.playbook.enabled && c.packageCode) continue;
     if (c.autoLog.coachingEnd || !c.storeLiveAt || c.status !== "affiancamento") continue;
     const days = pkgOf(c).coachingDays ?? 0;
     if (!days || Date.parse(c.storeLiveAt) + days * 86_400_000 > now) continue;

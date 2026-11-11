@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
   try {
     if (sp.get("leadId") || sp.get("clientId")) return NextResponse.json(await journeyTimeline({ leadId: sp.get("leadId"), clientId: sp.get("clientId") }));
-    return NextResponse.json(await journeyBoard());
+    const p = sp.get("pipeline");
+    return NextResponse.json(await journeyBoard(p === "consulenza" || p === "dfy" || p === "upsell" ? p : "vendite"));
   } catch (e) { return fail(e); }
 }

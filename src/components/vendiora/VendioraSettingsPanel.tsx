@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fillTemplate, AUTO_INFO, AUTO_KEYS, type AutoKey, type VendioraSettings } from "@/lib/vendiora/types";
 import { api, Field, Panel, inputCls, textareaCls } from "./ui";
 import { WaConnection } from "./WaConnection";
+import { PlaybookSettingsPanel } from "./PlaybookSettingsPanel";
 
 export function VendioraSettingsPanel() {
   const [s, setS] = useState<VendioraSettings | null>(null);
@@ -50,9 +51,11 @@ export function VendioraSettingsPanel() {
 
       <Panel title="WhatsApp"><WaConnection /></Panel>
 
+      <PlaybookSettingsPanel s={s} setS={setS} team={team} />
+
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Panel
-          title="Bot di primo contatto"
+          title={s.playbook.enabled ? "Bot semplice (spento: è attivo il playbook)" : "Bot di primo contatto"}
           action={
             <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
               <input type="checkbox" className="size-4 accent-orange-500" checked={bot.enabled} onChange={(e) => setBot({ enabled: e.target.checked })} />

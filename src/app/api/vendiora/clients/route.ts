@@ -5,10 +5,12 @@ import { changeStatus, convertLead } from "@/lib/leads/service";
 import { normalizePhone } from "@/lib/leads/intake";
 import {
   listClients, createClient, getPackage, nextContractNumber, findClientByLead, createCall, listCalls, getOffer, updateOffer, listOffers,
+  updateClient, getSettings,
 } from "@/lib/vendiora/db";
+import { activateClient, ensureCallPlan } from "@/lib/vendiora/engine";
 import { sendClientAuto } from "@/lib/vendiora/automations";
 import { readBody, str, int, fail } from "@/lib/vendiora/http";
-import { eur } from "@/lib/vendiora/types";
+import { eur, type ClientOps } from "@/lib/vendiora/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,16 @@ export async function GET(request: NextRequest) {
     stats.set(c.clientId, s);
   }
   return NextResponse.json({ clients: clients.map((c) => ({ ...c, calls: stats.get(c.id) ?? { done: 0, total: 0, next: null } })) });
+}
+
+function handoverOps(body: Record<string, unknown>): ClientOps {
+  const h = (body.handover ?? {}) as Record<string, unknown>;
+  const g = (k: string) => (typeof h[k] === "string" && (h[k] as string).trim() ? (h[k] as string).trim().slice(0, 2000) : undefined);
+  const handover = { goal: g("goal"), motivation: g("motivation"), fears: g("fears"), promises: g("promises") };
+  const ops: ClientOps = {};
+  if (Object.values(handover).some(Boolean)) ops.handover = handover;
+  if (handover.goal) ops.objective = handover.goal;
+  return ops;
 }
 
 /** Sell a package: client record + contract number + the included calls (+ deal in Finance) */
@@ -74,9 +86,13 @@ export async function POST(request: NextRequest) {
       isPaid: false,
       coach: str(body.coach, 120),
       notes: str(body.notes, 8000),
+      packageCode: pkg.code ?? null,
+      ops: handoverOps(body),
     });
 
-    for (let i = 1; i <= pkg.includedCalls; i++) {
+    // Playbook package: calls with code + deadline (deadlines are computed at activation)
+    if (pkg.code) await ensureCallPlan(client);
+    else for (let i = 1; i <= pkg.includedCalls; i++) {
       await createCall({
         clientId: client.id, clientName: client.name, number: i,
         title: i === 1 ? "Call di avvio" : `Call di affiancamento ${i - 1}`,
@@ -105,6 +121,13 @@ export async function POST(request: NextRequest) {
       await updateOffer(offer.id, { clientId: client.id, status: "accettata", answeredAt: offer.answeredAt ?? today }).catch(() => {});
     }
 
+    if (offer?.signedAt) await updateClient(client.id, { contractSignedAt: offer.signedAt });
+    const settings = await getSettings();
+    if (settings.playbook.enabled && pkg.code) {
+      // Playbook: welcome kit and M5 start when payment is registered (activateClient)
+      const act = body.isPaid === true ? (await updateClient(client.id, { isPaid: true, paidAt: today }), await activateClient(client.id)) : null;
+      return NextResponse.json({ client, welcome: { sent: !!act?.activated, reason: act?.activated ? "attivazione partita" : "parte quando registri il pagamento" } });
+    }
     const welcome = body.welcome === false ? { sent: false, reason: "non richiesto" } : await sendClientAuto("welcome", client);
     return NextResponse.json({ client, welcome });
   } catch (e) {

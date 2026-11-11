@@ -16,6 +16,7 @@ import {
 import { api, Field, Panel, Pill, fmtDate, inputCls, textareaCls, toDateInputValue, toLocalInputValue } from "./ui";
 import { WaChat } from "./WaChat";
 import { JourneyTimeline } from "./JourneyTimeline";
+import { PlaybookGoal, PlaybookInstallments, PlaybookMilestones, PlaybookStrip, PlaybookUpsell, TasksPanel } from "./PlaybookClientPanel";
 
 export function ClientDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -30,8 +31,10 @@ export function ClientDetail({ id }: { id: string }) {
 
   async function patch(p: Record<string, unknown>, msg = "Salvato") {
     try {
-      const r = await api<{ client: VdClient; auto?: { sent: boolean; reason?: string } }>(`/api/vendiora/clients/${id}`, { method: "PUT", json: p });
+      const r = await api<{ client: VdClient; calls?: VdCall[]; auto?: { sent: boolean; reason?: string }; activation?: { activated: boolean; reason?: string } | null }>(`/api/vendiora/clients/${id}`, { method: "PUT", json: p });
       setC(r.client);
+      if (r.calls) setCalls(r.calls);
+      if (r.activation?.activated) toast.success("Percorso attivato", { description: "Call create col calendario del pacchetto e kit di benvenuto in partenza" });
       toast.success(msg, { description: r.auto ? (r.auto.sent ? "Messaggio «store online» inviato su WhatsApp" : `Messaggio «store online» non inviato: ${r.auto.reason}`) : undefined });
       setTick((t) => t + 1);
     } catch (e) { toast.error((e as Error).message); }
@@ -61,6 +64,7 @@ export function ClientDetail({ id }: { id: string }) {
   const left = dl && !c.storeLiveAt ? Math.ceil((dl.getTime() - now) / 86_400_000) : null;
   const done = calls.filter((k) => k.status === "fatta").length;
 
+  const isPb = !!c.packageCode;
   const steps = [
     { label: "Contratto firmato", done: !!c.contractSignedAt, at: c.contractSignedAt, action: () => patch({ contractSignedAt: c.contractSignedAt ? null : new Date().toISOString() }) },
     { label: "Pagamento ricevuto", done: c.isPaid, at: c.paidAt, action: () => patch({ isPaid: !c.isPaid }) },
@@ -81,8 +85,10 @@ export function ClientDetail({ id }: { id: string }) {
         }
       />
 
+      {isPb && <PlaybookStrip c={c} calls={calls} onPatch={patch} onActivate={() => patch({ activate: true }, "Attivazione in corso")} />}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((s) => (
+        {steps.filter((s) => !isPb || s.label === "Contratto firmato" || s.label === "Pagamento ricevuto" || (s.label === "Store online" && c.packageCode?.startsWith("DFY"))).map((s) => (
           <button key={s.label} type="button" onClick={s.action} className={cn("flex items-start gap-3 rounded-xl border bg-card p-4 text-left shadow-card transition-colors hover:border-orange-500/40", s.done && "border-emerald-500/30 bg-emerald-500/[0.04]")}>
             <span className={cn("mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2", s.done ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground/30")}>{s.done && <Check className="size-3.5" />}</span>
             <span><span className="block text-sm font-semibold">{s.label}</span><span className="text-xs text-muted-foreground">{s.done ? fmtDate(s.at) : "Clicca quando è fatto"}</span></span>
@@ -90,7 +96,7 @@ export function ClientDetail({ id }: { id: string }) {
         ))}
       </div>
 
-      {left != null && c.kickoffAt && (
+      {!isPb && left != null && c.kickoffAt && (
         <div className={cn("flex items-center gap-3 rounded-xl border p-4 text-sm", left < 0 ? "border-rose-500/40 bg-rose-500/5" : left <= 2 ? "border-amber-500/40 bg-amber-500/5" : "bg-card")}>
           <Rocket className={cn("size-5", left < 0 ? "text-rose-500" : "text-orange-500")} />
           <span><b>{left < 0 ? `Garanzia scaduta da ${-left} giorni` : `${left} giorni`}</b> {left < 0 ? "e lo store non risulta online." : `per mettere online lo store (entro il ${fmtDate(dl!.toISOString())}, ${pkg.buildDays ?? 7} giorni dal kick-off).`}</span>
@@ -109,6 +115,7 @@ export function ClientDetail({ id }: { id: string }) {
               </ul>
             )}
           </Panel>
+          {isPb && <PlaybookMilestones c={c} onPatch={patch} />}
           <Panel title="Note sul cliente">
             <textarea className={textareaCls + " min-h-[140px]"} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Nicchia, prodotto scelto, fornitori, accessi consegnati, cosa fare alla prossima call…" />
             <div className="mt-2 flex justify-end"><Button size="sm" disabled={notes === (c.notes ?? "")} onClick={() => patch({ notes })}>Salva note</Button></div>
@@ -117,6 +124,10 @@ export function ClientDetail({ id }: { id: string }) {
           <Panel title="Percorso del cliente"><JourneyTimeline clientId={c.id} refreshKey={tick} /></Panel>
         </div>
         <div className="space-y-6">
+          {isPb && <TasksPanel clientId={c.id} refreshKey={tick} />}
+          {isPb && <PlaybookGoal key={`g${tick}`} c={c} onPatch={patch} />}
+          {isPb && <PlaybookInstallments key={`i${tick}`} c={c} onPatch={patch} />}
+          {isPb && <PlaybookUpsell c={c} onPatch={patch} />}
           <Panel title="Stato">
             <div className="grid gap-1.5">
               {CLIENT_STATUSES.map((s) => (
@@ -127,7 +138,7 @@ export function ClientDetail({ id }: { id: string }) {
               ))}
             </div>
           </Panel>
-          <Panel title="Messaggi automatici">
+          {!isPb && <Panel title="Messaggi automatici">
             <div className="space-y-2">
               {(["welcome", "storeLive", "coachingEnd"] as const).map((k) => (
                 <div key={k} className="flex items-center justify-between gap-2 text-[13px]">
@@ -140,7 +151,7 @@ export function ClientDetail({ id }: { id: string }) {
               ))}
               <p className="pt-1 text-[11.5px] text-muted-foreground">I promemoria delle call partono da soli il giorno prima. Testi in <Link className="underline" href="/vendiora/impostazioni">Impostazioni</Link>.</p>
             </div>
-          </Panel>
+          </Panel>}
           <ClientDataPanel key={[c.name, c.email, c.phone, c.taxId, c.address, c.storeUrl, c.coach].join("|")} c={c} onSave={(p) => patch(p)} />
           <Panel title="Pacchetto venduto">
             <p className="text-sm font-semibold">{c.packageName}</p>
@@ -160,14 +171,18 @@ function CallRow({ call, onPatch }: { call: VdCall; onPatch: (p: Record<string, 
   const [when, setWhen] = useState(toLocalInputValue(call.scheduledAt));
   const [notes, setNotes] = useState(call.notes ?? "");
   const cfg = CALL_STATUS_CONFIG[call.status];
+  const [summary, setSummary] = useState(call.summary ?? "");
+  const [homework, setHomework] = useState(call.homework ?? "");
+  const [now] = useState(() => Date.now());
+  const overdue = call.status !== "fatta" && !call.scheduledAt && !!call.dueAt && Date.parse(call.dueAt) < now;
   const setStatus = (status: CallStatus) => onPatch({ status });
   return (
     <li className="py-2.5">
       <div className="flex flex-wrap items-center gap-3">
-        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold", call.status === "fatta" ? "bg-emerald-500/15 text-emerald-700" : "bg-muted text-muted-foreground")}>{call.number}</span>
+        <span className={cn("flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg px-1.5 text-xs font-bold", call.status === "fatta" ? "bg-emerald-500/15 text-emerald-700" : "bg-muted text-muted-foreground")} title={call.code ?? ""}>{call.code ? call.code.replace(/^.*-C/, "C") : call.number}</span>
         <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen(!open)}>
           <span className="block truncate text-sm font-semibold">{call.title}</span>
-          <span className="text-xs text-muted-foreground">{call.status === "fatta" ? `Fatta il ${fmtDate(call.doneAt)}` : call.scheduledAt ? fmtDate(call.scheduledAt, true) : "Data da fissare"}{call.notes ? " · con note" : ""}</span>
+          <span className={cn("text-xs text-muted-foreground", overdue && "text-rose-600")}>{call.status === "fatta" ? `Fatta il ${fmtDate(call.doneAt)}` : call.scheduledAt ? fmtDate(call.scheduledAt, true) : "Data da fissare"}{call.status !== "fatta" && call.dueAt ? ` · ${overdue ? "scaduta" : "entro"} il ${fmtDate(call.dueAt)}` : ""}{call.summary ? " · riassunto" : call.notes ? " · con note" : ""}</span>
         </button>
         <Pill tone={cfg.tone}>{cfg.label}</Pill>
         {call.status !== "fatta" ? (
@@ -183,6 +198,11 @@ function CallRow({ call, onPatch }: { call: VdCall; onPatch: (p: Record<string, 
         <div className="mt-3 grid gap-3 pl-11 sm:grid-cols-[220px_1fr]">
           <Field label="Data e ora"><input type="datetime-local" className={inputCls} value={when} onChange={(e) => setWhen(e.target.value)} onBlur={() => when !== toLocalInputValue(call.scheduledAt) && onPatch({ scheduledAt: when ? new Date(when).toISOString() : null })} /></Field>
           <Field label="Note della call"><textarea className={textareaCls + " min-h-[60px]"} value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== (call.notes ?? "") && onPatch({ notes })} placeholder="Cosa si è fatto, compiti per la prossima" /></Field>
+          {call.code && <>
+            <Field label="Riassunto (da Fathom o a mano)" className="sm:col-span-2"><textarea className={textareaCls + " min-h-[80px]"} value={summary} onChange={(e) => setSummary(e.target.value)} onBlur={() => summary !== (call.summary ?? "") && onPatch({ summary })} placeholder="Decisioni prese, numeri, prossimi passi" /></Field>
+            <Field label="Compiti per il cliente" className="sm:col-span-2" hint="Arrivano al cliente il lunedì (M7) e il coach li controlla prima della call successiva"><textarea className={textareaCls + " min-h-[60px]"} value={homework} onChange={(e) => setHomework(e.target.value)} onBlur={() => homework !== (call.homework ?? "") && onPatch({ homework })} /></Field>
+            {call.recordingUrl && <a href={call.recordingUrl} target="_blank" rel="noreferrer" className="text-[12.5px] underline sm:col-span-2">Registrazione della call</a>}
+          </>}
         </div>
       )}
     </li>

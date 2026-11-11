@@ -42,6 +42,35 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
       const s = await getSettings();
       return NextResponse.json({ offer: { ...offer, url: offerUrl(offer), text: offerText(s, offer) }, whatsapp: b.action === "send" });
     }
+    // Payment link / installments / objection / client data editable until paid
+    if (b.action === "update") {
+      const p: OfferPatch = {};
+      if ("paymentLink" in b) {
+        const v = typeof b.paymentLink === "string" ? b.paymentLink.trim() : "";
+        if (v && !/^https?:\/\//i.test(v)) return NextResponse.json({ error: "Link di pagamento non valido" }, { status: 400 });
+        p.paymentLink = v ? v.slice(0, 1000) : null;
+      }
+      if ("installments" in b) { const n = Math.max(1, Math.min(12, Number(b.installments) || 1)); p.payPlan = n > 1 ? { n } : null; }
+      if ("objection" in b) p.objection = ["prezzo", "tempo", "socio", "fiducia"].includes(String(b.objection)) ? String(b.objection) : null;
+      if ("mode" in b) p.mode = b.mode === "proposta" ? "proposta" : "firma";
+      for (const k of ["taxId", "address"] as const) if (k in b && !o.signedAt) p[k] = typeof b[k] === "string" ? (b[k] as string).trim().slice(0, 300) || null : null;
+      const offer = await updateOffer(id, p);
+      const s = await getSettings();
+      return NextResponse.json({ offer: { ...offer, url: offerUrl(offer), text: offerText(s, offer) } });
+    }
+    // Payment received → client (contract) + activation of the package (M5, calls calendar)
+    if (b.action === "paid") {
+      if (!o.signedAt && b.force !== true) return NextResponse.json({ error: "Il contratto non è ancora firmato. Se è stato firmato fuori dal CRM conferma di nuovo.", needForce: true }, { status: 409 });
+      const offer = await updateOffer(id, { paidAt: o.paidAt ?? now, status: "accettata", answeredAt: o.answeredAt ?? now, signedAt: o.signedAt ?? (b.force === true ? now : null) });
+      const { clientFromOffer, activateClient } = await import("@/lib/vendiora/engine");
+      const cl = await clientFromOffer(offer);
+      const { updateClient } = await import("@/lib/vendiora/db");
+      await updateClient(cl.id, { isPaid: true, paidAt: offer.paidAt, contractSignedAt: offer.signedAt ?? now, taxId: cl.taxId ?? offer.taxId ?? null, address: cl.address ?? offer.address ?? null });
+      const act = await activateClient(cl.id);
+      if (o.leadId) await addLeadEvent({ leadId: o.leadId, type: "note", outcome: null, fromStatus: null, toStatus: null, note: `💶 Pagamento dell'offerta ${o.number} registrato: percorso attivato`, actorId: actor.id, actorName: actor.name }).catch(() => {});
+      const s = await getSettings();
+      return NextResponse.json({ offer: { ...(await getOffer(id))!, url: offerUrl(offer), text: offerText(s, offer) }, clientId: cl.id, activation: act });
+    }
     if (typeof b.status === "string" && (OFFER_STATUSES as readonly string[]).includes(b.status)) {
       const status = b.status as OfferStatus;
       const p: OfferPatch = { status };

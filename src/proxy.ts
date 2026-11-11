@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/api/webhook",
   "/api/leads/intake",
   "/api/vendiora/wa/inbound",
+  "/api/vendiora/fathom", // Fathom webhook: checked by its own secret
   "/offerta",
   "/sw.js",
   "/manifest.webmanifest",

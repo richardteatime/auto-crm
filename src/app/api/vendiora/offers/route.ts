@@ -18,6 +18,12 @@ export async function GET(request: NextRequest) {
 }
 
 /** New offer for a lead: package snapshot + price, valid N days. Sending is a separate step. */
+const OBJ = ["prezzo", "tempo", "socio", "fiducia"];
+function safeUrl(v: unknown): string | null {
+  if (typeof v !== "string" || !v.trim()) return null;
+  try { const u = new URL(v.trim()); return u.protocol === "https:" || u.protocol === "http:" ? u.toString().slice(0, 1000) : null; } catch { return null; }
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
@@ -44,6 +50,13 @@ export async function POST(request: NextRequest) {
       vatRate: pkg.vatRate,
       message: str(b.message, 4000),
       validUntil: new Date(Date.now() + days * 86_400_000).toISOString(),
+      packageCode: pkg.code ?? null,
+      mode: b.mode === "proposta" ? "proposta" : "firma",
+      paymentLink: safeUrl(b.paymentLink),
+      payPlan: (() => { const n = int(b.installments, 1, 12); return n && n > 1 ? { n } : null; })(),
+      taxId: str(b.taxId, 40),
+      address: str(b.address, 300),
+      objection: OBJ.includes(String(b.objection)) ? String(b.objection) : null,
     });
     const actor = { id: auth.user.id, name: auth.user.name || auth.user.email };
     await addLeadEvent({

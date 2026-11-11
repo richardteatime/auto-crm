@@ -73,6 +73,15 @@ export async function startBotForLead(lead: Lead, opts: { force?: boolean } = {}
 /** Called right after a lead arrives: never throws (intake must not fail because of WhatsApp) */
 export async function onNewLead(lead: Lead): Promise<void> {
   try {
+    const s = await getSettings();
+    if (s.playbook.enabled) {
+      // Playbook: first message by angle after 3 minutes (the cron sends it; this timer only makes it punctual)
+      const { scheduleFirstMessage, runPlaybookSales } = await import("@/lib/vendiora/engine");
+      const r = await scheduleFirstMessage(lead, s);
+      if (r.started && process.env.LEAD_CRON_ENABLED === "1") setTimeout(() => void runPlaybookSales().catch(() => {}), 3 * 60_000 + 5_000);
+      else if (!r.started) console.log(`[vendiora playbook] ${lead.id}: ${r.reason}`);
+      return;
+    }
     const r = await startBotForLead(lead);
     if (!r.started && r.reason !== "bot spento") console.log(`[vendiora bot] ${lead.id}: ${r.reason}`);
   } catch (e) {
@@ -125,6 +134,16 @@ export async function handleInbound(m: InboundMessage): Promise<{ handled: strin
   const saved = await addMessage({ leadId, clientId: null, phoneE164: phoneE164 ?? conv?.phoneE164 ?? null, direction: "in", author: m.pushName || "lead", text: m.text, waId: m.id, at });
   if (!saved) return { handled: "duplicate" };
   if (leadId) await updateLead(leadId, { lastContactAt: at }).catch(() => {});
+  // Clients in delivery: check-in of Friday, G7 vote, NPS
+  if (phoneE164 && (!conv || conv.state === "passato" || conv.state === "fermo")) {
+    const { findClientByPhone } = await import("@/lib/vendiora/db");
+    const cl = await findClientByPhone(phoneE164).catch(() => null);
+    if (cl?.ops.awaiting) {
+      const { clientInbound } = await import("@/lib/vendiora/engine");
+      const r = await clientInbound(cl, m.text, at);
+      if (r) return { handled: r };
+    }
+  }
   if (!conv || !leadId) return { handled: leadId ? "logged-no-bot" : "unknown-number" };
   if (!conv.chatIds.includes(m.chatId)) conv.chatIds.push(m.chatId);
 
@@ -132,6 +151,16 @@ export async function handleInbound(m: InboundMessage): Promise<{ handled: strin
   if (!lead) return { handled: "lead-missing" };
   const settings = await getSettings();
   const bot = settings.bot;
+
+  if ((conv.state === "in_attesa" || conv.state === "attivo") && conv.seqLog?.created && settings.playbook.enabled) {
+    const { playbookAnswer } = await import("@/lib/vendiora/engine");
+    const r = await playbookAnswer(conv, lead, m.text, at, settings);
+    if (r === "qualified") {
+      const c2 = await findConversation(phoneE164, m.chatId);
+      await handoff(bot, lead, conv, `${lead.name}: ${c2?.qual === "qualificato" ? "qualificato ✅" : "in nurturing"}`, `Punteggio ${c2?.score ?? "—"}/100${c2?.angle ? ` · ${c2.angle}` : ""}: apri la scheda e fissa la call`);
+    }
+    return { handled: r };
+  }
 
   if (conv.state === "in_attesa" || conv.state === "attivo") {
     const q = bot.questions[conv.step];

@@ -11,7 +11,7 @@ export async function api<T = Record<string, unknown>>(url: string, init?: Reque
     cache: "no-store",
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error(data.error || `Errore ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(data.error || `Errore ${res.status}`), { data, status: res.status });
   return data;
 }
 

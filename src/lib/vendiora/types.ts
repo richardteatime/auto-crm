@@ -22,10 +22,12 @@ export interface VdPackage {
   paymentTerms: string | null;
   active: boolean;
   sortOrder: number;
+  /** Playbook package code (BASE, ELITE, DFY-S, DFY-SA, DFY-F): drives pipeline, calls and messages */
+  code: string | null;
   createdAt: string;
 }
 
-export const CLIENT_STATUSES = ["onboarding", "costruzione", "affiancamento", "concluso", "sospeso"] as const;
+export const CLIENT_STATUSES = ["onboarding", "costruzione", "affiancamento", "concluso", "sospeso", "rimborsato"] as const;
 export type ClientStatus = (typeof CLIENT_STATUSES)[number];
 
 export const CLIENT_STATUS_CONFIG: Record<ClientStatus, { label: string; hint: string; tone: string }> = {
@@ -33,7 +35,8 @@ export const CLIENT_STATUS_CONFIG: Record<ClientStatus, { label: string; hint: s
   costruzione: { label: "Store in costruzione", hint: "I giorni della garanzia stanno correndo", tone: "bg-amber-500/12 text-amber-700 ring-amber-500/30 dark:text-amber-300" },
   affiancamento: { label: "Affiancamento", hint: "Store online, call settimanali", tone: "bg-emerald-500/10 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300" },
   concluso: { label: "Concluso", hint: "Percorso finito", tone: "bg-muted text-muted-foreground ring-border" },
-  sospeso: { label: "Sospeso", hint: "In pausa o rimborsato", tone: "bg-rose-500/10 text-rose-700 ring-rose-500/25 dark:text-rose-300" },
+  sospeso: { label: "Sospeso", hint: "In pausa", tone: "bg-rose-500/10 text-rose-700 ring-rose-500/25 dark:text-rose-300" },
+  rimborsato: { label: "Rimborsato", hint: "Percorso chiuso con rimborso", tone: "bg-rose-500/10 text-rose-700 ring-rose-500/25 dark:text-rose-300" },
 };
 
 export function isClientStatus(v: unknown): v is ClientStatus {
@@ -72,7 +75,82 @@ export interface VdClient {
   notes: string | null;
   /** Automatic WhatsApp messages already sent to this client: key → ISO date */
   autoLog: Record<string, string>;
+  /** Playbook package code (see playbook.ts) */
+  packageCode: string | null;
+  /** Pipeline stage: O1–O7 (Consulenza), D1–D8 (Done For You), SOSP, RIMB */
+  stage: string | null;
+  health: "verde" | "giallo" | "rosso" | null;
+  healthScore: number | null;
+  /** Everything the playbook tracks on the client (objective, KPI, check-ins, accesses, upsell, installments, NPS…) */
+  ops: ClientOps;
   createdAt: string;
+}
+
+export interface Installment {
+  n: number;
+  /** cents */
+  amount: number;
+  dueAt: string;
+  status: "da_pagare" | "pagata" | "fallita";
+  paidAt?: string | null;
+  failedAt?: string | null;
+}
+
+export interface CheckIn { at: string; answers: string[] }
+
+export interface ClientOps {
+  /** Activation = contract signed + payment received (start of the package) */
+  activatedAt?: string | null;
+  /** Handover sheet filled by the closer */
+  handover?: { goal?: string; motivation?: string; fears?: string; promises?: string } | null;
+  objective?: string | null;
+  kpiName?: string | null;
+  kpiStart?: number | null;
+  kpiTarget?: number | null;
+  kpi?: { at: string; value: number }[];
+  intakeAt?: string | null;
+  quickWinAt?: string | null;
+  planAt?: string | null;
+  groupAt?: string | null;
+  briefAt?: string | null;
+  /** DFY: accesses checklist (label → received) */
+  access?: Record<string, boolean>;
+  accessesRequestedAt?: string | null;
+  accessesAt?: string | null;
+  storeReadyAt?: string | null;
+  adsLaunchedAt?: string | null;
+  coachVote?: number | null;
+  coachVoteAt?: string | null;
+  checkins?: CheckIn[];
+  /** WhatsApp question the client is answering (check-in, onboarding check, NPS) */
+  awaiting?: { kind: "checkin" | "g7" | "nps"; step: number; at: string; answers: string[] } | null;
+  g7Vote?: number | null;
+  nps?: number | null;
+  npsAt?: string | null;
+  testimonialAt?: string | null;
+  referralCode?: string | null;
+  referralClicks?: number;
+  referrals?: { at: string; leadId: string; name: string }[];
+  upsell?: { stage: string; readiness?: "si" | "no" | "forse" | null; suggested?: string | null; note?: string | null; at: string; leadId?: string | null } | null;
+  installments?: Installment[];
+  /** Payment link of the signed offer (used in the installment reminders) */
+  paymentLink?: string | null;
+  paymentStatus?: "saldato" | "a_rate" | "a_rischio" | null;
+  noShows?: number;
+  recoveryUsed?: boolean;
+  homeworkMissed?: number;
+  healthHistory?: { at: string; health: "verde" | "giallo" | "rosso"; score: number }[];
+  healthSignals?: { key: string; label: string; value: string; detail: string; weight: number }[];
+  /** Playbook messages and tasks already sent / created: key → ISO */
+  sent?: Record<string, string>;
+  /** Team owners */
+  csm?: string | null;
+  pm?: string | null;
+  closer?: string | null;
+  setter?: string | null;
+  endAt?: string | null;
+  /** Stage moved by hand: the engine does not move it back */
+  stageManualAt?: string | null;
 }
 
 export const CALL_STATUSES = ["da_prenotare", "prenotata", "fatta", "saltata"] as const;
@@ -99,6 +177,15 @@ export interface VdCall {
   notes: string | null;
   /** When the automatic reminder for this call went out */
   reminderAt: string | null;
+  /** Playbook code, e.g. BASE-C3 */
+  code?: string | null;
+  /** Deadline from the package calendar (activation, store delivery or ads launch) */
+  dueAt?: string | null;
+  /** Fathom (or manual) summary: decisions, homework, deadline */
+  summary?: string | null;
+  homework?: string | null;
+  homeworkAt?: string | null;
+  recordingUrl?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +228,24 @@ export interface VdOffer {
   viewedAt: string | null;
   answeredAt: string | null;
   followupAt: string | null;
+  packageCode?: string | null;
+  /** "firma": said yes in call → sign + pay (4h/24h/48h). "proposta": still deciding → 7-day follow-up (M3) */
+  mode?: "firma" | "proposta" | null;
+  taxId?: string | null;
+  address?: string | null;
+  signedAt?: string | null;
+  signName?: string | null;
+  signIp?: string | null;
+  signHash?: string | null;
+  paymentLink?: string | null;
+  paidAt?: string | null;
+  /** Contract text frozen at signing */
+  contractText?: string | null;
+  objection?: string | null;
+  /** Installments plan, e.g. {"n":3} */
+  payPlan?: { n: number; amounts?: number[]; dueDays?: number[] } | null;
+  /** Playbook sequence already sent: key → ISO */
+  autoLog?: Record<string, string>;
   createdAt: string;
 }
 
@@ -157,12 +262,13 @@ export interface WaMessage {
   at: string;
 }
 
-export type BotState = "attivo" | "in_attesa" | "passato" | "fermo";
+export type BotState = "attivo" | "in_attesa" | "passato" | "fermo" | "programmato";
 export const BOT_STATE_LABELS: Record<BotState, string> = {
   attivo: "Il bot sta facendo le domande",
   in_attesa: "In attesa che il lead risponda",
   passato: "Passato a una persona",
   fermo: "Bot fermo",
+  programmato: "Primo messaggio in partenza (3 minuti dall'arrivo)",
 };
 
 export interface Conversation {
@@ -176,6 +282,39 @@ export interface Conversation {
   answers: { q: string; a: string }[];
   lastInboundAt: string | null;
   handoffAt: string | null;
+  angle?: string | null;
+  score?: number | null;
+  /** qualificato | nurturing | null */
+  qual?: string | null;
+  /** Package recommended for the sales call */
+  pkg?: string | null;
+  /** Sales sequence (M1–M2) already sent: key → ISO */
+  seqLog?: Record<string, string>;
+}
+
+// ---------------------------------------------------------------------------
+// Team tasks (phone calls, personal messages, escalations): the playbook "task al …"
+// ---------------------------------------------------------------------------
+
+export const TASK_ROLES = ["commerciale", "csm", "coach", "pm", "admin", "ceo"] as const;
+export type TaskRole = (typeof TASK_ROLES)[number];
+export const TASK_ROLE_LABELS: Record<TaskRole, string> = {
+  commerciale: "Commerciale", csm: "CSM", coach: "Coach", pm: "PM Done For You", admin: "Admin", ceo: "CEO",
+};
+export interface VdTask {
+  id: string;
+  key: string;
+  clientId: string | null;
+  leadId: string | null;
+  title: string;
+  detail: string | null;
+  role: TaskRole;
+  dueAt: string | null;
+  status: "aperto" | "fatto";
+  doneAt: string | null;
+  doneBy: string | null;
+  urgent: boolean;
+  createdAt: string;
 }
 
 export interface BotSettings {
@@ -248,10 +387,61 @@ export const DEFAULT_AUTOMATIONS: AutomationSettings = {
   },
 };
 
+export interface PlaybookSettings {
+  /** Playbook (3 questions per angle, sequences M1–M10) or the old custom bot */
+  enabled: boolean;
+  brand: string;
+  commerciale: string;
+  /** Appwrite user ids per role: they get tasks and alerts */
+  team: Record<TaskRole, string[]>;
+  links: {
+    salesBooking: string;
+    salesCall: string;
+    csmBooking: string;
+    coachBooking: string;
+    pmBooking: string;
+    whatsappGroup: string;
+    intakeForm: string;
+    briefForm: string;
+    resultsForm: string;
+    preCallForm: string;
+    welcomeVideo: string;
+    preframeVideo: string;
+    freeContent: string;
+    caseStudy: string;
+    review: string;
+    referral: string;
+    referralReward: string;
+    privacy: string;
+  };
+  /** Contract data that is not in VendiOra company settings */
+  contract: { vat: "esclusa" | "inclusa"; place: string; court: string; pec: string; taxCode: string };
+  /** Message overrides: id → { enabled, text } (defaults in playbook-messages.ts) */
+  messages: Record<string, { enabled?: boolean; text?: string }>;
+  /** Shared secret for the Fathom / Zapier / Make webhook */
+  fathomSecret: string;
+}
+
+export const DEFAULT_PLAYBOOK: PlaybookSettings = {
+  enabled: false,
+  brand: "VendiOra",
+  commerciale: "",
+  team: { commerciale: [], csm: [], coach: [], pm: [], admin: [], ceo: [] },
+  links: {
+    salesBooking: "", salesCall: "", csmBooking: "", coachBooking: "", pmBooking: "", whatsappGroup: "", intakeForm: "", briefForm: "",
+    resultsForm: "", preCallForm: "", welcomeVideo: "", preframeVideo: "", freeContent: "", caseStudy: "", review: "", referral: "",
+    referralReward: "", privacy: "",
+  },
+  contract: { vat: "esclusa", place: "", court: "", pec: "", taxCode: "" },
+  messages: {},
+  fathomSecret: "",
+};
+
 export interface VendioraSettings {
   bot: BotSettings;
   company: CompanySettings;
   automations: AutomationSettings;
+  playbook: PlaybookSettings;
 }
 
 export const DEFAULT_SETTINGS: VendioraSettings = {
@@ -286,6 +476,7 @@ export const DEFAULT_SETTINGS: VendioraSettings = {
     court: "",
   },
   automations: DEFAULT_AUTOMATIONS,
+  playbook: DEFAULT_PLAYBOOK,
 };
 
 export function mergeSettings(raw: unknown): VendioraSettings {
@@ -293,10 +484,25 @@ export function mergeSettings(raw: unknown): VendioraSettings {
   const a = (r.automations ?? {}) as Partial<AutomationSettings>;
   const automations = { ...DEFAULT_AUTOMATIONS, offerValidDays: typeof a.offerValidDays === "number" && a.offerValidDays > 0 ? a.offerValidDays : DEFAULT_AUTOMATIONS.offerValidDays } as AutomationSettings;
   for (const k of AUTO_KEYS) automations[k] = { ...DEFAULT_AUTOMATIONS[k], ...((a[k] as Partial<AutoMessage>) ?? {}) };
+  const pb = (r.playbook ?? {}) as Partial<PlaybookSettings>;
+  const team = { ...DEFAULT_PLAYBOOK.team } as Record<TaskRole, string[]>;
+  for (const k of TASK_ROLES) {
+    const v = (pb.team as Partial<Record<TaskRole, unknown>> | undefined)?.[k];
+    if (Array.isArray(v)) team[k] = v.filter((x): x is string => typeof x === "string");
+  }
+  const playbook: PlaybookSettings = {
+    ...DEFAULT_PLAYBOOK,
+    ...pb,
+    team,
+    links: { ...DEFAULT_PLAYBOOK.links, ...(pb.links ?? {}) },
+    contract: { ...DEFAULT_PLAYBOOK.contract, ...(pb.contract ?? {}) },
+    messages: pb.messages && typeof pb.messages === "object" ? pb.messages : {},
+  };
   return {
     bot: { ...DEFAULT_SETTINGS.bot, ...(r.bot ?? {}) },
     company: { ...DEFAULT_SETTINGS.company, ...(r.company ?? {}) },
     automations,
+    playbook,
   };
 }
 

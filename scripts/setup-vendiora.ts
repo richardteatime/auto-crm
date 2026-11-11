@@ -31,8 +31,8 @@ const D = (k: string): Attr => ({ k, t: "d" });
 const SCHEMA: Record<string, { name: string; attrs: Attr[]; indexes: Array<[string, string[], ("asc" | "desc")?]> }> = {
   vd_packages: {
     name: "Vendiora pacchetti",
-    attrs: [S("name", 200, true), S("tagline", 500), S("deliverables", 20000), I("price"), F("vatRate"), I("includedCalls"), I("buildDays"), I("coachingDays"), S("guarantee", 2000), S("paymentTerms", 2000), B("active"), I("sortOrder")],
-    indexes: [["idx_sort", ["sortOrder"]]],
+    attrs: [S("name", 200, true), S("tagline", 500), S("deliverables", 20000), I("price"), F("vatRate"), I("includedCalls"), I("buildDays"), I("coachingDays"), S("code", 16), S("guarantee", 2000), S("paymentTerms", 2000), B("active"), I("sortOrder")],
+    indexes: [["idx_sort", ["sortOrder"]], ["idx_code", ["code"]]],
   },
   vd_clients: {
     name: "Vendiora clienti",
@@ -41,12 +41,15 @@ const SCHEMA: Record<string, { name: string; attrs: Attr[]; indexes: Array<[stri
       S("packageId", 64), S("packageSnapshot", 20000), S("packageName", 200), I("price"), F("vatRate"), S("paymentTerms", 2000),
       S("status", 32), S("contractNumber", 32), D("contractDate"), D("contractSignedAt"), B("isPaid"), D("paidAt"),
       D("kickoffAt"), D("storeLiveAt"), S("storeUrl", 500), S("coach", 120), S("notes", 20000), S("autoLog", 4000),
+      // Playbook (all optional)
+      S("packageCode", 16), S("stage", 8), S("health", 8), I("healthScore"), S("ops", 60000),
     ],
-    indexes: [["idx_lead", ["leadId"]], ["idx_contract", ["contractNumber"]], ["idx_status", ["status"]]],
+    indexes: [["idx_lead", ["leadId"]], ["idx_contract", ["contractNumber"]], ["idx_status", ["status"]], ["idx_phone", ["phoneE164"]], ["idx_stage", ["stage"]]],
   },
   vd_calls: {
     name: "Vendiora call",
-    attrs: [S("clientId", 64, true), S("clientName", 255), I("number"), S("title", 200), S("status", 32), D("scheduledAt"), D("doneAt"), S("notes", 4000), D("reminderAt")],
+    attrs: [S("clientId", 64, true), S("clientName", 255), I("number"), S("title", 200), S("status", 32), D("scheduledAt"), D("doneAt"), S("notes", 4000), D("reminderAt"),
+      S("code", 16), D("dueAt"), S("summary", 20000), S("homework", 4000), D("homeworkAt"), S("recordingUrl", 1000)],
     indexes: [["idx_client", ["clientId"]], ["idx_sched", ["scheduledAt"]], ["idx_number", ["number"]]],
   },
   vd_messages: {
@@ -56,7 +59,8 @@ const SCHEMA: Record<string, { name: string; attrs: Attr[]; indexes: Array<[stri
   },
   vd_conversations: {
     name: "Vendiora bot conversazioni",
-    attrs: [S("leadId", 64, true), S("phoneE164", 32), S("chatIds", 1000), S("state", 20), I("step"), S("answers", 20000), D("lastInboundAt"), D("handoffAt")],
+    attrs: [S("leadId", 64, true), S("phoneE164", 32), S("chatIds", 1000), S("state", 20), I("step"), S("answers", 20000), D("lastInboundAt"), D("handoffAt"),
+      S("angle", 16), I("score"), S("qual", 16), S("pkg", 16), S("seqLog", 4000)],
     indexes: [["idx_lead", ["leadId"]], ["idx_phone", ["phoneE164"]]],
   },
   vd_offers: {
@@ -65,10 +69,21 @@ const SCHEMA: Record<string, { name: string; attrs: Attr[]; indexes: Array<[stri
       S("number", 32), S("token", 64, true), S("leadId", 64), S("clientId", 64), S("name", 255), S("email", 255), S("phoneE164", 32),
       S("packageId", 64), S("packageSnapshot", 20000), S("packageName", 200), I("price"), F("vatRate"), S("message", 4000),
       S("status", 20), D("validUntil"), D("sentAt"), D("viewedAt"), D("answeredAt"), D("followupAt"),
+      // Playbook: sign + pay
+      S("packageCode", 16), S("mode", 16), S("taxId", 64), S("address", 500), D("signedAt"), S("signName", 200), S("signIp", 64),
+      S("signHash", 64), S("paymentLink", 1000), D("paidAt"), S("contractText", 100000), S("objection", 16), S("payPlan", 2000), S("autoLog", 2000),
     ],
-    indexes: [["idx_token", ["token"]], ["idx_lead", ["leadId"]], ["idx_status", ["status"]], ["idx_number", ["number"]]],
+    indexes: [["idx_token", ["token"]], ["idx_lead", ["leadId"]], ["idx_status", ["status"]], ["idx_number", ["number"]], ["idx_client", ["clientId"]]],
   },
-  vd_settings: { name: "Vendiora impostazioni", attrs: [S("data", 30000)], indexes: [] },
+  vd_settings: { name: "Vendiora impostazioni", attrs: [S("data", 30000), S("playbook", 100000)], indexes: [] },
+  vd_tasks: {
+    name: "Vendiora attività del team",
+    attrs: [
+      S("key", 120, true), S("clientId", 64), S("leadId", 64), S("title", 300), S("detail", 4000), S("role", 24), D("dueAt"),
+      S("status", 16), D("doneAt"), S("doneBy", 120), B("urgent"),
+    ],
+    indexes: [["idx_key", ["key"]], ["idx_status", ["status"]], ["idx_client", ["clientId"]], ["idx_lead", ["leadId"]], ["idx_due", ["dueAt"]]],
+  },
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
