@@ -6,7 +6,7 @@
  *
  *   npx tsx --env-file=.env.local scripts/setup-vendiora.ts
  */
-import { Client, Databases, IndexType } from "node-appwrite";
+import { Client, Databases, IndexType, Query } from "node-appwrite";
 
 const client = new Client()
   .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "")
@@ -49,7 +49,8 @@ const SCHEMA: Record<string, { name: string; attrs: Attr[]; indexes: Array<[stri
   vd_calls: {
     name: "Vendiora call",
     attrs: [S("clientId", 64, true), S("clientName", 255), I("number"), S("title", 200), S("status", 32), D("scheduledAt"), D("doneAt"), S("notes", 4000), D("reminderAt"),
-      S("code", 16), D("dueAt"), S("summary", 20000), S("homework", 4000), D("homeworkAt"), S("recordingUrl", 1000)],
+      S("code", 16), D("dueAt"), S("summary", 20000), S("homework", 4000), D("homeworkAt"), S("recordingUrl", 1000),
+      S("calUid", 128), S("meetingUrl", 1000)],
     indexes: [["idx_client", ["clientId"]], ["idx_sched", ["scheduledAt"]], ["idx_number", ["number"]]],
   },
   vd_messages: {
@@ -90,7 +91,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function waitAttrs(col: string) {
   for (let i = 0; i < 60; i++) {
-    const res = await db.listAttributes(DB, col);
+    const res = await db.listAttributes(DB, col, [Query.limit(500)]);
     const attrs = res.attributes as unknown as Array<{ status: string }>;
     if (attrs.every((a) => a.status === "available")) return;
     await sleep(1000);
@@ -108,7 +109,7 @@ async function main() {
       fresh = true;
       console.log(`+ collection ${id}`);
     }
-    const have = new Set(((await db.listAttributes(DB, id, )).attributes as unknown as Array<{ key: string }>).map((a) => a.key));
+    const have = new Set(((await db.listAttributes(DB, id, [Query.limit(500)])).attributes as unknown as Array<{ key: string }>).map((a) => a.key));
     for (const a of def.attrs) {
       if (have.has(a.k)) continue;
       const req = fresh && !!a.req;
@@ -120,7 +121,7 @@ async function main() {
       console.log(`  + ${id}.${a.k}`);
     }
     await waitAttrs(id);
-    const idx = new Set(((await db.listIndexes(DB, id)).indexes as unknown as Array<{ key: string }>).map((x) => x.key));
+    const idx = new Set(((await db.listIndexes(DB, id, [Query.limit(100)])).indexes as unknown as Array<{ key: string }>).map((x) => x.key));
     for (const [key, attrs] of def.indexes) {
       if (idx.has(key)) continue;
       await db.createIndex(DB, id, key, IndexType.Key, attrs);

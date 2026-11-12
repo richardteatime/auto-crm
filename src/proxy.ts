@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   "/api/leads/intake",
   "/api/vendiora/wa/inbound",
   "/api/vendiora/fathom", // Fathom webhook: checked by its own secret
+  "/api/vendiora/calcom", // Cal.com webhook: HMAC signature with its own secret
   "/offerta",
   "/sw.js",
   "/manifest.webmanifest",

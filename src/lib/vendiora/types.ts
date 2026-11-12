@@ -186,6 +186,9 @@ export interface VdCall {
   homework?: string | null;
   homeworkAt?: string | null;
   recordingUrl?: string | null;
+  /** Cal.com booking uid (set by the Cal.com webhook) and the video link of the booking */
+  calUid?: string | null;
+  meetingUrl?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -420,6 +423,8 @@ export interface PlaybookSettings {
   messages: Record<string, { enabled?: boolean; text?: string }>;
   /** Shared secret for the Fathom / Zapier / Make webhook */
   fathomSecret: string;
+  /** Cal.com (cloud or self-hosted): webhook secret + own host for self-hosted instances */
+  cal: { secret: string; host: string };
 }
 
 export const DEFAULT_PLAYBOOK: PlaybookSettings = {
@@ -435,6 +440,7 @@ export const DEFAULT_PLAYBOOK: PlaybookSettings = {
   contract: { vat: "esclusa", place: "", court: "", pec: "", taxCode: "" },
   messages: {},
   fathomSecret: "",
+  cal: { secret: "", host: "" },
 };
 
 export interface VendioraSettings {
@@ -497,6 +503,7 @@ export function mergeSettings(raw: unknown): VendioraSettings {
     links: { ...DEFAULT_PLAYBOOK.links, ...(pb.links ?? {}) },
     contract: { ...DEFAULT_PLAYBOOK.contract, ...(pb.contract ?? {}) },
     messages: pb.messages && typeof pb.messages === "object" ? pb.messages : {},
+    cal: { ...DEFAULT_PLAYBOOK.cal, ...(pb.cal ?? {}) },
   };
   return {
     bot: { ...DEFAULT_SETTINGS.bot, ...(r.bot ?? {}) },

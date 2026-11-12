@@ -27,6 +27,13 @@ function cleanPlaybook(cur: PlaybookSettings, b: Record<string, unknown>): Playb
   const out: PlaybookSettings = { ...cur };
   if ("enabled" in b) out.enabled = b.enabled === true;
   for (const k of ["brand", "commerciale", "fathomSecret"] as const) if (k in b) out[k] = String(b[k] ?? "").slice(0, 200);
+  if (b.cal && typeof b.cal === "object") {
+    const c = b.cal as Record<string, unknown>;
+    out.cal = {
+      secret: typeof c.secret === "string" ? c.secret.trim().slice(0, 200) : cur.cal.secret,
+      host: typeof c.host === "string" ? c.host.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase().slice(0, 200) : cur.cal.host,
+    };
+  }
   if (b.links && typeof b.links === "object") {
     out.links = { ...cur.links };
     for (const k of Object.keys(cur.links) as (keyof PlaybookSettings["links"])[]) {

@@ -13,7 +13,7 @@ type Pkg = { code: string; name: string; price: number; durationLabel: string; l
 
 const LINKS: { k: keyof PlaybookSettings["links"]; label: string; hint?: string }[] = [
   { k: "salesBooking", label: "Prenotazione call di vendita", hint: "{link} di M1 e M2" },
-  { k: "salesCall", label: "Link della call di vendita (Meet/Zoom)" },
+  { k: "salesCall", label: "Link della call di vendita (Meet/Zoom)", hint: "Con Cal.com non serve: usa il link della prenotazione" },
   { k: "csmBooking", label: "Prenotazione call di onboarding (CSM)" },
   { k: "coachBooking", label: "Prenotazione call con il coach" },
   { k: "pmBooking", label: "Prenotazione call con il PM (DFY)" },
@@ -41,6 +41,7 @@ export function PlaybookSettingsPanel({ s, setS, team }: { s: VendioraSettings; 
   const [seeding, setSeeding] = useState(false);
   useEffect(() => { api<{ messages: Msg[]; groups: Record<string, string>; packages: Pkg[] }>("/api/vendiora/playbook").then(setCat).catch(() => {}); }, []);
   const msgs = useMemo(() => cat?.messages.filter((m) => m.group === group) ?? [], [cat, group]);
+  const calHook = typeof window !== "undefined" ? `${window.location.origin}/api/vendiora/calcom` : "";
   const hook = typeof window !== "undefined" ? `${window.location.origin}/api/vendiora/fathom?secret=${pb.fathomSecret || "…"}` : "";
   const missing = LINKS.filter((l) => !pb.links[l.k]).length;
 
@@ -104,6 +105,21 @@ export function PlaybookSettingsPanel({ s, setS, team }: { s: VendioraSettings; 
               })}
             </div>
           ))}
+        </div>
+      </Panel>
+
+      <Panel title="Cal.com: prenotazioni sincronizzate con il CRM">
+        <div className="space-y-3 text-[13px]">
+          <p className="text-muted-foreground">Metti nei campi di prenotazione qui sotto i link degli eventi Cal.com (es. <code>https://cal.com/vendiora/vendita</code>). Il CRM li personalizza per ogni lead e cliente: nome, email e telefono già compilati e un codice nascosto che collega la prenotazione alla sua scheda. Quando qualcuno prenota, sposta, annulla o non si presenta, Cal.com lo comunica al CRM: la call si aggiorna da sola con data e link della videochiamata, partono conferma e promemoria, e il team riceve l&apos;avviso. Chi prenota senza essere nel CRM diventa un nuovo lead.</p>
+          <div className="grid gap-3 sm:grid-cols-[260px_220px_1fr]">
+            <Field label="Chiave segreta del webhook"><input className={inputCls} value={pb.cal.secret} onChange={(e) => set({ cal: { ...pb.cal, secret: e.target.value.trim() } })} placeholder="incolla o genera" /></Field>
+            <Field label="Dominio Cal.com proprio" hint="Solo se installato da noi"><input className={inputCls} value={pb.cal.host} onChange={(e) => set({ cal: { ...pb.cal, host: e.target.value.trim() } })} placeholder="cal.vendiora.com" /></Field>
+            <Field label="Indirizzo del webhook (Cal.com → Impostazioni → Sviluppatore → Webhook)"><input readOnly className={inputCls + " font-mono text-[12px]"} value={calHook} onFocus={(e) => e.target.select()} /></Field>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!pb.cal.secret && <Button size="sm" variant="outline" onClick={() => set({ cal: { ...pb.cal, secret: Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join("") } })}>Genera chiave</Button>}
+            <span className="text-[12px] text-muted-foreground">Eventi da attivare: Booking Created, Rescheduled, Cancelled, No-Show Updated e «After Guests Cal Video No-Show».</span>
+          </div>
         </div>
       </Panel>
 
@@ -174,7 +190,7 @@ export function PlaybookSettingsPanel({ s, setS, team }: { s: VendioraSettings; 
 
       <Panel title="Fathom: riassunto delle call nel CRM">
         <div className="space-y-3 text-[13px]">
-          <p className="text-muted-foreground">Quando Fathom finisce di elaborare una call la manda qui: il riassunto, i compiti e la registrazione finiscono nella call giusta del cliente (riconosciuta dal codice nel titolo, es. «BASE-C3 – Mario Rossi»), oppure nella scheda del lead per la «SALES-CALL». Funziona con il webhook di Fathom o tramite Zapier/Make.</p>
+          <p className="text-muted-foreground">Quando Fathom finisce di elaborare una call la manda qui: il riassunto, i compiti e la registrazione finiscono nella call giusta del cliente (riconosciuta dall&apos;orario della call prenotata su Cal.com, oppure dal codice nel titolo, es. «BASE-C3 – Mario Rossi»), oppure nella scheda del lead per la «SALES-CALL». Funziona con il webhook di Fathom o tramite Zapier/Make.</p>
           <div className="grid gap-3 sm:grid-cols-[260px_1fr]">
             <Field label="Chiave segreta (min. 16 caratteri)"><input className={inputCls} value={pb.fathomSecret} onChange={(e) => set({ fathomSecret: e.target.value.trim() })} placeholder="incolla o genera" /></Field>
             <Field label="Indirizzo da incollare in Fathom"><input readOnly className={inputCls + " font-mono text-[12px]"} value={hook} onFocus={(e) => e.target.select()} /></Field>

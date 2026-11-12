@@ -28,6 +28,7 @@ import {
 } from "@/lib/vendiora/playbook";
 import { PB_BY_ID, pbText } from "@/lib/vendiora/playbook-messages";
 import { installments } from "@/lib/vendiora/contract";
+import { calLink, type CalWho } from "@/lib/vendiora/cal-links";
 
 const H = 3_600_000;
 const D = 24 * H;
@@ -79,7 +80,7 @@ export interface Ctx {
 
 const inc = (c: Ctx, k: string) => { c.out[k] = (c.out[k] ?? 0) + 1; };
 
-function teamIds(s: VendioraSettings, role: TaskRole): string[] {
+export function teamIds(s: VendioraSettings, role: TaskRole): string[] {
   const t = s.playbook.team;
   const ids = t[role]?.length ? t[role] : role === "coach" || role === "pm" ? t.csm : role === "ceo" ? t.admin : [];
   return [...new Set([...(ids.length ? ids : t.admin.length ? t.admin : s.bot.handoffUserIds)])].filter((id) => !isBlockedUser(id));
@@ -152,7 +153,7 @@ async function say(c: Ctx, id: string, to: { phone: string | null; email: string
 // Variables
 // ---------------------------------------------------------------------------
 
-function baseVars(s: VendioraSettings, name: string): Record<string, string> {
+function baseVars(s: VendioraSettings, name: string, who?: CalWho): Record<string, string> {
   const L = s.playbook.links;
   return {
     nome: firstName(name),
@@ -160,7 +161,7 @@ function baseVars(s: VendioraSettings, name: string): Record<string, string> {
     brand: s.playbook.brand || s.company.name || "VendiOra",
     commerciale: s.playbook.commerciale || s.bot.handoffName || "il nostro team",
     referente: s.bot.handoffName || s.playbook.commerciale || "il nostro team",
-    link: L.salesBooking || s.bot.calendlyUrl || "",
+    link: calLink(s, L.salesBooking || s.bot.calendlyUrl || "", who && { name, ...who }),
     linkcall: L.salesCall ? ` Link della call 👉 ${L.salesCall}` : "",
     video: L.preframeVideo,
   };
@@ -173,11 +174,11 @@ function clientVars(s: VendioraSettings, cl: VdClient, extra: Record<string, str
   const pkg = playbookPackage(cl.packageCode);
   const booking = pkg?.line === "dfy" ? L.pmBooking || L.coachBooking : L.coachBooking || L.csmBooking;
   return {
-    ...baseVars(s, cl.name),
+    ...baseVars(s, cl.name, { email: cl.email, phone: cl.phoneE164, ref: `c:${cl.id}` }),
     pacchetto: cl.packageName,
     prezzo: eur(cl.price),
     coach: cl.coach || "il tuo coach",
-    link: booking || s.bot.coachingBookingUrl || s.bot.calendlyUrl || "",
+    link: calLink(s, booking || s.bot.coachingBookingUrl || s.bot.calendlyUrl || "", { name: cl.name, email: cl.email, phone: cl.phoneE164, ref: `c:${cl.id}` }),
     gruppo: L.whatsappGroup,
     video: L.welcomeVideo,
     kpi: cl.ops.kpiName || "vendite della settimana",
@@ -407,7 +408,7 @@ export async function playbookAnswer(conv: Conversation, lead: Lead, text: strin
     return "answer-appended";
   }
   conv.answers.push({ q: qs[step], a: text });
-  const v = { ...baseVars(s, lead.name) };
+  const v = { ...baseVars(s, lead.name, { email: lead.email, phone: lead.phoneE164, ref: `l:${lead.id}` }) };
   if (step < 2) {
     const next = qs[step + 1];
     conv = await saveConversation({ ...conv, step: step + 1, state: "attivo", lastInboundAt: at });
@@ -457,7 +458,7 @@ async function runSales(c: Ctx) {
     if (lead.status === "perso" && conv.qual !== "nurturing") continue;
     const log = { ...(conv.seqLog ?? {}) };
     const mark = async (k: string) => { log[k] = new Date(c.now).toISOString(); await saveConversation({ ...conv, seqLog: log }); };
-    const v = { ...baseVars(s, lead.name), angle: conv.angle ?? "—", problema: isAngle(conv.angle) ? ANGLE_INFO[conv.angle].problem : "bisogno di una mano con il tuo ecommerce" };
+    const v = { ...baseVars(s, lead.name, { email: lead.email, phone: lead.phoneE164, ref: `l:${lead.id}` }), angle: conv.angle ?? "—", problema: isAngle(conv.angle) ? ANGLE_INFO[conv.angle].problem : "bisogno di una mano con il tuo ecommerce" };
     const created = ts(log.created) || ts(lead.createdAt);
     try {
       // First message 3 minutes after arrival
@@ -518,7 +519,7 @@ async function runSales(c: Ctx) {
       if (lead.status === "appuntamento" && lead.nextActionAt) {
         const t = ts(lead.nextActionAt);
         const tag = lead.nextActionAt.slice(0, 16);
-        const vv = { ...v, data: dLong(lead.nextActionAt), ora: tIt(lead.nextActionAt), storehint: conv.angle === "A-SISTEMA" || conv.angle === "A-SCALA" ? " Tieni a portata di mano il link del tuo store." : "", linkcall: s.playbook.links.salesCall };
+        const vv = { ...v, data: dLong(lead.nextActionAt), ora: tIt(lead.nextActionAt), storehint: conv.angle === "A-SISTEMA" || conv.angle === "A-SCALA" ? " Tieni a portata di mano il link del tuo store." : "", linkcall: (typeof log[`calMeet:${tag}`] === "string" && log[`calMeet:${tag}`]) || s.playbook.links.salesCall };
         const steps: [string, number, boolean?][] = [
           ["M2.confirm", ts(log[`booked:${tag}`] ?? "") || c.now],
           ["M2.preframe", (ts(log[`booked:${tag}`] ?? "") || c.now) + 5 * 60_000],
@@ -557,7 +558,7 @@ export async function salesNoShow(lead: Lead): Promise<void> {
   const c: Ctx = { s, now: Date.now(), out: {} };
   const conv = await getConversationByLead(lead.id);
   const at = new Date().toISOString();
-  const v = baseVars(s, lead.name);
+  const v = baseVars(s, lead.name, { email: lead.email, phone: lead.phoneE164, ref: `l:${lead.id}` });
   const to = { phone: lead.phoneE164, email: lead.email, leadId: lead.id, clientId: null, name: lead.name };
   await say(c, "M2.absent", to, v, `${lead.id}:M2.absent:${at}`);
   await say(c, "M2.absentCall", to, v, `${lead.id}:M2.absentCall:${at}`);
@@ -695,7 +696,7 @@ async function runClient(c: Ctx, cl0: VdClient, calls: VdCall[]) {
   const pcode = (x: VdCall) => pkg.calls.find((st) => st.n === x.number);
   for (const x of calls) {
     const st = pcode(x);
-    const cv = { ...V, call: callLabel(x), scadenza: dShort(x.dueAt), data: dLong(x.scheduledAt), ora: tIt(x.scheduledAt), portare: st?.bring && st.bring !== "—" ? st.bring : "i compiti della settimana", form: L.preCallForm ? `\n\nForm pre-call 👉 ${L.preCallForm}` : "", linkcall: "" };
+    const cv = { ...V, call: callLabel(x), scadenza: dShort(x.dueAt), data: dLong(x.scheduledAt), ora: tIt(x.scheduledAt), portare: st?.bring && st.bring !== "—" ? st.bring : "i compiti della settimana", form: L.preCallForm ? `\n\nForm pre-call 👉 ${L.preCallForm}` : "", linkcall: x.meetingUrl ? `\n\nLink della call 👉 ${x.meetingUrl}` : "" };
     const due = ts(x.dueAt);
     if (x.status === "da_prenotare" && due) {
       if (await once(`CAL.due3:${x.id}`, "CAL.due3", cv, due - 3 * D, 3 * D)) await task(c, { key: `${cl.id}:CAL.due3alert:${x.id}`, msgId: "CAL.due3alert", role: line === "dfy" ? "pm" : "coach", vars: cv, clientId: cl.id });
@@ -1025,6 +1026,17 @@ export function parseFathom(b: Record<string, unknown>): FathomPayload {
   };
 }
 
+async function fathomToCall(cl: VdClient, call: VdCall, p: FathomPayload, at: string, homework: string | null): Promise<{ matched: string; id?: string }> {
+  const next = (await listCalls({ clientId: cl.id })).find((x) => x.number === call.number + 1);
+  const hwAt = next?.dueAt ? new Date(Date.parse(next.dueAt) - D).toISOString() : new Date(Date.parse(at) + 6 * D).toISOString();
+  await updateCall(call.id, {
+    status: "fatta", doneAt: call.doneAt ?? at, summary: p.summary, homework: homework?.slice(0, 3900) ?? call.homework ?? null, homeworkAt: homework ? hwAt : call.homeworkAt ?? null,
+    recordingUrl: p.recordingUrl, notes: [call.notes, p.transcript ? `Trascrizione Fathom disponibile (${p.transcript.length} caratteri)` : null].filter(Boolean).join("\n\n").slice(0, 3900),
+  });
+  if (cl.leadId) await addLeadEvent({ leadId: cl.leadId, type: "note", outcome: null, fromStatus: null, toStatus: null, note: `Fathom · ${call.title}\n\n${(p.summary ?? "").slice(0, 3000)}${p.recordingUrl ? `\n\nRegistrazione: ${p.recordingUrl}` : ""}`, actorId: null, actorName: "Fathom" }).catch(() => {});
+  return { matched: "call", id: call.id };
+}
+
 export async function ingestFathom(p: FathomPayload): Promise<{ matched: string; id?: string }> {
   const code = /\b(BASE|ELITE|DFY-SA|DFY-S|DFY-F)-C(\d{1,2})\b/i.exec(p.title);
   const sales = /\bSALES-CALL\b/i.test(p.title);
@@ -1039,14 +1051,17 @@ export async function ingestFathom(p: FathomPayload): Promise<{ matched: string;
     if (!cl) return { matched: "client-not-found" };
     const call = (await listCalls({ clientId: cl.id })).find((x) => x.number === n);
     if (!call) return { matched: "call-not-found" };
-    const next = (await listCalls({ clientId: cl.id })).find((x) => x.number === n + 1);
-    const hwAt = next?.dueAt ? new Date(Date.parse(next.dueAt) - D).toISOString() : new Date(Date.parse(at) + 6 * D).toISOString();
-    await updateCall(call.id, {
-      status: "fatta", doneAt: call.doneAt ?? at, summary: p.summary, homework: homework?.slice(0, 3900) ?? call.homework ?? null, homeworkAt: homework ? hwAt : call.homeworkAt ?? null,
-      recordingUrl: p.recordingUrl, notes: [call.notes, p.transcript ? `Trascrizione Fathom disponibile (${p.transcript.length} caratteri)` : null].filter(Boolean).join("\n\n").slice(0, 3900),
-    });
-    if (cl.leadId) await addLeadEvent({ leadId: cl.leadId, type: "note", outcome: null, fromStatus: null, toStatus: null, note: `Fathom · ${call.title}\n\n${(p.summary ?? "").slice(0, 3000)}${p.recordingUrl ? `\n\nRegistrazione: ${p.recordingUrl}` : ""}`, actorId: null, actorName: "Fathom" }).catch(() => {});
-    return { matched: "call", id: call.id };
+    return fathomToCall(cl, call, p, at, homework);
+  }
+  // No code in the title (e.g. calls booked on Cal.com): the client's call scheduled closest to the recording
+  if (!sales && p.emails.length) {
+    const t = Date.parse(at);
+    for (const cl of (await listClients()).filter((x) => x.email && p.emails.includes(x.email.toLowerCase()))) {
+      const hit = (await listCalls({ clientId: cl.id }))
+        .filter((x) => x.scheduledAt && Math.abs(Date.parse(x.scheduledAt) - t) < 3 * H)
+        .sort((x, y) => Math.abs(Date.parse(x.scheduledAt!) - t) - Math.abs(Date.parse(y.scheduledAt!) - t))[0];
+      if (hit) return fathomToCall(cl, hit, p, at, homework);
+    }
   }
   // Sales call: summary on the lead + call recorded
   const leads = (await listLeads({ max: 3000 })).filter((l) => l.email && p.emails.includes(l.email.toLowerCase()));

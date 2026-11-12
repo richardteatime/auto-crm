@@ -68,6 +68,7 @@ export const LEAD_SOURCE_LABELS: Record<string, string> = {
   meta_form: "Modulo Meta",
   landing: "Landing sarconx.com",
   manuale: "Inserito a mano",
+  calcom: "Prenotazione Cal.com",
 };
 
 export interface Lead {

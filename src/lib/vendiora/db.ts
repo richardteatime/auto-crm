@@ -284,6 +284,8 @@ function toCall(d: Doc): VdCall {
     homework: s(d.homework),
     homeworkAt: s(d.homeworkAt),
     recordingUrl: s(d.recordingUrl),
+    calUid: s(d.calUid),
+    meetingUrl: s(d.meetingUrl),
   };
 }
 
