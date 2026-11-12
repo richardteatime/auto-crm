@@ -33,7 +33,11 @@ export interface CalEvent {
   ref: ReturnType<typeof parseCalRef>;
   attendees: { name: string; email: string | null; phone: string | null; noShow: boolean }[];
   cancelReason: string | null;
+  /** Pre-call form answers (custom booking questions), "Domanda: risposta" */
+  answers: string[];
 }
+
+const DEFAULT_FIELDS = new Set(["name", "email", "location", "attendeePhoneNumber", "title", "notes", "guests", "rescheduleReason"]);
 
 export function parseCal(body: unknown): CalEvent {
   const b = obj(body);
@@ -61,6 +65,17 @@ export function parseCal(body: unknown): CalEvent {
       noShow: a.noShow === true,
     })).concat(att.length ? [] : [{ name: respVal("name") ?? "", email: respVal("email")?.toLowerCase() ?? null, phone: respVal("attendeePhoneNumber"), noShow: false }]),
     cancelReason: str(p.cancellationReason),
+    answers: Object.entries(resp)
+      .filter(([k, v]) => !DEFAULT_FIELDS.has(k) || (k === "notes" && str(obj(v).value)))
+      .map(([k, v]) => {
+        const o = obj(v);
+        const val = o.value ?? v;
+        const text = Array.isArray(val) ? val.join(", ") : typeof val === "string" || typeof val === "number" || typeof val === "boolean" ? String(val) : "";
+        const label = str(o.label);
+        return text.trim() ? `${label && !/^[a-z_]+$/.test(label) ? label : k}: ${text.trim()}` : "";
+      })
+      .filter(Boolean)
+      .slice(0, 12),
   };
 }
 
@@ -85,8 +100,8 @@ function pickCall(calls: VdCall[], e: CalEvent): VdCall | null {
 }
 
 async function findTarget(e: CalEvent): Promise<{ client?: VdClient; lead?: Lead }> {
-  if (e.ref?.kind === "client") { const cl = await getClient(e.ref.id); if (cl) return { client: cl }; }
-  if (e.ref?.kind === "lead") { const l = await getLead(e.ref.id); if (l) return { lead: l }; }
+  if (e.ref?.kind === "client") { const cl = await getClient(e.ref.id).catch(() => null); if (cl) return { client: cl }; }
+  if (e.ref?.kind === "lead") { const l = await getLead(e.ref.id).catch(() => null); if (l) return { lead: l }; }
   const clients = await listClients();
   if (e.uid || e.previousUid) {
     const all = await listCalls();
@@ -122,7 +137,8 @@ export async function ingestCal(e: CalEvent): Promise<{ matched: string; id?: st
     if (!a?.email && !a?.phone) return { matched: "no-attendee" };
     const r = await ingestLead({
       externalId: `calcom:${e.uid}`, name: a.name || null, phone: a.phone ?? "", email: a.email, company: null, service: e.title || null,
-      context: { form: `Cal.com · ${e.eventType || e.title}`, platform: "calcom" }, formData: {},
+      context: { form: `Cal.com · ${e.eventType || e.title}`, platform: "calcom" },
+      formData: Object.fromEntries(e.answers.map((x) => { const i = x.indexOf(": "); return [x.slice(0, i), x.slice(i + 2)]; })),
     } as Parameters<typeof ingestLead>[0], "calcom", { notify: false });
     lead = r.lead;
   }
@@ -137,7 +153,9 @@ export async function ingestCal(e: CalEvent): Promise<{ matched: string; id?: st
     if (!call) return { matched: "client-call-not-found", id: cl.id };
     const url = `${APP_URL}/vendiora/clienti/${cl.id}`;
     if (booked && e.start) {
-      await updateCall(call.id, { status: "prenotata", scheduledAt: e.start, calUid: e.uid, meetingUrl: e.meetingUrl ?? call.meetingUrl ?? null, doneAt: null });
+      const pre = e.answers.length ? `Form pre-call (${dt(e.start)}):\n${e.answers.join("\n")}` : null;
+      const notes = pre && !(call.notes ?? "").includes(pre) ? [call.notes, pre].filter(Boolean).join("\n\n").slice(0, 3900) : call.notes;
+      await updateCall(call.id, { status: "prenotata", scheduledAt: e.start, calUid: e.uid, meetingUrl: e.meetingUrl ?? call.meetingUrl ?? null, doneAt: null, notes });
       const what = e.trigger === "BOOKING_RESCHEDULED" ? "ha spostato" : "ha prenotato";
       await notifyTeam(s, role, `📅 ${cl.name} ${what} la call`, `${call.title} · ${dt(e.start)}`, url, { leadId: cl.leadId });
       return { matched: "client-call", id: call.id };
@@ -173,7 +191,7 @@ export async function ingestCal(e: CalEvent): Promise<{ matched: string; id?: st
       await updateLead(lead.id, { status: "appuntamento", nextActionAt: e.start, nextActionNote: `Call di vendita (Cal.com) ${dt(e.start)}` });
       await addLeadEvent({
         leadId: lead.id, type: "status", outcome: null, fromStatus: prev, toStatus: "appuntamento",
-        note: `${e.trigger === "BOOKING_RESCHEDULED" ? "Call spostata" : "Call prenotata"} su Cal.com: ${dt(e.start)}${e.meetingUrl ? `\nLink: ${e.meetingUrl}` : ""}`,
+        note: `${e.trigger === "BOOKING_RESCHEDULED" ? "Call spostata" : "Call prenotata"} su Cal.com: ${dt(e.start)}${e.meetingUrl ? `\nLink: ${e.meetingUrl}` : ""}${e.answers.length ? `\n\nForm pre-call:\n${e.answers.join("\n")}` : ""}`.slice(0, 3900),
         actorId: null, actorName: "Cal.com",
       }).catch(() => {});
       if (conv) {
