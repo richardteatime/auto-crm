@@ -1027,6 +1027,10 @@ export function parseFathom(b: Record<string, unknown>): FathomPayload {
 }
 
 async function fathomToCall(cl: VdClient, call: VdCall, p: FathomPayload, at: string, homework: string | null): Promise<{ matched: string; id?: string }> {
+  // Same call recorded by two team members' Fathom accounts: keep the first recording
+  if (call.status === "fatta" && call.recordingUrl && call.recordingUrl !== p.recordingUrl && call.doneAt && Math.abs(Date.parse(call.doneAt) - Date.parse(at)) < 3 * H) {
+    return { matched: "duplicate", id: call.id };
+  }
   const next = (await listCalls({ clientId: cl.id })).find((x) => x.number === call.number + 1);
   const hwAt = next?.dueAt ? new Date(Date.parse(next.dueAt) - D).toISOString() : new Date(Date.parse(at) + 6 * D).toISOString();
   await updateCall(call.id, {
@@ -1067,6 +1071,9 @@ export async function ingestFathom(p: FathomPayload): Promise<{ matched: string;
   const leads = (await listLeads({ max: 3000 })).filter((l) => l.email && p.emails.includes(l.email.toLowerCase()));
   const lead = leads[0];
   if (!lead) return { matched: "lead-not-found" };
+  if (lead.lastContactAt && lead.nextActionNote?.startsWith("Call svolta (Fathom)") && Math.abs(Date.parse(lead.lastContactAt) - Date.parse(at)) < 3 * H) {
+    return { matched: "duplicate", id: lead.id };
+  }
   await addLeadEvent({
     leadId: lead.id, type: "call", outcome: null, fromStatus: null, toStatus: null,
     note: `Call di vendita registrata da Fathom (${dLong(at)} ${tIt(at)})\n\n${(p.summary ?? "").slice(0, 3500)}${p.actionItems.length ? `\n\nAction item:\n${p.actionItems.map((x) => `• ${x}`).join("\n")}` : ""}${p.recordingUrl ? `\n\nRegistrazione: ${p.recordingUrl}` : ""}`,
