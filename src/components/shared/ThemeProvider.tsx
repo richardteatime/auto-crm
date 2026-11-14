@@ -2,15 +2,36 @@
 
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import { Moon, Sun, Monitor } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeColorSync />
       {children}
     </NextThemesProvider>
   );
+}
+
+/** Same values as --canvas in globals.css and the static theme-color metas in app/layout.tsx */
+const THEME_COLORS = { light: "#f2f4f7", dark: "#07090d" } as const;
+
+/**
+ * The theme-color metas in layout.tsx follow the PHONE setting (prefers-color-scheme), so with
+ * "Chiaro" on a dark phone (or "Scuro" on a light one) the mobile browser bar / iOS status bar
+ * kept the opposite colour. Point every theme-color meta at the theme actually in use.
+ */
+function ThemeColorSync() {
+  const { resolvedTheme } = useTheme();
+  const pathname = usePathname();
+  useEffect(() => {
+    if (resolvedTheme !== "light" && resolvedTheme !== "dark") return;
+    const color = THEME_COLORS[resolvedTheme];
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", color));
+  }, [resolvedTheme, pathname]);
+  return null;
 }
 
 const THEMES = [
