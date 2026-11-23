@@ -19,6 +19,9 @@ const STATUS: Record<string, [string, string]> = {
   cancelled: ["Annullato", "bg-slate-100 text-slate-500 ring-slate-200"],
 };
 
+/** Testo leggibile: senza righe per il CRM né simboli markdown */
+const clean = (t: string) => t.split("\n").filter((l) => !/^#\s*(Fase|Serve dal cliente):/i.test(l)).join("\n").replace(/\*\*|`|^#+\s*/gm, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").trim();
+
 /** Consegna DFY fatta dagli agenti Paperclip (azienda VendiOra) */
 export function PaperclipPanel({ c }: { c: VdClient }) {
   const [r, setR] = useState<Resp | null>(null);
@@ -68,9 +71,9 @@ export function PaperclipPanel({ c }: { c: VdClient }) {
             </div>
           )}
           {d.phases.length > 0 ? (
-            <ol className="space-y-1">{d.phases.map((p, i) => <li key={i} className="flex gap-2"><span className="text-emerald-600">✓</span><span>{p.label}</span><span className="ml-auto text-muted-foreground">{fmtDate(p.at)}</span></li>)}</ol>
+            <ol className="space-y-1">{d.phases.map((p, i) => <li key={i} className="flex gap-2">{/^bloccat/i.test(p.label) ? <span className="text-amber-600">!</span> : <span className="text-emerald-600">✓</span>}<span>{p.label}</span><span className="ml-auto text-muted-foreground">{fmtDate(p.at)}</span></li>)}</ol>
           ) : <p className="text-muted-foreground">Nessuna fase chiusa per ora.</p>}
-          {d.lastComment && <p className="line-clamp-4 whitespace-pre-line rounded-lg bg-muted/50 p-3 text-muted-foreground">{d.lastComment.text}</p>}
+          {d.lastComment && <p className="line-clamp-4 whitespace-pre-line rounded-lg bg-muted/50 p-3 text-muted-foreground">{clean(d.lastComment.text)}</p>}
           {d.error && <p className="text-red-600">Ultimo aggiornamento non riuscito: {d.error}</p>}
         </div>
       )}
