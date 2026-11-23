@@ -16,6 +16,8 @@ import {
 import { api, Field, Panel, Pill, fmtDate, inputCls, textareaCls, toDateInputValue, toLocalInputValue } from "./ui";
 import { WaChat } from "./WaChat";
 import { JourneyTimeline } from "./JourneyTimeline";
+import { PaperclipPanel } from "./PaperclipPanel";
+import { lineOf } from "@/lib/vendiora/playbook";
 import { PlaybookGoal, PlaybookInstallments, PlaybookMilestones, PlaybookStrip, PlaybookUpsell, TasksPanel } from "./PlaybookClientPanel";
 
 export function ClientDetail({ id }: { id: string }) {
@@ -116,6 +118,7 @@ export function ClientDetail({ id }: { id: string }) {
             )}
           </Panel>
           {isPb && <PlaybookMilestones c={c} onPatch={patch} />}
+          {lineOf(c.packageCode) === "dfy" && <PaperclipPanel key={`pc${tick}`} c={c} />}
           <Panel title="Note sul cliente">
             <textarea className={textareaCls + " min-h-[140px]"} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Nicchia, prodotto scelto, fornitori, accessi consegnati, cosa fare alla prossima call…" />
             <div className="mt-2 flex justify-end"><Button size="sm" disabled={notes === (c.notes ?? "")} onClick={() => patch({ notes })}>Salva note</Button></div>

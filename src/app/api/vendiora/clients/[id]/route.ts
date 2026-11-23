@@ -4,6 +4,7 @@ import { getClient, updateClient, deleteClient, listCalls, getSettings, type Cli
 import { activateClient, ensureCallPlan } from "@/lib/vendiora/engine";
 import { PACKAGE_CODES, playbookPackage, type PackageCode } from "@/lib/vendiora/playbook";
 import { sendClientAuto } from "@/lib/vendiora/automations";
+import { paperclipAuto, startDelivery } from "@/lib/vendiora/paperclip";
 import { readBody, str, int, iso, fail } from "@/lib/vendiora/http";
 import { isClientStatus, type ClientOps, type Installment } from "@/lib/vendiora/types";
 
@@ -104,6 +105,11 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   if (p.storeLiveAt && !cur.storeLiveAt && ["onboarding", "costruzione"].includes(cur.status) && !("status" in b)) p.status = "affiancamento";
   try {
     let client = await updateClient(id, p);
+    // Pagamento DFY appena registrato → compito per gli agenti Paperclip (se attivato con PAPERCLIP_VENDIORA_AUTO=1)
+    if (p.isPaid && !cur.isPaid && paperclipAuto() && playbookPackage(client.packageCode)?.line === "dfy") {
+      await startDelivery(id, { by: "pagamento registrato" }).catch((e) => console.error("[vendiora paperclip]", e instanceof Error ? e.message : e));
+      client = (await getClient(id)) ?? client;
+    }
     const s = await getSettings();
     if (s.playbook.enabled && playbookPackage(client.packageCode)) {
       if (p.packageCode && p.packageCode !== cur.packageCode) await ensureCallPlan(client);

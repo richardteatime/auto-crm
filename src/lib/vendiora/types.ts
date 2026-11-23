@@ -98,7 +98,27 @@ export interface Installment {
 
 export interface CheckIn { at: string; answers: string[] }
 
+export interface PaperclipDelivery {
+  /** Compito principale su Paperclip (azienda VendiOra) */
+  issueId: string;
+  identifier: string;
+  status: string;
+  /** Cliente finto: gli agenti fanno solo piano e ricerca */
+  test: boolean;
+  startedAt: string;
+  startedBy: string | null;
+  /** Righe «# Fase: …» scritte dal Project Manager */
+  phases: { at: string; label: string }[];
+  /** Righe «# Serve dal cliente: …» (le chiedono i fondatori, mai gli agenti) */
+  needs: { at: string; text: string }[];
+  lastComment?: { at: string; text: string } | null;
+  lastSyncAt: string | null;
+  error: string | null;
+}
+
 export interface ClientOps {
+  /** Consegna DFY affidata a Paperclip */
+  paperclip?: PaperclipDelivery | null;
   /** Activation = contract signed + payment received (start of the package) */
   activatedAt?: string | null;
   /** Handover sheet filled by the closer */
