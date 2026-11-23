@@ -66,10 +66,27 @@ export const LEAD_SOURCES = ["meta_form", "landing", "manuale"] as const;
 export type LeadSourceKind = (typeof LEAD_SOURCES)[number];
 export const LEAD_SOURCE_LABELS: Record<string, string> = {
   meta_form: "Modulo Meta",
-  landing: "Landing sarconx.com",
+  landing: "Landing",
   manuale: "Inserito a mano",
   calcom: "Prenotazione Cal.com",
 };
+
+/** Business line of a lead: decides who calls it (sito → Matteo, ecommerce/DFY → Leo) */
+export const LEAD_LINES = ["sito", "ecommerce"] as const;
+export type LeadLine = (typeof LEAD_LINES)[number];
+export const LEAD_LINE_LABELS: Record<LeadLine, string> = { sito: "Sito web", ecommerce: "E-commerce / DFY" };
+export function isLeadLine(v: unknown): v is LeadLine {
+  return typeof v === "string" && (LEAD_LINES as readonly string[]).includes(v);
+}
+
+/** Pure: guesses the line from what the lead wrote and where it came from (null = undecided) */
+export function detectLeadLine(parts: Array<string | null | undefined>): LeadLine | null {
+  const t = parts.filter(Boolean).join(" \n ").toLowerCase();
+  if (!t.trim()) return null;
+  if (/e-?\s?commerce|shopify|dropship|done[\s-]*for[\s-]*you|\bdfy\b|negozio online|store online|vendiora|vendere online|sistemiamo/.test(t)) return "ecommerce";
+  if (/\bsit[oi]\b|website|sito web|\bweb\b|landing page|vetrina online/.test(t)) return "sito";
+  return null;
+}
 
 export interface Lead {
   id: string;
@@ -105,6 +122,8 @@ export interface Lead {
   remindedAt: string | null;
   /** CRM instance where the lead was entered by hand (null = SarconX CRM / intake) */
   crmInstance: string | null;
+  /** "sito" | "ecommerce" | null (see LEAD_LINES) */
+  line: string | null;
   /** CRM instance holding the deal it was converted into (null = SarconX CRM) */
   dealCrm: string | null;
   /** Set when the deal lives in another CRM instance: its name, e.g. "CRM Matteo" */

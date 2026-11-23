@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
   }
 
   const n = normalizeIntakePayload(body);
+  // Meta campaigns (via Make) can tell the line in the URL: ?line=sito | ?line=ecommerce
+  const lineParam = url.searchParams.get("line");
+  if (lineParam && !n.line) n.line = lineParam.toLowerCase();
   if (!n.phone && !n.email) {
     return NextResponse.json({ ok: false, error: "missing_contact", hint: "Serve almeno telefono o email" }, { status: 422 });
   }

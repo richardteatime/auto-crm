@@ -2,12 +2,16 @@ import { createLead, updateLead, addLeadEvent, findLeadsByPhone, type NewLead } 
 import { vendioraEnabled } from "@/lib/roles";
 import { createContact, createDeal, getStages } from "@/lib/db";
 import { normalizePhone, type NormalizedLead } from "@/lib/leads/intake";
-import { notifyNewLead } from "@/lib/leads/notify";
+import { notifyNewLead, sendLeadAck } from "@/lib/leads/notify";
 import { CRM_INSTANCE_ID, crmLabel } from "@/lib/instance";
 import {
   OUTCOME_CONFIG,
   LEAD_STATUS_CONFIG,
   LEAD_SOURCE_LABELS,
+  LEAD_LINE_LABELS,
+  detectLeadLine,
+  isLeadLine,
+  type LeadLine,
   type CallOutcome,
   type Lead,
   type LeadStatus,
@@ -24,13 +28,34 @@ const SYSTEM: Actor = { id: null, name: "Sistema" };
 // Intake
 // ---------------------------------------------------------------------------
 
+/**
+ * Who calls a lead of each line. Env LEAD_ROUTING="sito=<userId>,ecommerce=<userId>,altro=<userId>"
+ * ("altro" = line not recognised). Missing entry = unassigned (everyone sees it anyway).
+ */
+export function routeLead(line: LeadLine | null): string | null {
+  const map = Object.fromEntries(
+    (process.env.LEAD_ROUTING || "").split(",").map((x) => x.split("=").map((s) => s.trim())).filter((x) => x.length === 2 && x[0] && x[1])
+  ) as Record<string, string>;
+  return map[line ?? "altro"] ?? null;
+}
+
+/** Explicit line from the source wins; else guessed from service, answers, campaign and form names */
+export function lineOf(n: NormalizedLead): LeadLine | null {
+  if (isLeadLine(n.line)) return n.line;
+  const answers = Object.entries(n.formData).filter(([k]) => k !== "source").map(([k, v]) => `${k} ${typeof v === "string" ? v : ""}`);
+  return detectLeadLine([n.service, n.context.campaign, n.context.adset, n.context.ad, n.context.form, ...answers]);
+}
+
 export async function ingestLead(
   n: NormalizedLead,
   source: string,
   opts: { notify?: boolean; actor?: Actor } = {}
 ): Promise<{ lead: Lead; duplicate: boolean }> {
   const phoneE164 = normalizePhone(n.phone);
+  const line = lineOf(n);
   const data: NewLead = {
+    line,
+    assignedTo: routeLead(line),
     externalId: n.externalId,
     name: n.name?.trim() || n.email || n.phone || "Senza nome",
     phone: n.phone || null,
@@ -66,7 +91,7 @@ export async function ingestLead(
     outcome: null,
     fromStatus: null,
     toStatus: "nuovo",
-    note: [LEAD_SOURCE_LABELS[source] ?? source, n.context.campaign && `campagna «${n.context.campaign}»`, dupNote]
+    note: [LEAD_SOURCE_LABELS[source] ?? source, line && LEAD_LINE_LABELS[line], n.context.campaign && `campagna «${n.context.campaign}»`, dupNote]
       .filter(Boolean)
       .join(" · "),
     actorId: actor.id,
@@ -75,9 +100,12 @@ export async function ingestLead(
 
   if (opts.notify !== false) {
     await notifyNewLead(result.lead).catch((e) => console.error("[lead notify]", e));
+    // "We got your request" by email (sito leads; switch LEAD_ACK_SITO=1)
+    await sendLeadAck(result.lead).catch((e) => console.error("[lead ack]", e));
   }
-  if (opts.notify !== false) {
-    // Vendiora: WhatsApp bot contacts the lead right away (no-op when the bot is off)
+  if (opts.notify !== false && line !== "sito") {
+    // Vendiora: WhatsApp bot / playbook contacts the lead right away (no-op when off).
+    // Website leads are SarconX's (Matteo): VendiOra never writes to them.
     // (fire and forget: the intake answers immediately, the server process keeps running)
     if (vendioraEnabled()) void import("@/lib/vendiora/bot").then(({ onNewLead }) => onNewLead(result.lead));
   }

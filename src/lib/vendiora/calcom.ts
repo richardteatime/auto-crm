@@ -136,7 +136,7 @@ export async function ingestCal(e: CalEvent): Promise<{ matched: string; id?: st
     const a = e.attendees[0];
     if (!a?.email && !a?.phone) return { matched: "no-attendee" };
     const r = await ingestLead({
-      externalId: `calcom:${e.uid}`, name: a.name || null, phone: a.phone ?? "", email: a.email, company: null, service: e.title || null,
+      externalId: `calcom:${e.uid}`, line: "ecommerce", name: a.name || null, phone: a.phone ?? "", email: a.email, company: null, service: e.title || null,
       context: { form: `Cal.com · ${e.eventType || e.title}`, platform: "calcom" },
       formData: Object.fromEntries(e.answers.map((x) => { const i = x.indexOf(": "); return [x.slice(0, i), x.slice(i + 2)]; })),
     } as Parameters<typeof ingestLead>[0], "calcom", { notify: false });

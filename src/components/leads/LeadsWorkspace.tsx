@@ -45,6 +45,8 @@ import {
   LEAD_STATUSES,
   LEAD_STATUS_CONFIG,
   LEAD_SOURCE_LABELS,
+  LEAD_LINE_LABELS,
+  isLeadLine,
   type Lead,
   type LeadStatus,
 } from "@/lib/leads/types";
@@ -365,6 +367,7 @@ function QueueRow({
       <Link href={`/leads/${lead.id}`} className="group min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate font-semibold group-hover:text-primary">{lead.name}</span>
+          <LineChip line={lead.line} />
           {mode === "wait" && (
             <span className={cn("inline-flex h-5 items-center gap-1 rounded-full px-1.5 text-[11px] font-semibold ring-1 ring-inset tabular-nums", waitTone(waited))}>
               <Timer className="size-3" />
@@ -609,6 +612,7 @@ function LeadCard({ lead, now, overlay = false }: { lead: Lead; now: number; ove
         <p className="truncate text-xs text-muted-foreground">{[lead.company, lead.service].filter(Boolean).join(" · ")}</p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+        <LineChip line={lead.line} />
         {lead.status === "nuovo" && (
           <span className={cn("inline-flex h-5 items-center gap-1 rounded-full px-1.5 font-semibold ring-1 ring-inset tabular-nums", waitTone(now - Date.parse(lead.createdAt)))}>
             <Timer className="size-3" />
@@ -631,6 +635,28 @@ function LeadCard({ lead, now, overlay = false }: { lead: Lead; now: number; ove
 // Full list
 // ---------------------------------------------------------------------------
 
+/** Business line chip: sito (Matteo) / e-commerce (Leo) */
+function LineChip({ line }: { line: string | null }) {
+  if (!isLeadLine(line)) return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 items-center rounded-full px-1.5 text-[11px] font-semibold ring-1 ring-inset",
+        line === "sito" ? "bg-sky-500/12 text-sky-700 ring-sky-500/25 dark:text-sky-300" : "bg-amber-500/12 text-amber-700 ring-amber-500/25 dark:text-amber-300"
+      )}
+    >
+      {LEAD_LINE_LABELS[line]}
+    </span>
+  );
+}
+
+type LineFilter = "" | "sito" | "ecommerce";
+const LINE_OPTS: Array<{ value: LineFilter; label: string }> = [
+  { value: "", label: "Tutte" },
+  { value: "sito", label: "Siti" },
+  { value: "ecommerce", label: "E-commerce" },
+];
+
 type ListFilter = "" | "aperti" | "vinto" | "perso";
 const LIST_OPTS: Array<{ value: ListFilter; label: string }> = [
   { value: "", label: "Tutti" },
@@ -644,8 +670,10 @@ const dateFmt = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short
 function LeadList({ leads, now }: { leads: Lead[]; now: number }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ListFilter>("");
+  const [line, setLine] = useState<LineFilter>("");
   const q = search.trim().toLowerCase();
   const rows = leads.filter((l) => {
+    if (line && l.line !== line) return false;
     if (filter === "aperti" && !OPEN.has(l.status)) return false;
     if ((filter === "vinto" || filter === "perso") && l.status !== filter) return false;
     if (q && ![l.name, l.company, l.service, l.phone, l.email, l.campaign].some((v) => v?.toLowerCase().includes(q))) return false;
@@ -666,8 +694,9 @@ function LeadList({ leads, now }: { leads: Lead[]; now: number }) {
           />
         </div>
         <Segmented label="Stato" options={LIST_OPTS} value={filter} onChange={setFilter} />
-        {(q || filter) && (
-          <button type="button" onClick={() => { setSearch(""); setFilter(""); }} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+        <Segmented label="Linea" options={LINE_OPTS} value={line} onChange={setLine} />
+        {(q || filter || line) && (
+          <button type="button" onClick={() => { setSearch(""); setFilter(""); setLine(""); }} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
             <X className="size-3.5" />
             Azzera
           </button>
@@ -694,7 +723,7 @@ function LeadList({ leads, now }: { leads: Lead[]; now: number }) {
                   className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_auto_minmax(0,1fr)_minmax(0,1fr)] md:items-center md:gap-4"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{l.name}</span>
+                    <span className="flex items-center gap-1.5"><span className="truncate text-sm font-semibold">{l.name}</span><LineChip line={l.line} /></span>
                     <span className="block truncate text-xs text-muted-foreground">{l.company || l.phone || l.email}</span>
                   </span>
                   <span className="hidden truncate text-sm text-muted-foreground md:block">{l.service || "—"}</span>

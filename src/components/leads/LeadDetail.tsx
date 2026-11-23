@@ -41,6 +41,8 @@ import {
   LEAD_STATUSES,
   LEAD_STATUS_CONFIG,
   LEAD_SOURCE_LABELS,
+  LEAD_LINE_LABELS,
+  isLeadLine,
   OUTCOME_CONFIG,
   isCallOutcome,
   splitFormData,
@@ -150,6 +152,7 @@ export function LeadDetail({
   const { context, answers } = splitFormData(lead.formData);
   const ctx: Array<[string, string]> = [
     ["Fonte", LEAD_SOURCE_LABELS[lead.source] ?? lead.source],
+    ...(isLeadLine(lead.line) ? ([["Linea", LEAD_LINE_LABELS[lead.line]]] as Array<[string, string]>) : []),
     ...(Object.entries({ campaign: lead.campaign, adset: lead.adset, ad: lead.ad, form: lead.formName, platform: lead.platform, ...context })
       .filter(([k, v], i, arr) => v && arr.findIndex(([k2]) => k2 === k) === i)
       .map(([k, v]) => [CONTEXT_LABELS[k] ?? k, String(v)] as [string, string])),

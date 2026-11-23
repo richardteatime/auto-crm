@@ -13,7 +13,7 @@ const LEAD_FIELDS = [
   "externalId", "name", "phone", "phoneE164", "email", "company", "service", "formData", "source",
   "campaign", "adset", "ad", "formName", "platform", "status", "lostReason", "nextActionAt",
   "nextActionNote", "assignedTo", "firstContactAt", "lastContactAt", "callAttempts", "notes", "value",
-  "contactId", "dealId", "escalatedAt", "remindedAt", "crmInstance", "dealCrm",
+  "contactId", "dealId", "escalatedAt", "remindedAt", "crmInstance", "dealCrm", "line",
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ const LIMITS: Partial<Record<(typeof LEAD_FIELDS)[number], number>> = {
   externalId: 128, name: 255, phone: 64, phoneE164: 32, email: 255, company: 255, service: 255,
   formData: 16384, source: 32, campaign: 255, adset: 255, ad: 255, formName: 255, platform: 32,
   status: 32, lostReason: 255, nextActionNote: 1024, assignedTo: 64, notes: 8192, contactId: 64, dealId: 64,
-  crmInstance: 32, dealCrm: 32,
+  crmInstance: 32, dealCrm: 32, line: 16,
 };
 
 function clean(patch: Partial<Record<(typeof LEAD_FIELDS)[number], unknown>>): Record<string, unknown> {

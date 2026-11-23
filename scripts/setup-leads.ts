@@ -2,7 +2,7 @@
  * Lead section schema (additive, idempotent): collections `leads`, `lead_events`, `push_subscriptions`.
  * Run: npx tsx --env-file=.env.local scripts/setup-leads.ts   (uses APPWRITE_DATABASE_ID)
  */
-import { Client, Databases, IndexType } from "node-appwrite";
+import { Client, Databases, IndexType, Query } from "node-appwrite";
 
 const db = new Databases(
   new Client()
@@ -28,7 +28,8 @@ async function safe(label: string, fn: () => Promise<unknown>) {
 
 async function waitAttributes(col: string) {
   for (let i = 0; i < 90; i++) {
-    const res = await db.listAttributes(DB_ID, col);
+    // limit 500: the default page (25) hides later keys and re-creating them fails
+    const res = await db.listAttributes(DB_ID, col, [Query.limit(500)]);
     const attrs = res.attributes as Array<{ status: string }>;
     if (attrs.every((a) => a.status === "available")) return;
     await new Promise((r) => setTimeout(r, 1000));
@@ -44,7 +45,12 @@ type Attr =
 async function collection(id: string, name: string, attrs: Attr[], indexes: Array<[string, IndexType, string[]]>) {
   console.log(`\n${id}`);
   await safe(`collection ${id}`, () => db.createCollection(DB_ID, id, name));
+  // Skip keys that already exist: on a full collection Appwrite answers "limit reached" before "duplicate"
+  const have = new Set(
+    ((await db.listAttributes(DB_ID, id, [Query.limit(500)])).attributes as Array<{ key: string }>).map((x) => x.key)
+  );
   for (const a of attrs) {
+    if (have.has(a[1])) continue;
     if (a[0] === "str") {
       const [, key, size, req = false, def] = a;
       await safe(key, () => db.createStringAttribute(DB_ID, id, key, size, def !== undefined ? false : req, def));
@@ -99,6 +105,7 @@ async function main() {
       ["dt", "remindedAt"],
       ["str", "crmInstance", 32],
       ["str", "dealCrm", 32],
+      ["str", "line", 16],
     ],
     [
       ["leads_external_id", IndexType.Unique, ["externalId"]],

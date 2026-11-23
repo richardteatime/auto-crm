@@ -55,6 +55,8 @@ export interface NormalizedLead {
     utm?: string;
   };
   formData: Record<string, unknown>;
+  /** Explicit business line sent by the source ("line"/"linea" field), else null */
+  line?: string | null;
 }
 
 type Dict = Record<string, unknown>;
@@ -165,7 +167,10 @@ export function normalizeIntakePayload(body: unknown): NormalizedLead {
     externalId = "hash_" + createHash("sha256").update(material).digest("hex").slice(0, 32);
   }
 
-  return { externalId: externalId.slice(0, 128), name, phone, email, company, service, context: ctx, formData };
+  const line = pick(["line", "linea"]);
+  delete formData.line;
+  delete formData.linea;
+  return { externalId: externalId.slice(0, 128), name, phone, email, company, service, context: ctx, formData, line: line ? line.toLowerCase() : null };
 }
 
 /** "+39 333 123 4567", "0039…", "3331234567" → "+393331234567"; null if not a valid number */

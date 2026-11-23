@@ -8,7 +8,7 @@ import {
   deletePushSubscriptionById,
   updateLead,
 } from "@/lib/db/leads";
-import { LEAD_STATUS_CONFIG, LEAD_SOURCE_LABELS, type Lead } from "@/lib/leads/types";
+import { LEAD_STATUS_CONFIG, LEAD_SOURCE_LABELS, LEAD_LINE_LABELS, isLeadLine, type Lead } from "@/lib/leads/types";
 import { roleFromLabels } from "@/lib/roles";
 import { TIME_ZONE } from "@/lib/dates";
 
@@ -92,12 +92,13 @@ const emailList = (v: string | undefined) =>
     .map((s) => s.trim())
     .filter((s) => s.includes("@"));
 
-export async function sendMail(to: string[], subject: string, html: string, text: string) {
+export async function sendMail(to: string[], subject: string, html: string, text: string, fromName = "SarconX CRM", replyTo?: string) {
   const t = mailer();
   if (!t || to.length === 0) return false;
   try {
     await t.sendMail({
-      from: `SarconX CRM <${process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@sarconx.com"}>`,
+      from: `${fromName} <${process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@sarconx.com"}>`,
+      ...(replyTo ? { replyTo } : {}),
       to: to.join(", "),
       subject,
       html,
@@ -115,6 +116,27 @@ export const esc = (s: string | null | undefined) =>
 
 function leadSummary(lead: Lead): string {
   return [lead.company, lead.service].filter(Boolean).join(" · ") || LEAD_SOURCE_LABELS[lead.source] || "Nuovo contatto";
+}
+
+const lineLabel = (lead: Lead) => (isLeadLine(lead.line) ? LEAD_LINE_LABELS[lead.line] : null);
+
+async function userName(id: string | null): Promise<string | null> {
+  if (!id) return null;
+  try {
+    const u = await users.get(id);
+    return (u.name || u.email || "").split(" ")[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Env LEAD_ALERT_LINKS="email=https://other-crm,…": that recipient opens the lead in its own CRM instance */
+function alertBase(email: string): string {
+  for (const pair of (process.env.LEAD_ALERT_LINKS || "").split(",")) {
+    const [e, url] = pair.split("=").map((s) => s?.trim());
+    if (e && url && e.toLowerCase() === email.toLowerCase()) return url.replace(/\/$/, "");
+  }
+  return APP_URL;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,24 +163,47 @@ async function userIdsByRole(): Promise<{ sales: string[]; admins: string[]; adm
 // ---------------------------------------------------------------------------
 
 export async function notifyNewLead(lead: Lead): Promise<void> {
-  const url = `${APP_URL}/leads/${lead.id}`;
   const summary = leadSummary(lead);
+  const line = lineLabel(lead);
+  const who = await userName(lead.assignedTo);
+  const tagline = [line, who ? `lo chiama ${who}` : null].filter(Boolean).join(" · ");
+  // Everyone gets the alert (Leo: "le lead le vediamo tutti"); the line says who calls it
+  const recipients = emailList(process.env.LEAD_ALERT_EMAILS);
+  const byBase = new Map<string, string[]>();
+  for (const r of recipients) byBase.set(alertBase(r), [...(byBase.get(alertBase(r)) ?? []), r]);
   await Promise.allSettled([
-    sendPush({ title: `Nuovo lead: ${lead.name}`, body: `${summary}\nTocca per aprire e chiamare`, url: `/leads/${lead.id}`, tag: `lead-${lead.id}` }),
-    sendMail(
-      emailList(process.env.LEAD_ALERT_EMAILS),
-      `Nuovo lead: ${lead.name}${lead.company ? ` (${lead.company})` : ""}`,
+    sendPush({ title: `Nuovo lead${line ? ` ${line}` : ""}: ${lead.name}`, body: `${tagline ? `${tagline}\n` : ""}${summary}\nTocca per aprire e chiamare`, url: `/leads/${lead.id}`, tag: `lead-${lead.id}` }),
+    ...[...byBase].map(([base, to]) => {
+      const url = `${base}/leads/${lead.id}`;
+      return sendMail(
+      to,
+      `Nuovo lead${line ? ` ${line}` : ""}: ${lead.name}${lead.company ? ` (${lead.company})` : ""}${who ? ` → ${who}` : ""}`,
       `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5">
         <p style="margin:0 0 8px"><strong>${esc(lead.name)}</strong>${lead.company ? ` · ${esc(lead.company)}` : ""}</p>
+        ${tagline ? `<p style="margin:0 0 8px;font-weight:600">${esc(tagline)}</p>` : ""}
         ${lead.service ? `<p style="margin:0 0 8px">Interesse: ${esc(lead.service)}</p>` : ""}
         ${lead.phone ? `<p style="margin:0 0 8px">Telefono: <a href="tel:${esc(lead.phoneE164 || lead.phone)}">${esc(lead.phone)}</a></p>` : ""}
         ${lead.email ? `<p style="margin:0 0 8px">Email: ${esc(lead.email)}</p>` : ""}
         ${lead.campaign ? `<p style="margin:0 0 8px;color:#666">Campagna: ${esc(lead.campaign)}</p>` : ""}
         <p style="margin:16px 0"><a href="${url}" style="background:#c2410c;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Apri il lead nel CRM</a></p>
       </div>`,
-      `Nuovo lead: ${lead.name}\n${summary}\nTelefono: ${lead.phone ?? "-"}\n${url}`
-    ),
+      `Nuovo lead: ${lead.name}\n${tagline ? `${tagline}\n` : ""}${summary}\nTelefono: ${lead.phone ?? "-"}\n${url}`
+      );
+    }),
   ]);
+}
+
+/**
+ * "We got your request" email to the lead. Only website leads (SarconX, Matteo calls them):
+ * e-commerce leads get the VendiOra WhatsApp instead. On with LEAD_ACK_SITO=1.
+ */
+export async function sendLeadAck(lead: Lead): Promise<boolean> {
+  if (process.env.LEAD_ACK_SITO !== "1" || lead.line !== "sito" || !lead.email) return false;
+  const first = (lead.name || "").split(" ")[0];
+  const caller = (await userName(lead.assignedTo)) || "un nostro consulente";
+  const text = `Ciao ${first},\n\ngrazie per averci scritto: abbiamo ricevuto la tua richiesta per il sito web.\n\n${caller} di SarconX ti chiamerà a breve${lead.phone ? ` al numero ${lead.phone}` : ""} per capire di cosa hai bisogno. Nessun impegno: la prima chiacchierata serve a noi per capire la tua attività e a te per capire se possiamo esserti utili.\n\nA presto,\nIl team SarconX\nsarconx.com`;
+  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.6;color:#111;max-width:560px">${esc(text).replace(/\n/g, "<br>")}</div>`;
+  return sendMail([lead.email], "Abbiamo ricevuto la tua richiesta · SarconX", html, text, "SarconX", process.env.LEAD_ACK_REPLY_TO || "info@sarconx.com");
 }
 
 // ---------------------------------------------------------------------------
