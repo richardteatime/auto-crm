@@ -1,6 +1,6 @@
 /**
  * Closing info on deals and opportunities (additive, idempotent):
- *   closedReason (str 500), closedBy (str 128), closedAt (datetime)
+ *   closedOutcome (str 16: "vinta" | "persa"), closedReason (str 500), closedBy (str 128), closedAt (datetime)
  * on collections `opportunities` and `deals`.
  * Run BEFORE deploying the version that closes with a reason:
  *   npx tsx --env-file=.env.local scripts/setup-chiusura.ts   (uses APPWRITE_DATABASE_ID)
@@ -31,6 +31,7 @@ async function main() {
     const have = new Set(
       ((await db.listAttributes(DB_ID, col, [Query.limit(500)])).attributes as Array<{ key: string }>).map((x) => x.key)
     );
+    if (!have.has("closedOutcome")) { await db.createStringAttribute(DB_ID, col, "closedOutcome", 16, false); console.log("  + closedOutcome"); }
     if (!have.has("closedReason")) { await db.createStringAttribute(DB_ID, col, "closedReason", 500, false); console.log("  + closedReason"); }
     if (!have.has("closedBy")) { await db.createStringAttribute(DB_ID, col, "closedBy", 128, false); console.log("  + closedBy"); }
     if (!have.has("closedAt")) { await db.createDatetimeAttribute(DB_ID, col, "closedAt", false); console.log("  + closedAt"); }

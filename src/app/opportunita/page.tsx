@@ -29,6 +29,7 @@ interface OppRow {
   status: string;
   value: number | null;
   dealId: string | null;
+  closedOutcome?: string | null;
   closedReason?: string | null;
   closedBy?: string | null;
   closedAt?: number | string | Date | null;
@@ -94,12 +95,14 @@ export default function OpportunitaPage() {
 
   const openCount = useMemo(() => opps.filter((o) => o.status === "aperta").length, [opps]);
   const convertedCount = useMemo(() => opps.filter((o) => o.status === "trasformata").length, [opps]);
+  // became a deal at some point (still running, or closed afterwards): used for the conversion rate
+  const withDealCount = useMemo(() => opps.filter((o) => !!o.dealId).length, [opps]);
   const closedCount = useMemo(() => opps.filter((o) => o.status === "chiusa").length, [opps]);
   const totalOpenValue = useMemo(
     () => opps.filter((o) => o.status === "aperta").reduce((sum, o) => sum + (o.value ?? 0), 0),
     [opps]
   );
-  const conversionRate = opps.length > 0 ? Math.round((convertedCount / opps.length) * 100) : 0;
+  const conversionRate = opps.length > 0 ? Math.round((withDealCount / opps.length) * 100) : 0;
 
   const filtered = useMemo(() => opps.filter((o) => {
     if (filterStatus && o.status !== filterStatus) return false;
@@ -173,7 +176,7 @@ export default function OpportunitaPage() {
   const kpis = [
     { label: "Totale", value: String(opps.length), sub: "opportunità", color: "" },
     { label: "Aperte", value: String(openCount), sub: "in corso", color: "text-blue-600" },
-    { label: "Trasformate", value: String(convertedCount), sub: "in trattativa", color: "text-green-600" },
+    { label: "Trasformate", value: String(withDealCount), sub: "diventate trattativa", color: "text-green-600" },
     { label: "Tasso conversione", value: `${conversionRate}%`, sub: "aperte → trattative", color: conversionRate >= 50 ? "text-green-600" : "text-amber-600" },
   ];
 
@@ -286,7 +289,12 @@ export default function OpportunitaPage() {
                     </TableCell>
                   </TableRow>
                 ) : filtered.map((o) => {
-                  const cfg = STATUS_CONFIG[o.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
+                  const wonClosed = o.status === "chiusa" && o.closedOutcome === "vinta";
+                  const cfg = wonClosed
+                    ? { label: "Chiusa · vinta", className: "bg-green-500/10 text-green-700 border-green-500/25 dark:bg-green-950 dark:text-green-300" }
+                    : o.status === "chiusa"
+                      ? { ...STATUS_CONFIG.chiusa, label: "Chiusa · persa" }
+                      : STATUS_CONFIG[o.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
                   const contactName = contactNames.get(o.contactId);
                   return (
                     <TableRow key={o.id} className="hover:bg-muted/30">
@@ -300,7 +308,7 @@ export default function OpportunitaPage() {
                             <p className="text-xs text-muted-foreground truncate max-w-52">{o.description}</p>
                           )}
                           {o.status === "chiusa" && (
-                            <p className="mt-0.5 max-w-72 text-xs leading-snug text-rose-700 dark:text-rose-300">
+                            <p className={cn("mt-0.5 max-w-72 text-xs leading-snug", wonClosed ? "text-green-700 dark:text-green-300" : "text-rose-700 dark:text-rose-300")}>
                               Motivo: {o.closedReason || "non indicato"}
                               {o.closedBy ? ` · ${o.closedBy}` : ""}
                               {o.closedAt ? ` · ${formatDate(new Date(o.closedAt))}` : ""}

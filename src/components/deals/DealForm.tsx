@@ -74,7 +74,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
   const isEditing = !!initialData?.id;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [contactsList, setContacts] = useState<Array<{ id: string; name: string }>>([]);
-  const [stagesList, setStages] = useState<Array<{ id: string; name: string }>>([]);
+  const [stagesList, setStages] = useState<Array<{ id: string; name: string; isWon?: boolean; isLost?: boolean }>>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [billingType, setBillingType] = useState<import("@/types").BillingType>("una_tantum");
@@ -418,6 +418,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
     <CloseReasonDialog
       open={!!askClose}
       kind="trattativa"
+      outcome={stagesList.find((st) => st.id === askClose?.stageId)?.isWon ? "vinta" : "persa"}
       title={String(askClose?.title ?? "")}
       onCancel={() => setAskClose(null)}
       onConfirm={async (reason) => {

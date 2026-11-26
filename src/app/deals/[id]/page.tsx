@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getDeal, getStages, listActivities, getContact } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, Gauge, RefreshCw, Scale, Wallet, Euro, XCircle } from "lucide-react";
+import { ArrowLeft, CalendarClock, Gauge, RefreshCw, Scale, Wallet, Euro, XCircle, Trophy } from "lucide-react";
 import { formatCurrency } from "@/lib/constants";
 import { formatDayMonth, romeDayDiff } from "@/lib/dates";
 import { toMs, cn } from "@/lib/utils";
@@ -194,11 +194,20 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         </dl>
       </section>
 
-      {stage?.isLost && (
-        <section className="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-4">
+      {(stage?.isLost || stage?.isWon) && (
+        <section
+          className={cn(
+            "rounded-xl border p-4",
+            stage.isWon ? "border-emerald-500/25 bg-emerald-500/[0.06]" : "border-rose-500/25 bg-rose-500/[0.06]"
+          )}
+        >
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <XCircle className="size-4 text-rose-600 dark:text-rose-300" />
-            Trattativa chiusa
+            {stage.isWon ? (
+              <Trophy className="size-4 text-emerald-600 dark:text-emerald-300" />
+            ) : (
+              <XCircle className="size-4 text-rose-600 dark:text-rose-300" />
+            )}
+            {stage.isWon ? "Trattativa vinta" : "Trattativa chiusa (persa)"}
           </p>
           <p className="mt-1 text-sm">
             <span className="text-muted-foreground">Motivo: </span>

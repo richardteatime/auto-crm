@@ -1,10 +1,20 @@
 /** Why a deal / opportunity is closed as lost. Shared by the dialog (client) and the API (server). */
-export const CLOSE_REASONS = [
+export const LOST_REASONS = [
   "Cliente non interessato",
   "Prezzo troppo alto",
   "Ha scelto un concorrente",
   "Nessuna risposta",
   "Progetto rimandato",
+  "Altro",
+] as const;
+
+/** Why a deal is won (asked when it is moved to a "won" stage) */
+export const WON_REASONS = [
+  "Prezzo giusto",
+  "Fiducia / già cliente",
+  "Passaparola / referral",
+  "Proposta convincente",
+  "Tempi di consegna",
   "Altro",
 ] as const;
 

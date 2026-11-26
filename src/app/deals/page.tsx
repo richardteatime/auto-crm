@@ -436,7 +436,7 @@ export default function DealsPage() {
         <DialogContent showCloseButton={false} className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Eliminare la trattativa?</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}) con i suoi preventivi. Verrà eliminata anche l&apos;opportunità collegata, che sparirà dallo storico del cliente. Questa azione è irreversibile. Per tenere lo storico, sposta la trattativa in «Persa» (ti chiederà il motivo).
+            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}) con i suoi preventivi. Verrà eliminata anche l&apos;opportunità collegata, che sparirà dallo storico del cliente. Questa azione è irreversibile. Per tenere lo storico, chiudila spostandola in «Vinta» o «Persa» (ti chiederà il motivo).
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingDeal(null)}>Annulla</Button>

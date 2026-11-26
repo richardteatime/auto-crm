@@ -37,6 +37,7 @@ interface OppRow {
   status: string;
   value: number | null;
   dealId: string | null;
+  closedOutcome?: string | null;
   closedReason?: string | null;
   closedBy?: string | null;
   closedAt?: number | string | Date | null;
@@ -294,7 +295,12 @@ function OppCard({
   router: ReturnType<typeof useRouter>;
 }) {
   const attachments = parseAttachments(opp.attachments);
-  const cfg = STATUS_CONFIG[opp.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
+  const won = opp.status === "chiusa" && opp.closedOutcome === "vinta";
+  const cfg = won
+    ? { label: "Chiusa · vinta", className: "bg-green-500/10 text-green-700 border-green-500/25 dark:bg-green-950 dark:text-green-300" }
+    : opp.status === "chiusa"
+      ? { ...STATUS_CONFIG.chiusa, label: "Chiusa · persa" }
+      : STATUS_CONFIG[opp.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
   const isOpen = opp.status === "aperta";
 
   return (
@@ -335,7 +341,7 @@ function OppCard({
             </div>
           )}
           {opp.status === "chiusa" && (
-            <p className="mt-2 rounded-md border border-rose-500/25 bg-rose-500/[0.05] px-2.5 py-2 text-[13px] leading-relaxed">
+            <p className={`mt-2 rounded-md border px-2.5 py-2 text-[13px] leading-relaxed ${won ? "border-green-500/25 bg-green-500/[0.05]" : "border-rose-500/25 bg-rose-500/[0.05]"}`}>
               <span className="text-muted-foreground">Motivo: </span>
               {opp.closedReason || "non indicato"}
               {(opp.closedBy || opp.closedAt) && (

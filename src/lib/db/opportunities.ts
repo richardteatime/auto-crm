@@ -1,7 +1,7 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
 import { ID, type Models } from "node-appwrite";
 import { Query } from "@/lib/query17";
-import type { Opportunity } from "@/types";
+import type { CloseOutcome, Opportunity } from "@/types";
 import { getDeal, updateDeal } from "./deals";
 import { getStage, getStages } from "./pipeline";
 
@@ -74,6 +74,7 @@ export async function updateOpportunity(
     value: number | null;
     status: string;
     dealId: string | null;
+    closedOutcome: string | null;
     closedReason: string | null;
     closedBy: string | null;
     closedAt: string | null;
@@ -108,23 +109,24 @@ export class CloseError extends Error {
 
 /**
  * Close an opportunity with a reason. It is NOT deleted: it stays in the customer
- * history as "chiusa". If it was turned into a deal, the deal is closed too
- * (moved to the "lost" stage with the same reason). A won deal cannot be closed.
+ * history as "chiusa". With an open deal, the deal is closed too (moved to the "lost"
+ * stage with the same reason). If its deal is already won or lost, the opportunity
+ * simply follows that outcome.
  */
 export async function closeOpportunity(id: string, reason: string, by: string | null): Promise<Opportunity> {
   const opp = await getOpportunity(id);
   if (!opp) throw new CloseError("Opportunità non trovata", 404);
   if (opp.status === "chiusa") throw new CloseError("Opportunità già chiusa", 400);
 
+  let outcome: CloseOutcome = "persa";
   if (opp.dealId) {
     const deal = await getDeal(opp.dealId);
     if (deal) {
       const current = await getStage(deal.stageId);
       if (current?.isWon) {
-        throw new CloseError("La trattativa collegata è vinta: non si può chiudere l'opportunità", 400);
-      }
-      if (!current?.isLost) {
-        const lost = (await getStages()).find((s) => s.isLost);
+        outcome = "vinta";
+      } else if (!current?.isLost) {
+        const lost = (await getStages()).find((st) => st.isLost);
         if (!lost) throw new CloseError("Nel pipeline manca la fase «Persa»", 400);
         // closes the deal and (through updateDeal) every opportunity linked to it
         await updateDeal(deal.id, { stageId: lost.id, closedReason: reason, closedBy: by });
@@ -134,6 +136,7 @@ export async function closeOpportunity(id: string, reason: string, by: string | 
 
   return updateOpportunity(id, {
     status: "chiusa",
+    closedOutcome: outcome,
     closedReason: reason,
     closedBy: by,
     closedAt: new Date().toISOString(),
@@ -148,5 +151,5 @@ export async function reopenOpportunity(id: string): Promise<Opportunity> {
   if (opp.dealId && (await getDeal(opp.dealId))) {
     throw new CloseError("Riapri la trattativa spostandola fuori dalla fase «Persa»", 400);
   }
-  return updateOpportunity(id, { status: "aperta", dealId: null, closedReason: null, closedBy: null, closedAt: null });
+  return updateOpportunity(id, { status: "aperta", dealId: null, closedOutcome: null, closedReason: null, closedBy: null, closedAt: null });
 }

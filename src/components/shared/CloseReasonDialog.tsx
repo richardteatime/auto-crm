@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { CLOSE_REASONS, CLOSE_REASON_MAX } from "@/lib/close-reasons";
+import { LOST_REASONS, WON_REASONS, CLOSE_REASON_MAX } from "@/lib/close-reasons";
 
 /** Combines the chosen reason and the free text into the string saved on the deal/opportunity */
 function buildReason(choice: string, text: string): string {
@@ -16,13 +16,14 @@ function buildReason(choice: string, text: string): string {
 }
 
 /**
- * Asked when a deal or an opportunity is closed (deal moved to "Persa", opportunity "Chiudi").
+ * Asked when a deal or an opportunity is closed (deal moved to "Vinta" or "Persa", opportunity "Chiudi").
  * The reason is required and is saved with who closed it. The item is NOT deleted: it stays in the history.
  */
 export function CloseReasonDialog({
   open,
   title,
   kind,
+  outcome = "persa",
   onConfirm,
   onCancel,
 }: {
@@ -30,6 +31,8 @@ export function CloseReasonDialog({
   /** Name of the deal/opportunity being closed */
   title: string;
   kind: "trattativa" | "opportunità";
+  /** "vinta": asks why it was won; "persa" (default): why it was lost/closed */
+  outcome?: "vinta" | "persa";
   /** Throw (or reject) to keep the dialog open */
   onConfirm: (reason: string) => void | Promise<void>;
   onCancel: () => void;
@@ -46,6 +49,8 @@ export function CloseReasonDialog({
     }
   }, [open]);
 
+  const won = outcome === "vinta";
+  const reasons = won ? WON_REASONS : LOST_REASONS;
   const reason = buildReason(choice, text);
   const valid = reason.length >= 3 && reason.length <= CLOSE_REASON_MAX;
 
@@ -63,13 +68,13 @@ export function CloseReasonDialog({
     <Dialog open={open} onOpenChange={(v) => !v && !saving && onCancel()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Perché chiudi questa {kind}?</DialogTitle>
+          <DialogTitle>{won ? `Perché l'hai vinta?` : `Perché chiudi questa ${kind}?`}</DialogTitle>
           <DialogDescription>
             {title}. Resta nello storico del cliente, con il motivo che scrivi qui.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap gap-1.5">
-          {CLOSE_REASONS.map((r) => (
+          {reasons.map((r) => (
             <button
               key={r}
               type="button"
@@ -96,7 +101,7 @@ export function CloseReasonDialog({
           </Button>
           <Button className="cursor-pointer" onClick={submit} disabled={!valid || saving}>
             {saving && <Loader2 className="animate-spin" />}
-            Chiudi {kind === "trattativa" ? "la trattativa" : "l'opportunità"}
+            {won ? "Segna come vinta" : kind === "trattativa" ? "Chiudi la trattativa" : "Chiudi l'opportunità"}
           </Button>
         </div>
       </DialogContent>

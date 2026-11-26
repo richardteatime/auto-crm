@@ -21,7 +21,7 @@ export function StageStepper({ dealId, dealTitle, stages, currentId }: { dealId:
   const router = useRouter();
   const [current, setCurrent] = useState(currentId);
   const [pending, setPending] = useState<string | null>(null);
-  const [askClose, setAskClose] = useState(false);
+  const [askClose, setAskClose] = useState<StepStage | null>(null);
 
   const path = stages.filter((s) => !s.isLost);
   const lost = stages.find((s) => s.isLost);
@@ -30,9 +30,11 @@ export function StageStepper({ dealId, dealTitle, stages, currentId }: { dealId:
 
   async function moveTo(stage: StepStage, el?: HTMLElement | null, reason?: string) {
     if (stage.id === current || pending) return;
-    // Closing as lost always asks why (and who closes it is the logged-in user, set by the server)
-    if (stage.isLost && !reason) {
-      setAskClose(true);
+    // Closing (won or lost) always asks why; who closes it is the logged-in user, set by the server
+    const currentStage = stages.find((x) => x.id === current);
+    const closingMove = (stage.isWon || stage.isLost) && !(currentStage?.isWon && stage.isWon) && !(currentStage?.isLost && stage.isLost);
+    if (closingMove && !reason) {
+      setAskClose(stage);
       return;
     }
     setPending(stage.id);
@@ -120,18 +122,18 @@ export function StageStepper({ dealId, dealTitle, stages, currentId }: { dealId:
           {isLostNow ? lost.name : "Segna come persa"}
         </button>
       )}
-      {lost && (
-        <CloseReasonDialog
-          open={askClose}
-          kind="trattativa"
-          title={dealTitle ?? "Trattativa"}
-          onCancel={() => setAskClose(false)}
-          onConfirm={async (reason) => {
-            await moveTo(lost, null, reason);
-            setAskClose(false);
-          }}
-        />
-      )}
+      <CloseReasonDialog
+        open={!!askClose}
+        kind="trattativa"
+        outcome={askClose?.isWon ? "vinta" : "persa"}
+        title={dealTitle ?? "Trattativa"}
+        onCancel={() => setAskClose(null)}
+        onConfirm={async (reason) => {
+          const target = askClose;
+          setAskClose(null);
+          if (target) await moveTo(target, null, reason);
+        }}
+      />
     </div>
   );
 }

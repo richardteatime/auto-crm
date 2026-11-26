@@ -99,7 +99,12 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
   const columnsSnapshot = useRef<PipelineColumn[]>(initialColumns);
   const sourceColumnId = useRef<string | null>(null);
   const lastDragEnd = useRef(0);
-  const [askClose, setAskClose] = useState<{ dealId: string; column: PipelineColumn; title: string } | null>(null);
+  const [askClose, setAskClose] = useState<{
+    dealId: string;
+    column: PipelineColumn;
+    title: string;
+    rect: { left: number; top: number; width: number; height: number } | null;
+  } | null>(null);
 
   const [search, setSearch] = useState("");
   const [filterTemp, setFilterTemp] = useState<TempFilter>("");
@@ -236,9 +241,9 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
       const deal = columnsSnapshot.current.flatMap((c) => c.deals).find((d) => d.id === dragId);
       const rect = active.rect.current.translated;
 
-      // Closing a deal as lost: ask why first (the card stays in the "Persa" column while the popup is open)
-      if (overColumn.isLost) {
-        setAskClose({ dealId: dragId, column: overColumn, title: deal?.title ?? "Trattativa" });
+      // Closing a deal (won or lost): ask why first (the card stays in the new column while the popup is open)
+      if (overColumn.isLost || overColumn.isWon) {
+        setAskClose({ dealId: dragId, column: overColumn, title: deal?.title ?? "Trattativa", rect: rect ?? null });
         return;
       }
 
@@ -324,6 +329,7 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
       <CloseReasonDialog
         open={!!askClose}
         kind="trattativa"
+        outcome={askClose?.column.isWon ? "vinta" : "persa"}
         title={askClose?.title ?? ""}
         onCancel={() => {
           // not closed: the card goes back where it was
@@ -333,7 +339,7 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
         onConfirm={async (reason) => {
           if (!askClose) return;
           const deal = columnsSnapshot.current.flatMap((c) => c.deals).find((d) => d.id === askClose.dealId);
-          await commitMove(askClose.dealId, askClose.column, deal, null, reason);
+          await commitMove(askClose.dealId, askClose.column, deal, askClose.rect, reason);
           setAskClose(null);
         }}
       />
