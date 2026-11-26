@@ -177,6 +177,9 @@ export async function updateDeal(
     recurringMonths: number | null;
     isPaid: boolean;
     partnerFeePct: number | null;
+    /** Why the deal is being closed as lost (used when the stage becomes a "lost" one) */
+    closedReason: string | null;
+    closedBy: string | null;
   }>,
 ): Promise<DealWithContact> {
   // Resolve denormalized fields if contact or stage changed
@@ -192,7 +195,8 @@ export async function updateDeal(
     payload.expectedClose = toIsoDate(data.expectedClose);
   }
 
-  // If stage changed, check isWon
+  // If stage changed, check isWon / isLost
+  let closeSync: "closed" | "reopened" | null = null;
   if (data.stageId) {
     const stage = await getStage(data.stageId);
     if (stage?.isWon) {
@@ -203,6 +207,26 @@ export async function updateDeal(
     if (!stage?.isWon && existing?.wonAt) {
       payload.wonAt = null;
     }
+    // Closed as lost: keep why/who/when. Moving it out of "lost" reopens it.
+    const wasLost = existing?.stageId ? !!(await getStage(existing.stageId))?.isLost : false;
+    if (stage?.isLost && !wasLost) {
+      payload.closedAt = new Date().toISOString();
+      payload.closedReason = data.closedReason ?? null;
+      payload.closedBy = data.closedBy ?? null;
+      closeSync = "closed";
+    } else if (!stage?.isLost && wasLost) {
+      payload.closedAt = null;
+      payload.closedReason = null;
+      payload.closedBy = null;
+      closeSync = "reopened";
+    } else if (!stage?.isLost) {
+      // not a closing move: never store a reason on an open/won deal
+      delete payload.closedReason;
+      delete payload.closedBy;
+    }
+  } else {
+    delete payload.closedReason;
+    delete payload.closedBy;
   }
 
   // If billingType changed to recurring and no recurringStartDate, set it
@@ -228,7 +252,53 @@ export async function updateDeal(
     id,
     payload,
   );
+
+  // Keep the linked opportunity in step: closing the deal closes it (with the same
+  // reason), reopening the deal puts it back to "trasformata". Never deleted.
+  if (closeSync) {
+    await syncLinkedOpportunities(id, closeSync, {
+      reason: (payload.closedReason as string | null) ?? null,
+      by: (payload.closedBy as string | null) ?? null,
+    });
+  }
   return fromDoc<DealWithContact>(doc);
+}
+
+/** True when moving `deal` to `stageId` closes it as lost (the caller must then give a reason) */
+export async function isClosingMove(
+  deal: { stageId: string } | null,
+  stageId: string,
+): Promise<boolean> {
+  if (!deal || deal.stageId === stageId) return false;
+  const [target, current] = await Promise.all([getStage(stageId), getStage(deal.stageId)]);
+  return !!target?.isLost && !current?.isLost;
+}
+
+async function syncLinkedOpportunities(
+  dealId: string,
+  mode: "closed" | "reopened",
+  info: { reason: string | null; by: string | null },
+): Promise<void> {
+  let docs: Models.Document[] = [];
+  try {
+    const res = await databases.listDocuments(DB_ID, COLLECTIONS.opportunities, [
+      Query.equal("dealId", dealId),
+      Query.limit(500),
+    ]);
+    docs = res.documents;
+  } catch {
+    return; // collection or attribute missing on this instance
+  }
+  const now = new Date().toISOString();
+  for (const opp of docs) {
+    const patch =
+      mode === "closed"
+        ? { status: "chiusa", closedReason: info.reason, closedBy: info.by, closedAt: now, updatedAt: now }
+        : opp.status === "chiusa"
+          ? { status: "trasformata", closedReason: null, closedBy: null, closedAt: null, updatedAt: now }
+          : null;
+    if (patch) await databases.updateDocument(DB_ID, COLLECTIONS.opportunities, opp.$id, patch);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -237,9 +307,11 @@ export async function updateDeal(
 
 /**
  * Delete a deal together with what only makes sense inside it:
- * its quotes are deleted; activities, calendar events, leads and
- * opportunities that point to it are kept but unlinked (an opportunity
- * goes back to "aperta").
+ * its quotes and the opportunity it came from are deleted (deleting an
+ * opportunity deletes its deal too); activities, calendar events and
+ * leads that point to it are kept but unlinked.
+ * To keep the history instead of deleting, close the deal/opportunity
+ * (with a reason): closed opportunities stay in the customer history.
  */
 export async function deleteDeal(id: string): Promise<void> {
   const linked = async (collection: string) => {
@@ -264,9 +336,7 @@ export async function deleteDeal(id: string): Promise<void> {
     }
   }
   for (const opp of await linked(COLLECTIONS.opportunities)) {
-    await databases
-      .updateDocument(DB_ID, COLLECTIONS.opportunities, opp.$id, { dealId: null, status: "aperta" })
-      .catch(() => undefined);
+    await databases.deleteDocument(DB_ID, COLLECTIONS.opportunities, opp.$id);
   }
 
   await databases.deleteDocument(DB_ID, COLLECTIONS.deals, id);

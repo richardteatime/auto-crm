@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Paperclip, X, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
 
 const dealSchema = z.object({
   title: z.string().min(1, "Il titolo è obbligatorio"),
@@ -79,6 +80,8 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
   const [billingType, setBillingType] = useState<import("@/types").BillingType>("una_tantum");
   const [recurringMonths, setRecurringMonths] = useState(12);
   const [isPaid, setIsPaid] = useState(false);
+  // Moving the deal to "Persa" from this form asks why before saving
+  const [askClose, setAskClose] = useState<Record<string, unknown> | null>(null);
 
   const {
     register,
@@ -165,17 +168,7 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
     }
   };
 
-  const onSubmit = async (data: DealFormData) => {
-    const payload = {
-      ...data,
-      value: Math.round(parseFloat(data.value || "0") * 100),
-      probability: parseInt(data.probability || "0"),
-      attachments,
-      billingType,
-      recurringMonths: billingType !== "una_tantum" ? recurringMonths : null,
-      isPaid,
-    };
-
+  const submitPayload = async (payload: Record<string, unknown>) => {
     try {
       const res = await fetch(
         isEditing ? `/api/deals/${initialData!.id}` : "/api/deals",
@@ -185,6 +178,13 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
           body: JSON.stringify(payload),
         }
       );
+      if (res.status === 400) {
+        const err = await res.json().catch(() => ({}));
+        if (err?.needsReason) {
+          setAskClose(payload);
+          return;
+        }
+      }
       if (!res.ok) throw new Error();
       toast.success(isEditing ? "Trattativa aggiornata" : "Trattativa creata con successo");
       if (!isEditing) reset();
@@ -195,7 +195,19 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
     }
   };
 
+  const onSubmit = (data: DealFormData) =>
+    submitPayload({
+      ...data,
+      value: Math.round(parseFloat(data.value || "0") * 100),
+      probability: parseInt(data.probability || "0"),
+      attachments,
+      billingType,
+      recurringMonths: billingType !== "una_tantum" ? recurringMonths : null,
+      isPaid,
+    });
+
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -403,5 +415,18 @@ export function DealForm({ open, onClose, initialData, preselectedContactId }: D
         </form>
       </DialogContent>
     </Dialog>
+    <CloseReasonDialog
+      open={!!askClose}
+      kind="trattativa"
+      title={String(askClose?.title ?? "")}
+      onCancel={() => setAskClose(null)}
+      onConfirm={async (reason) => {
+        if (!askClose) return;
+        const payload = { ...askClose, reason };
+        setAskClose(null);
+        await submitPayload(payload);
+      }}
+    />
+    </>
   );
 }

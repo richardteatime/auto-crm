@@ -6,7 +6,9 @@ import {
   getDeal,
   listDeals,
   getStages,
+  isClosingMove,
 } from "@/lib/db";
+import { parseCloseReason } from "@/lib/close-reasons";
 import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -46,8 +48,22 @@ export async function PUT(request: NextRequest) {
         );
       }
 
+      // Closing a deal as lost asks for the reason (who closes it is the logged-in user)
+      let closing: { closedReason: string; closedBy: string } | null = null;
+      if (await isClosingMove(existing, body.stageId)) {
+        const reason = parseCloseReason(body.reason);
+        if (!reason) {
+          return NextResponse.json(
+            { error: "Scrivi il motivo della chiusura", needsReason: true },
+            { status: 400 }
+          );
+        }
+        closing = { closedReason: reason, closedBy: auth.user.name || auth.user.email };
+      }
+
       const result = await updateDeal(body.dealId, {
         stageId: body.stageId,
+        ...(closing ?? {}),
       });
 
       return NextResponse.json(result);

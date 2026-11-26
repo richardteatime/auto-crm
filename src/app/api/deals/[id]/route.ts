@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canEditPartnerFee } from "@/lib/partner-fee";
 import { clampPct } from "@/lib/partner-fee-shared";
-import { getDeal, updateDeal, deleteDeal } from "@/lib/db";
+import { getDeal, updateDeal, deleteDeal, isClosingMove } from "@/lib/db";
+import { parseCloseReason } from "@/lib/close-reasons";
 import { requireAuth } from "@/lib/auth";
 
 export async function GET(
@@ -82,6 +83,19 @@ export async function PUT(
         return NextResponse.json({ error: "Percentuale non valida" }, { status: 400 });
       }
       updateData.partnerFeePct = pct;
+    }
+
+    // Moving the deal to a "lost" stage closes it: the reason is required
+    if (body.stageId !== undefined && (await isClosingMove(existing, body.stageId))) {
+      const reason = parseCloseReason(body.reason);
+      if (!reason) {
+        return NextResponse.json(
+          { error: "Scrivi il motivo della chiusura", needsReason: true },
+          { status: 400 }
+        );
+      }
+      updateData.closedReason = reason;
+      updateData.closedBy = auth.user.name || auth.user.email;
     }
 
     if (Object.keys(updateData).length === 0) {

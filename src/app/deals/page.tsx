@@ -151,7 +151,7 @@ export default function DealsPage() {
       const res = await fetch(`/api/deals/${deletingDeal.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setDeals((prev) => prev.filter((d) => d.id !== deletingDeal.id));
-      toast.success("Trattativa eliminata");
+      toast.success("Trattativa e opportunità collegata eliminate");
     } catch {
       toast.error("Errore durante l'eliminazione");
     } finally {
@@ -436,7 +436,7 @@ export default function DealsPage() {
         <DialogContent showCloseButton={false} className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Eliminare la trattativa?</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}) con i suoi preventivi. Questa azione è irreversibile.
+            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}) con i suoi preventivi. Verrà eliminata anche l&apos;opportunità collegata, che sparirà dallo storico del cliente. Questa azione è irreversibile. Per tenere lo storico, sposta la trattativa in «Persa» (ti chiederà il motivo).
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingDeal(null)}>Annulla</Button>

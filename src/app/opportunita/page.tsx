@@ -12,10 +12,11 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Target, Pencil, Trash2, ArrowRight, Download, Search } from "lucide-react";
+import { Target, Pencil, Trash2, ArrowRight, Download, Search, XCircle } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { OpportunityForm, type OpportunityFormData } from "@/components/opportunities/OpportunityForm";
 import { toast } from "sonner";
+import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
 import { cn } from "@/lib/utils";
 
 interface OppRow {
@@ -28,12 +29,16 @@ interface OppRow {
   status: string;
   value: number | null;
   dealId: string | null;
+  closedReason?: string | null;
+  closedBy?: string | null;
+  closedAt?: number | string | Date | null;
   createdAt: number | Date;
 }
 
 const STATUS_CONFIG = {
   aperta:      { label: "Aperta",      className: "bg-blue-500/10 text-blue-700 border-blue-500/25 dark:bg-blue-950 dark:text-blue-300" },
   trasformata: { label: "Trasformata", className: "bg-green-500/10 text-green-700 border-green-500/25 dark:bg-green-950 dark:text-green-300" },
+  chiusa:      { label: "Chiusa",      className: "bg-rose-500/10 text-rose-700 border-rose-500/25 dark:bg-rose-950 dark:text-rose-300" },
 };
 
 function parseAttachments(json: string | null): { name: string; url: string }[] {
@@ -57,13 +62,14 @@ export default function OpportunitaPage() {
   const [contactNames, setContactNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"" | "aperta" | "trasformata">("");
+  const [filterStatus, setFilterStatus] = useState<"" | "aperta" | "trasformata" | "chiusa">("");
   const [showForm, setShowForm] = useState(false);
   const [editingOpp, setEditingOpp] = useState<OpportunityFormData | undefined>();
   const [editingContactId, setEditingContactId] = useState("");
   const [deletingOpp, setDeletingOpp] = useState<OppRow | null>(null);
   const [convertingOpp, setConvertingOpp] = useState<OppRow | null>(null);
   const [converting, setConverting] = useState(false);
+  const [closingOpp, setClosingOpp] = useState<OppRow | null>(null);
 
   const load = useCallback(() => {
     Promise.all([
@@ -88,6 +94,7 @@ export default function OpportunitaPage() {
 
   const openCount = useMemo(() => opps.filter((o) => o.status === "aperta").length, [opps]);
   const convertedCount = useMemo(() => opps.filter((o) => o.status === "trasformata").length, [opps]);
+  const closedCount = useMemo(() => opps.filter((o) => o.status === "chiusa").length, [opps]);
   const totalOpenValue = useMemo(
     () => opps.filter((o) => o.status === "aperta").reduce((sum, o) => sum + (o.value ?? 0), 0),
     [opps]
@@ -126,6 +133,25 @@ export default function OpportunitaPage() {
     }
   };
 
+  // Close with a reason: stays in the customer history as "Chiusa" (and its deal is closed too)
+  const handleClose = async (reason: string) => {
+    if (!closingOpp) return;
+    try {
+      const res = await fetch(`/api/opportunities/${closingOpp.id}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Errore nella chiusura");
+      toast.success(closingOpp.dealId ? "Opportunità e trattativa chiuse: restano nello storico" : "Opportunità chiusa: resta nello storico");
+      setClosingOpp(null);
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore nella chiusura");
+    }
+  };
+
   const handleConvert = async () => {
     if (!convertingOpp) return;
     setConverting(true);
@@ -157,7 +183,7 @@ export default function OpportunitaPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">Opportunità</h1>
-          <p className="text-muted-foreground">Analisi completa — aperte e trasformate in trattativa</p>
+          <p className="text-muted-foreground">Analisi completa — aperte, trasformate in trattativa e chiuse (storico)</p>
         </div>
         <Button
           variant="outline" size="sm"
@@ -209,6 +235,7 @@ export default function OpportunitaPage() {
             { key: "", label: `Tutte (${opps.length})` },
             { key: "aperta", label: `Aperte (${openCount})` },
             { key: "trasformata", label: `Trasformate (${convertedCount})` },
+            { key: "chiusa", label: `Chiuse (${closedCount})` },
           ] as const).map(({ key, label }) => (
             <button
               key={key}
@@ -272,6 +299,13 @@ export default function OpportunitaPage() {
                           {o.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-52">{o.description}</p>
                           )}
+                          {o.status === "chiusa" && (
+                            <p className="mt-0.5 max-w-72 text-xs leading-snug text-rose-700 dark:text-rose-300">
+                              Motivo: {o.closedReason || "non indicato"}
+                              {o.closedBy ? ` · ${o.closedBy}` : ""}
+                              {o.closedAt ? ` · ${formatDate(new Date(o.closedAt))}` : ""}
+                            </p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -301,7 +335,7 @@ export default function OpportunitaPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 justify-end">
-                          {o.status === "trasformata" && o.dealId && (
+                          {(o.status === "trasformata" || o.status === "chiusa") && o.dealId && (
                             <Button
                               variant="ghost" size="sm"
                               className="cursor-pointer h-7 text-xs gap-1 text-green-700 hover:text-green-700"
@@ -319,6 +353,17 @@ export default function OpportunitaPage() {
                             >
                               <ArrowRight className="h-3 w-3" />
                               Converti
+                            </Button>
+                          )}
+                          {o.status !== "chiusa" && (
+                            <Button
+                              variant="ghost" size="sm"
+                              className="cursor-pointer h-7 text-xs gap-1 text-muted-foreground hover:text-rose-600"
+                              onClick={() => setClosingOpp(o)}
+                              title="Chiudi l'opportunità (resta nello storico)"
+                            >
+                              <XCircle className="h-3 w-3" />
+                              Chiudi
                             </Button>
                           )}
                           <Button
@@ -364,7 +409,8 @@ export default function OpportunitaPage() {
             {deletingOpp?.dealId
               ? " Verrà eliminata anche la trattativa collegata, con i suoi preventivi."
               : ""}{" "}
-            Questa azione è irreversibile.
+            Questa azione è irreversibile e sparisce dallo storico del cliente.
+            {deletingOpp?.status !== "chiusa" && " Per tenerla nello storico, usa «Chiudi»."}
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingOpp(null)}>Annulla</Button>
@@ -372,6 +418,14 @@ export default function OpportunitaPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CloseReasonDialog
+        open={!!closingOpp}
+        kind="opportunità"
+        title={closingOpp?.title ?? ""}
+        onCancel={() => setClosingOpp(null)}
+        onConfirm={handleClose}
+      />
 
       <Dialog open={!!convertingOpp} onOpenChange={(v) => !v && setConvertingOpp(null)}>
         <DialogContent showCloseButton={false} className="sm:max-w-sm">

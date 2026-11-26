@@ -24,6 +24,7 @@ import { Search, X, RefreshCw, Trophy } from "lucide-react";
 import { KanbanColumn } from "./KanbanColumn";
 import { DealCardOverlay, TEMPERATURE_DOT, type DealCardData } from "./DealCard";
 import { Segmented } from "@/components/shared/Segmented";
+import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
 import { useHydrated } from "@/components/shared/ThemeProvider";
 import { burstConfetti } from "@/lib/confetti";
 import { formatCurrencyShort } from "@/lib/constants";
@@ -98,6 +99,7 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
   const columnsSnapshot = useRef<PipelineColumn[]>(initialColumns);
   const sourceColumnId = useRef<string | null>(null);
   const lastDragEnd = useRef(0);
+  const [askClose, setAskClose] = useState<{ dealId: string; column: PipelineColumn; title: string } | null>(null);
 
   const [search, setSearch] = useState("");
   const [filterTemp, setFilterTemp] = useState<TempFilter>("");
@@ -179,6 +181,44 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
     [columns]
   );
 
+  // Sends the move to the server; `reason` is required when the target column is "Persa"
+  const commitMove = useCallback(
+    async (
+      dragId: string,
+      overColumn: PipelineColumn,
+      deal: { title: string; value?: number | null } | undefined,
+      rect: { left: number; top: number; width: number; height: number } | null | undefined,
+      reason?: string
+    ) => {
+      try {
+        const res = await fetch("/api/pipeline", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dealId: dragId, stageId: overColumn.id, ...(reason ? { reason } : {}) }),
+        });
+        if (!res.ok) throw new Error("API error");
+
+        if (overColumn.isWon) {
+          burstConfetti(rect ? rect.left + rect.width / 2 : undefined, rect ? rect.top + rect.height / 2 : undefined);
+          toast.success("Trattativa vinta!", {
+            description: deal ? `${deal.title} · ${formatCurrencyShort(deal.value ?? 0)}` : undefined,
+            icon: <Trophy className="size-4 text-emerald-500" />,
+          });
+        } else if (overColumn.isLost) {
+          toast("Trattativa chiusa", { description: deal ? `${deal.title} · resta nello storico del cliente` : undefined });
+        } else {
+          toast(`Spostata in «${overColumn.name}»`, { description: deal?.title });
+        }
+        return true;
+      } catch {
+        setColumns(columnsSnapshot.current);
+        toast.error("Non sono riuscito a spostare la trattativa. Modifica annullata.");
+        return false;
+      }
+    },
+    []
+  );
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
@@ -196,29 +236,15 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
       const deal = columnsSnapshot.current.flatMap((c) => c.deals).find((d) => d.id === dragId);
       const rect = active.rect.current.translated;
 
-      try {
-        const res = await fetch("/api/pipeline", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dealId: dragId, stageId: overColumn.id }),
-        });
-        if (!res.ok) throw new Error("API error");
-
-        if (overColumn.isWon) {
-          burstConfetti(rect ? rect.left + rect.width / 2 : undefined, rect ? rect.top + rect.height / 2 : undefined);
-          toast.success("Trattativa vinta!", {
-            description: deal ? `${deal.title} · ${formatCurrencyShort(deal.value ?? 0)}` : undefined,
-            icon: <Trophy className="size-4 text-emerald-500" />,
-          });
-        } else {
-          toast(`Spostata in «${overColumn.name}»`, { description: deal?.title });
-        }
-      } catch {
-        setColumns(columnsSnapshot.current);
-        toast.error("Non sono riuscito a spostare la trattativa. Modifica annullata.");
+      // Closing a deal as lost: ask why first (the card stays in the "Persa" column while the popup is open)
+      if (overColumn.isLost) {
+        setAskClose({ dealId: dragId, column: overColumn, title: deal?.title ?? "Trattativa" });
+        return;
       }
+
+      await commitMove(dragId, overColumn, deal, rect);
     },
-    [columns]
+    [columns, commitMove]
   );
 
   const totalDeals = columns.reduce((s, c) => s + c.deals.length, 0);
@@ -294,6 +320,23 @@ export function KanbanBoard({ initialColumns, nowMs }: KanbanBoardProps) {
             document.body
           )}
       </DndContext>
+
+      <CloseReasonDialog
+        open={!!askClose}
+        kind="trattativa"
+        title={askClose?.title ?? ""}
+        onCancel={() => {
+          // not closed: the card goes back where it was
+          setColumns(columnsSnapshot.current);
+          setAskClose(null);
+        }}
+        onConfirm={async (reason) => {
+          if (!askClose) return;
+          const deal = columnsSnapshot.current.flatMap((c) => c.deals).find((d) => d.id === askClose.dealId);
+          await commitMove(askClose.dealId, askClose.column, deal, null, reason);
+          setAskClose(null);
+        }}
+      />
     </div>
   );
 }

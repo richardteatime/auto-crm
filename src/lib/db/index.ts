@@ -15,6 +15,7 @@ export {
   createDeal,
   updateDeal,
   deleteDeal,
+  isClosingMove,
 } from "./deals";
 
 // Activities
@@ -82,6 +83,9 @@ export {
   createOpportunity,
   updateOpportunity,
   deleteOpportunity,
+  closeOpportunity,
+  reopenOpportunity,
+  CloseError,
 } from "./opportunities";
 export type { } from "./opportunities";
 
