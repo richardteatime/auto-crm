@@ -12,7 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Target, Pencil, Trash2, ArrowRight, Download, Search, XCircle } from "lucide-react";
+import { Target, Pencil, Trash2, ArrowRight, Download, Search } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { OpportunityForm, type OpportunityFormData } from "@/components/opportunities/OpportunityForm";
 import { toast } from "sonner";
@@ -67,7 +67,6 @@ export default function OpportunitaPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingOpp, setEditingOpp] = useState<OpportunityFormData | undefined>();
   const [editingContactId, setEditingContactId] = useState("");
-  const [deletingOpp, setDeletingOpp] = useState<OppRow | null>(null);
   const [convertingOpp, setConvertingOpp] = useState<OppRow | null>(null);
   const [converting, setConverting] = useState(false);
   const [closingOpp, setClosingOpp] = useState<OppRow | null>(null);
@@ -119,21 +118,6 @@ export default function OpportunitaPage() {
     setEditingOpp(toFormData(o));
     setEditingContactId(o.contactId);
     setShowForm(true);
-  };
-
-  const handleDelete = async () => {
-    if (!deletingOpp) return;
-    try {
-      const res = await fetch(`/api/opportunities/${deletingOpp.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      setOpps((prev) => prev.filter((o) => o.id !== deletingOpp.id));
-      const data = await res.json().catch(() => ({}));
-      toast.success(data.dealDeleted ? "Opportunità e trattativa eliminate" : "Opportunità eliminata");
-    } catch {
-      toast.error("Errore durante l'eliminazione");
-    } finally {
-      setDeletingOpp(null);
-    }
   };
 
   // Close with a reason: stays in the customer history as "Chiusa" (and its deal is closed too)
@@ -363,17 +347,6 @@ export default function OpportunitaPage() {
                               Converti
                             </Button>
                           )}
-                          {o.status !== "chiusa" && (
-                            <Button
-                              variant="ghost" size="sm"
-                              className="cursor-pointer h-7 text-xs gap-1 text-muted-foreground hover:text-rose-600"
-                              onClick={() => setClosingOpp(o)}
-                              title="Chiudi l'opportunità (resta nello storico)"
-                            >
-                              <XCircle className="h-3 w-3" />
-                              Chiudi
-                            </Button>
-                          )}
                           <Button
                             variant="ghost" size="icon"
                             className="cursor-pointer h-7 w-7"
@@ -381,13 +354,16 @@ export default function OpportunitaPage() {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="cursor-pointer h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => setDeletingOpp(o)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {o.status !== "chiusa" && (
+                            <Button
+                              variant="ghost" size="icon"
+                              className="cursor-pointer h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => setClosingOpp(o)}
+                              title="Chiudi come persa (resta nello storico)"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -408,24 +384,6 @@ export default function OpportunitaPage() {
         contactId={editingContactId}
         initialData={editingOpp}
       />
-
-      <Dialog open={!!deletingOpp} onOpenChange={(v) => !v && setDeletingOpp(null)}>
-        <DialogContent showCloseButton={false} className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Eliminare l&apos;opportunità?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingOpp?.title}</strong>.
-            {deletingOpp?.dealId
-              ? " Verrà eliminata anche la trattativa collegata, con i suoi preventivi."
-              : ""}{" "}
-            Questa azione è irreversibile e sparisce dallo storico del cliente.
-            {deletingOpp?.status !== "chiusa" && " Per tenerla nello storico, usa «Chiudi»."}
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingOpp(null)}>Annulla</Button>
-            <Button variant="destructive" className="cursor-pointer" onClick={handleDelete}>Elimina</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <CloseReasonDialog
         open={!!closingOpp}

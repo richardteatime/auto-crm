@@ -14,7 +14,6 @@ export {
   getDeal,
   createDeal,
   updateDeal,
-  deleteDeal,
   isClosingMove,
 } from "./deals";
 
@@ -82,12 +81,11 @@ export {
   getOpportunity,
   createOpportunity,
   updateOpportunity,
-  deleteOpportunity,
-  closeOpportunity,
-  reopenOpportunity,
-  CloseError,
 } from "./opportunities";
 export type { } from "./opportunities";
+
+// Closing (deals and opportunities are never deleted, only closed with a reason)
+export { closeDeal, closeOpportunity, reopenOpportunity, CloseError } from "./closing";
 
 // Notifications
 export {

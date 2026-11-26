@@ -19,7 +19,6 @@ import {
   Download,
   Paperclip,
   TrendingUp,
-  XCircle,
   RotateCcw,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
@@ -75,7 +74,6 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingOpp, setEditingOpp] = useState<OpportunityFormData | undefined>();
-  const [deletingOpp, setDeletingOpp] = useState<OppRow | null>(null);
   const [convertingOpp, setConvertingOpp] = useState<OppRow | null>(null);
   const [converting, setConverting] = useState(false);
   const [closingOpp, setClosingOpp] = useState<OppRow | null>(null);
@@ -91,21 +89,6 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
 
   const openCreate = () => { setEditingOpp(undefined); setShowForm(true); };
   const openEdit = (o: OppRow) => { setEditingOpp(toFormData(o)); setShowForm(true); };
-
-  const handleDelete = async () => {
-    if (!deletingOpp) return;
-    try {
-      const res = await fetch(`/api/opportunities/${deletingOpp.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      setList((prev) => prev.filter((o) => o.id !== deletingOpp.id));
-      const data = await res.json().catch(() => ({}));
-      toast.success(data.dealDeleted ? "Opportunità e trattativa eliminate" : "Opportunità eliminata");
-    } catch {
-      toast.error("Errore durante l'eliminazione");
-    } finally {
-      setDeletingOpp(null);
-    }
-  };
 
   // Close with a reason: the opportunity (and its deal) stay in the customer history as "Chiusa"
   const handleClose = async (reason: string) => {
@@ -200,21 +183,21 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
             <div className="space-y-2">
               {openOnly.length > 0 && (
                 <>
-                  {openOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
+                  {openOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
                 </>
               )}
               {convertedOnly.length > 0 && (
                 <>
                   {openOnly.length > 0 && <div className="border-t pt-2 mt-2" />}
                   <p className="text-xs text-muted-foreground font-medium mb-1">Trasformate in trattativa</p>
-                  {convertedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
+                  {convertedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
                 </>
               )}
               {closedOnly.length > 0 && (
                 <>
                   {(openOnly.length > 0 || convertedOnly.length > 0) && <div className="border-t pt-2 mt-2" />}
                   <p className="text-xs text-muted-foreground font-medium mb-1">Chiuse (storico)</p>
-                  {closedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
+                  {closedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
                 </>
               )}
             </div>
@@ -228,25 +211,6 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
         contactId={contactId}
         initialData={editingOpp}
       />
-
-      {/* Delete confirm */}
-      <Dialog open={!!deletingOpp} onOpenChange={(v) => !v && setDeletingOpp(null)}>
-        <DialogContent showCloseButton={false} className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Eliminare l&apos;opportunità?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingOpp?.title}</strong>.
-            {deletingOpp?.dealId
-              ? " Verrà eliminata anche la trattativa collegata, con i suoi preventivi."
-              : ""}{" "}
-            Questa azione è irreversibile e sparisce dallo storico del cliente.
-            {deletingOpp?.status !== "chiusa" && " Per tenerla nello storico, usa «Chiudi»."}
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingOpp(null)}>Annulla</Button>
-            <Button variant="destructive" className="cursor-pointer" onClick={handleDelete}>Elimina</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Close with reason */}
       <CloseReasonDialog
@@ -280,7 +244,6 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
 function OppCard({
   opp,
   onEdit,
-  onDelete,
   onConvert,
   onClose,
   onReopen,
@@ -288,7 +251,6 @@ function OppCard({
 }: {
   opp: OppRow;
   onEdit: (o: OppRow) => void;
-  onDelete: (o: OppRow) => void;
   onConvert: (o: OppRow) => void;
   onClose: (o: OppRow) => void;
   onReopen: (o: OppRow) => void;
@@ -379,18 +341,6 @@ function OppCard({
               Converti
             </Button>
           )}
-          {opp.status !== "chiusa" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="cursor-pointer h-7 text-xs gap-1 text-muted-foreground hover:text-rose-600"
-              onClick={() => onClose(opp)}
-              title="Chiudi l'opportunità (resta nello storico)"
-            >
-              <XCircle className="h-3 w-3" />
-              Chiudi
-            </Button>
-          )}
           {opp.status === "chiusa" && !opp.dealId && (
             <Button
               variant="ghost"
@@ -411,14 +361,17 @@ function OppCard({
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="cursor-pointer h-7 w-7 text-muted-foreground hover:text-destructive"
-            onClick={() => onDelete(opp)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {opp.status !== "chiusa" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="cursor-pointer h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => onClose(opp)}
+              title="Chiudi come persa (resta nello storico)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

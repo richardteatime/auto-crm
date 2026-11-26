@@ -4,7 +4,6 @@ import { Query } from "@/lib/query17";
 import type { CloseOutcome, Deal, DealWithContact, PipelineStage } from "@/types";
 import { getContact } from "./contacts";
 import { getStage } from "./pipeline";
-import { unlinkLeadsFromDeal } from "./leads";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -311,45 +310,4 @@ async function syncLinkedOpportunities(
           : null;
     if (patch) await databases.updateDocument(DB_ID, COLLECTIONS.opportunities, opp.$id, patch);
   }
-}
-
-// ---------------------------------------------------------------------------
-// deleteDeal
-// ---------------------------------------------------------------------------
-
-/**
- * Delete a deal together with what only makes sense inside it:
- * its quotes and the opportunity it came from are deleted (deleting an
- * opportunity deletes its deal too); activities, calendar events and
- * leads that point to it are kept but unlinked.
- * To keep the history instead of deleting, close the deal/opportunity
- * (with a reason): closed opportunities stay in the customer history.
- */
-export async function deleteDeal(id: string): Promise<void> {
-  const linked = async (collection: string) => {
-    try {
-      const res = await databases.listDocuments(DB_ID, collection, [
-        Query.equal("dealId", id),
-        Query.limit(500),
-      ]);
-      return res.documents;
-    } catch {
-      return []; // collection or attribute missing on this instance
-    }
-  };
-
-  for (const q of await linked(COLLECTIONS.quotes)) {
-    await databases.deleteDocument(DB_ID, COLLECTIONS.quotes, q.$id);
-  }
-  await unlinkLeadsFromDeal(id).catch(() => undefined);
-  for (const col of [COLLECTIONS.activities, COLLECTIONS.calendarEvents]) {
-    for (const doc of await linked(col)) {
-      await databases.updateDocument(DB_ID, col, doc.$id, { dealId: null }).catch(() => undefined);
-    }
-  }
-  for (const opp of await linked(COLLECTIONS.opportunities)) {
-    await databases.deleteDocument(DB_ID, COLLECTIONS.opportunities, opp.$id);
-  }
-
-  await databases.deleteDocument(DB_ID, COLLECTIONS.deals, id);
 }
