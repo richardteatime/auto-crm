@@ -37,6 +37,9 @@ import { ContactTimeline, type TimelineActivity } from "./ContactTimeline";
 import { ActivityForm, type ActivityInitialData } from "@/components/activities/ActivityForm";
 import { DealForm } from "@/components/deals/DealForm";
 import { OpportunityList } from "@/components/opportunities/OpportunityList";
+import { ContactQuotes, type ContactQuote } from "./ContactQuotes";
+import { RelatedChip } from "@/components/shared/RelatedChip";
+import { HashHighlight } from "@/components/shared/HashHighlight";
 import { formatCurrencyShort, cleanPhoneForWhatsApp, SOURCE_LABELS } from "@/lib/constants";
 import { agoLabel, formatDayMonth } from "@/lib/dates";
 import { toMs, cn } from "@/lib/utils";
@@ -67,11 +70,15 @@ interface ContactDetailClientProps {
     isLost?: boolean;
     createdAt: number | Date;
   }>;
+  /** Every quote made on this contact's deals (with the reference to deal and opportunity) */
+  quotes: ContactQuote[];
+  /** Opportunities of this contact: used to link each deal to the opportunity it came from */
+  opportunities: Array<{ id: string; title: string; status: string; dealId: string | null }>;
   activities: TimelineActivity[];
   nowMs: number;
 }
 
-export function ContactDetailClient({ contact, deals, activities, nowMs }: ContactDetailClientProps) {
+export function ContactDetailClient({ contact, deals, quotes, opportunities, activities, nowMs }: ContactDetailClientProps) {
   const router = useRouter();
   const [showEditForm, setShowEditForm] = useState(false);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -131,6 +138,7 @@ export function ContactDetailClient({ contact, deals, activities, nowMs }: Conta
 
   return (
     <div className="space-y-5">
+      <HashHighlight />
       <Link
         href="/contacts"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -255,6 +263,7 @@ export function ContactDetailClient({ contact, deals, activities, nowMs }: Conta
             }
           />
           <OpportunityList contactId={contact.id} />
+          <ContactQuotes quotes={quotes} />
         </div>
 
         <aside className="space-y-5">
@@ -281,18 +290,30 @@ export function ContactDetailClient({ contact, deals, activities, nowMs }: Conta
               <p className="text-xs text-muted-foreground">Nessuna trattativa con questo contatto.</p>
             ) : (
               <ul className="-mx-1 space-y-0.5">
-                {deals.map((deal) => (
-                  <li key={deal.id}>
-                    <Link href={`/deals/${deal.id}`} className="flex items-center gap-2.5 rounded-lg px-1 py-2 transition-colors hover:bg-muted/60">
-                      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: deal.stageColor ?? "#94a3b8" }} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{deal.title}</span>
-                        <span className="block truncate text-xs text-muted-foreground">{deal.stageName ?? "—"}</span>
-                      </span>
-                      <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrencyShort(deal.value)}</span>
-                    </Link>
-                  </li>
-                ))}
+                {deals.map((deal) => {
+                  const opp = opportunities.find((o) => o.dealId === deal.id);
+                  const dealQuotes = quotes.filter((q) => q.dealId === deal.id);
+                  return (
+                    <li key={deal.id} className="rounded-lg px-1 py-1.5 transition-colors hover:bg-muted/40">
+                      <Link href={`/deals/${deal.id}`} className="flex items-center gap-2.5 rounded-lg py-1 transition-colors hover:text-primary">
+                        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: deal.stageColor ?? "#94a3b8" }} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">{deal.title}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{deal.stageName ?? "—"}</span>
+                        </span>
+                        <span className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrencyShort(deal.value)}</span>
+                      </Link>
+                      {(opp || dealQuotes.length > 0) && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1 pl-[18px]">
+                          {opp && <RelatedChip kind="opportunita" href={`#opportunita-${opp.id}`} label="Opportunità" />}
+                          {dealQuotes.map((q) => (
+                            <RelatedChip key={q.id} kind="preventivo" href={`/deals/${deal.id}#preventivo-${q.id}`} label={q.number} />
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>

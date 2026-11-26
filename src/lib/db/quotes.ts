@@ -81,12 +81,18 @@ async function generateQuoteNumber(): Promise<string> {
 
 export async function listQuotes(filters?: {
   dealId?: string;
+  /** Quotes of any of these deals (e.g. all the deals of one contact) */
+  dealIds?: string[];
   status?: string;
 }): Promise<Quote[]> {
   const queries: string[] = [Query.orderDesc("$createdAt"), Query.limit(500)];
 
   if (filters?.dealId) {
     queries.push(Query.equal("dealId", filters.dealId));
+  }
+  if (filters?.dealIds) {
+    if (filters.dealIds.length === 0) return [];
+    queries.push(Query.equal("dealId", filters.dealIds));
   }
   if (filters?.status) {
     queries.push(Query.equal("status", filters.status));

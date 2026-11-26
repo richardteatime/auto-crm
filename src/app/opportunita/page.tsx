@@ -17,9 +17,11 @@ import { formatCurrency, formatDate } from "@/lib/constants";
 import { OpportunityForm, type OpportunityFormData } from "@/components/opportunities/OpportunityForm";
 import { toast } from "sonner";
 import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
+import { RelatedChip } from "@/components/shared/RelatedChip";
+import type { OppLinks } from "@/components/opportunities/links";
 import { cn } from "@/lib/utils";
 
-interface OppRow {
+interface OppRow extends OppLinks {
   id: string;
   contactId: string;
   title: string;
@@ -291,6 +293,25 @@ export default function OpportunitaPage() {
                           {o.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-52">{o.description}</p>
                           )}
+                          {(o.deal || (o.quotes && o.quotes.length > 0)) && (
+                            <div className="mt-1 flex max-w-80 flex-wrap items-center gap-1">
+                              <RelatedChip
+                                kind="opportunita"
+                                href={`/contacts/${o.contactId}#opportunita-${o.id}`}
+                                label="Scheda cliente"
+                              />
+                              {o.deal && (
+                                <RelatedChip
+                                  kind="trattativa"
+                                  href={`/deals/${o.deal.id}`}
+                                  label={o.deal.stageName ? `Trattativa · ${o.deal.stageName}` : "Trattativa"}
+                                />
+                              )}
+                              {o.deal && o.quotes?.map((q) => (
+                                <RelatedChip key={q.id} kind="preventivo" href={`/deals/${o.deal!.id}#preventivo-${q.id}`} label={q.number} />
+                              ))}
+                            </div>
+                          )}
                           {o.status === "chiusa" && (
                             <p className={cn("mt-0.5 max-w-72 text-xs leading-snug", wonClosed ? "text-green-700 dark:text-green-300" : "text-rose-700 dark:text-rose-300")}>
                               Motivo: {o.closedReason || "non indicato"}
@@ -327,16 +348,6 @@ export default function OpportunitaPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 justify-end">
-                          {(o.status === "trasformata" || o.status === "chiusa") && o.dealId && (
-                            <Button
-                              variant="ghost" size="sm"
-                              className="cursor-pointer h-7 text-xs gap-1 text-green-700 hover:text-green-700"
-                              onClick={() => router.push(`/deals/${o.dealId!}`)}
-                            >
-                              <ArrowRight className="h-3 w-3" />
-                              Trattativa
-                            </Button>
-                          )}
                           {o.status === "aperta" && (
                             <Button
                               variant="ghost" size="sm"

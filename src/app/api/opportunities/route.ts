@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listOpportunities, createOpportunity } from "@/lib/db";
+import { listOpportunities, createOpportunity, opportunitiesWithLinks } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(results);
+    // Each opportunity that became a deal carries that deal and its quotes, so the UI can link them
+    return NextResponse.json(await opportunitiesWithLinks(results, contactId));
   } catch {
     return NextResponse.json(
       { error: "Errore nel recupero delle opportunità" },

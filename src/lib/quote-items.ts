@@ -61,3 +61,14 @@ export function normalizeServiceName(name: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
+
+/** Quote total in cents (items minus discounts, plus VAT): same figure the deal page and PDF show */
+export function quoteTotalCents(itemsJson: string | null | undefined, vatRate: number | null | undefined): number {
+  try {
+    const items = JSON.parse(itemsJson || "[]") as { quantity: number; unitPrice: number; discount?: number }[];
+    const sub = items.reduce((s, i) => s + Math.round(i.quantity * i.unitPrice * (1 - (i.discount ?? 0) / 100)), 0);
+    return sub + Math.round((sub * (vatRate ?? 0)) / 100);
+  } catch {
+    return 0;
+  }
+}

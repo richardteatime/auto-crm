@@ -87,6 +87,9 @@ export type { } from "./opportunities";
 // Closing (deals and opportunities are never deleted, only closed with a reason)
 export { closeDeal, closeOpportunity, reopenOpportunity, CloseError } from "./closing";
 
+// Links between opportunity, deal and quote
+export { opportunitiesWithLinks, buildContactQuotes } from "./links";
+
 // Notifications
 export {
   listNotifications,

@@ -184,7 +184,7 @@ export function QuoteList({ dealId, dealPaid = false }: QuoteListProps) {
                 {quoteList.map((q) => {
                   const cfg = STATUS_CONFIG[q.status] ?? STATUS_CONFIG.bozza;
                   return (
-                    <TableRow key={q.id} className={quoteRowClass({ ...q, dealIsPaid: dealPaid })}>
+                    <TableRow key={q.id} id={`preventivo-${q.id}`} className={quoteRowClass({ ...q, dealIsPaid: dealPaid })}>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {q.number}
                       </TableCell>

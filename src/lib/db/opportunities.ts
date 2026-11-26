@@ -16,10 +16,16 @@ function fromDoc<T>(doc: Models.Document): T {
 export async function listOpportunities(filters?: {
   contactId?: string;
   status?: string;
+  /** Opportunities that became one of these deals */
+  dealIds?: string[];
 }): Promise<Opportunity[]> {
   const queries: string[] = [Query.orderDesc("$createdAt"), Query.limit(500)];
   if (filters?.contactId) queries.push(Query.equal("contactId", filters.contactId));
   if (filters?.status) queries.push(Query.equal("status", filters.status));
+  if (filters?.dealIds) {
+    if (filters.dealIds.length === 0) return [];
+    queries.push(Query.equal("dealId", filters.dealIds));
+  }
   const res = await databases.listDocuments(DB_ID, COLLECTIONS.opportunities, queries);
   return res.documents.map((d) => fromDoc<Opportunity>(d));
 }
