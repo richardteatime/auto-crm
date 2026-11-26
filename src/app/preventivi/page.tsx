@@ -36,6 +36,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { ReportDialog } from "@/components/shared/ReportDialog";
+import { RelatedChip } from "@/components/shared/RelatedChip";
 import { parseItemsForForm } from "@/lib/quote-items";
 import { parsePaymentTerms } from "@/lib/quote-payment";
 import { parseQuoteClauses } from "@/lib/quote-clauses";
@@ -60,6 +61,9 @@ interface QuoteRow {
   dealId: string;
   dealTitle: string | null;
   dealIsPaid?: boolean;
+  contactId?: string | null;
+  opportunityId?: string | null;
+  opportunityTitle?: string | null;
   contactName: string | null;
   contactCompany: string | null;
 }
@@ -425,12 +429,24 @@ export default function PreventiviPage() {
                         {q.number}
                       </TableCell>
                       <TableCell className="font-medium max-w-[15rem] whitespace-normal leading-snug">
-                        <Link href={`/deals/${q.dealId}`} className="hover:text-primary hover:underline">
+                        <Link href={`/deals/${q.dealId}#preventivo-${q.id}`} className="hover:text-primary hover:underline">
                           {q.title}
                         </Link>
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          <RelatedChip kind="trattativa" href={`/deals/${q.dealId}`} label={q.dealTitle ? `Trattativa · ${q.dealTitle}` : "Trattativa"} />
+                          {q.opportunityId && q.contactId && (
+                            <RelatedChip kind="opportunita" href={`/contacts/${q.contactId}#opportunita-${q.opportunityId}`} label={q.opportunityTitle ? `Opportunità · ${q.opportunityTitle}` : "Opportunità"} />
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-sm">
-                        <div>{q.contactName ?? "—"}</div>
+                        <div>
+                          {q.contactName && q.contactId ? (
+                            <Link href={`/contacts/${q.contactId}`} className="hover:text-primary hover:underline">{q.contactName}</Link>
+                          ) : (
+                            q.contactName ?? "—"
+                          )}
+                        </div>
                         {q.contactCompany && (
                           <div className="text-muted-foreground text-xs">{q.contactCompany}</div>
                         )}

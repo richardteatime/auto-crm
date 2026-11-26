@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getContactWithRelations, listDeals, getStages, getContact } from "@/lib/db";
+import { getContactWithRelations, listDeals, getStages, getContact, listOpportunities, buildContactQuotes } from "@/lib/db";
+import { listQuotes } from "@/lib/db/quotes";
 import { notFound } from "next/navigation";
 import { ContactDetailClient } from "@/components/contacts/ContactDetail";
 
@@ -22,7 +23,15 @@ export default async function ContactDetailPage({
   const contact = await getContactWithRelations(id);
   if (!contact) notFound();
 
-  const [contactDeals, stages] = await Promise.all([listDeals({ contactId: id }), getStages()]);
+  const [contactDeals, stages, contactOpps] = await Promise.all([
+    listDeals({ contactId: id }),
+    getStages(),
+    listOpportunities({ contactId: id }),
+  ]);
+  // All the quotes made on this contact's deals, each with a reference to its deal and opportunity
+  const rawQuotes = await listQuotes({ dealIds: contactDeals.map((d) => d.id) });
+  const quotes = buildContactQuotes(contactDeals, contactOpps, rawQuotes);
+  const opportunities = contactOpps.map((o) => ({ id: o.id, title: o.title, status: o.status, dealId: o.dealId }));
 
   const dealsWithStage = contactDeals.map((d) => {
     const stage = stages.find((s) => s.id === d.stageId);
@@ -69,6 +78,8 @@ export default async function ContactDetailPage({
         createdAt: contact.createdAt,
       }}
       deals={dealsWithStage}
+      quotes={quotes}
+      opportunities={opportunities}
       activities={activities}
       nowMs={now.getTime()}
     />

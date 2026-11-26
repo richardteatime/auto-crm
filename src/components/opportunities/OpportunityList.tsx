@@ -25,8 +25,10 @@ import { formatCurrency, formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 import { OpportunityForm, type OpportunityFormData } from "./OpportunityForm";
 import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
+import { RelatedChip } from "@/components/shared/RelatedChip";
+import type { OppLinks } from "./links";
 
-interface OppRow {
+interface OppRow extends OppLinks {
   id: string;
   contactId: string;
   title: string;
@@ -183,21 +185,21 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
             <div className="space-y-2">
               {openOnly.length > 0 && (
                 <>
-                  {openOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
+                  {openOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} />)}
                 </>
               )}
               {convertedOnly.length > 0 && (
                 <>
                   {openOnly.length > 0 && <div className="border-t pt-2 mt-2" />}
                   <p className="text-xs text-muted-foreground font-medium mb-1">Trasformate in trattativa</p>
-                  {convertedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
+                  {convertedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} />)}
                 </>
               )}
               {closedOnly.length > 0 && (
                 <>
                   {(openOnly.length > 0 || convertedOnly.length > 0) && <div className="border-t pt-2 mt-2" />}
                   <p className="text-xs text-muted-foreground font-medium mb-1">Chiuse (storico)</p>
-                  {closedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
+                  {closedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} />)}
                 </>
               )}
             </div>
@@ -247,14 +249,12 @@ function OppCard({
   onConvert,
   onClose,
   onReopen,
-  router,
 }: {
   opp: OppRow;
   onEdit: (o: OppRow) => void;
   onConvert: (o: OppRow) => void;
   onClose: (o: OppRow) => void;
   onReopen: (o: OppRow) => void;
-  router: ReturnType<typeof useRouter>;
 }) {
   const attachments = parseAttachments(opp.attachments);
   const won = opp.status === "chiusa" && opp.closedOutcome === "vinta";
@@ -266,7 +266,7 @@ function OppCard({
   const isOpen = opp.status === "aperta";
 
   return (
-    <div className="rounded-lg border p-3 space-y-2 hover:bg-muted/30 transition-colors">
+    <div id={`opportunita-${opp.id}`} className="rounded-lg border p-3 space-y-2 hover:bg-muted/30 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -314,21 +314,24 @@ function OppCard({
               )}
             </p>
           )}
+          {(opp.deal || (opp.quotes && opp.quotes.length > 0)) && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {opp.deal && (
+                <RelatedChip
+                  kind="trattativa"
+                  href={`/deals/${opp.deal.id}`}
+                  label={opp.deal.stageName ? `Trattativa · ${opp.deal.stageName}` : "Trattativa"}
+                />
+              )}
+              {opp.deal && opp.quotes?.map((q) => (
+                <RelatedChip key={q.id} kind="preventivo" href={`/deals/${opp.deal!.id}#preventivo-${q.id}`} label={q.number} />
+              ))}
+            </div>
+          )}
           <p className="text-xs text-muted-foreground mt-1">{formatDate(opp.createdAt)}</p>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {(opp.status === "trasformata" || opp.status === "chiusa") && opp.dealId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="cursor-pointer h-7 text-xs gap-1 text-green-700"
-              onClick={() => router.push(`/deals/${opp.dealId}`)}
-            >
-              <ArrowRight className="h-3 w-3" />
-              Trattativa
-            </Button>
-          )}
           {isOpen && (
             <Button
               variant="ghost"

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { getDeal, getStages, listActivities, getContact } from "@/lib/db";
+import { getDeal, getStages, listActivities, getContact, listOpportunities } from "@/lib/db";
+import { listQuotes } from "@/lib/db/quotes";
+import { quoteTotalCents } from "@/lib/quote-items";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CalendarClock, Gauge, RefreshCw, Scale, Wallet, Euro, XCircle, Trophy } from "lucide-react";
@@ -18,6 +20,8 @@ import { partnerFeeConfig } from "@/lib/partner-fee";
 import { dealFeePct } from "@/lib/partner-fee-shared";
 import { getServerUser } from "@/lib/auth-server";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { RelatedChip } from "@/components/shared/RelatedChip";
+import { HashHighlight } from "@/components/shared/HashHighlight";
 import type { Temperature } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -42,11 +46,13 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
   const deal = await getDeal(id);
   if (!deal) notFound();
 
-  const [stages, dealActivities, contact, me] = await Promise.all([
+  const [stages, dealActivities, contact, me, dealOpps, dealQuotes] = await Promise.all([
     getStages(),
     listActivities({ dealId: id }),
     deal.contactId ? getContact(deal.contactId) : Promise.resolve(null),
     getServerUser(),
+    listOpportunities({ dealIds: [id] }),
+    listQuotes({ dealId: id }),
   ]);
   const feeCfg = partnerFeeConfig(me?.id);
 
@@ -99,6 +105,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-5">
+      <HashHighlight />
       <Link href="/pipeline" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
         <ArrowLeft className="size-4" />
         Pipeline
@@ -192,6 +199,27 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
             </div>
           ))}
         </dl>
+      </section>
+
+      <section className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border bg-card px-4 py-3 shadow-card">
+        <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Collegamenti</span>
+        {dealOpps.map((o) => (
+          <RelatedChip key={o.id} kind="opportunita" href={`/contacts/${deal.contactId}#opportunita-${o.id}`} label={`Opportunità · ${o.title}`} />
+        ))}
+        {dealQuotes.map((q) => (
+          <RelatedChip
+            key={q.id}
+            kind="preventivo"
+            href={`#preventivo-${q.id}`}
+            label={`${q.number} · ${formatCurrency(quoteTotalCents(q.items, q.vatRate))}`}
+          />
+        ))}
+        {dealOpps.length === 0 && (
+          <span className="text-xs text-muted-foreground">Nessuna opportunità collegata</span>
+        )}
+        {dealQuotes.length === 0 && (
+          <span className="text-xs text-muted-foreground">· nessun preventivo ancora</span>
+        )}
       </section>
 
       {(stage?.isLost || stage?.isWon) && (
