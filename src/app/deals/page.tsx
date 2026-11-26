@@ -12,18 +12,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ContactAvatar } from "@/components/shared/ContactAvatar";
 import { Plus, Briefcase, Pencil, Trash2, RefreshCw, Search, X, SlidersHorizontal } from "lucide-react";
 import { formatCurrencyShort, formatDate } from "@/lib/constants";
 import { DealForm, type DealInitialData } from "@/components/deals/DealForm";
 import { ReportDialog } from "@/components/shared/ReportDialog";
+import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { usePartnerFee } from "@/components/deals/usePartnerFee";
@@ -62,7 +57,9 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingDeal, setEditingDeal] = useState<DealInitialData | undefined>(undefined);
-  const [deletingDeal, setDeletingDeal] = useState<DealRow | null>(null);
+  // Deals are never deleted: the trash icon closes them as lost (with a reason) and they stay in the history
+  const [closingDeal, setClosingDeal] = useState<DealRow | null>(null);
+  const [lostStageId, setLostStageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -83,6 +80,15 @@ export default function DealsPage() {
   };
 
   useEffect(() => { loadDeals(); }, []);
+
+  useEffect(() => {
+    fetch("/api/pipeline")
+      .then((res) => res.json())
+      .then((cols: Array<{ id: string; isLost?: boolean }>) => {
+        if (Array.isArray(cols)) setLostStageId(cols.find((c) => c.isLost)?.id ?? null);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const stages = useMemo(() => {
     const seen = new Map<string, { id: string; name: string; color: string }>();
@@ -145,17 +151,21 @@ export default function DealsPage() {
     setShowForm(true);
   };
 
-  const confirmDelete = async () => {
-    if (!deletingDeal) return;
+  const handleClose = async (reason: string) => {
+    if (!closingDeal) return;
     try {
-      const res = await fetch(`/api/deals/${deletingDeal.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      setDeals((prev) => prev.filter((d) => d.id !== deletingDeal.id));
-      toast.success("Trattativa e opportunità collegata eliminate");
-    } catch {
-      toast.error("Errore durante l'eliminazione");
-    } finally {
-      setDeletingDeal(null);
+      const res = await fetch(`/api/deals/${closingDeal.id}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Errore nella chiusura");
+      toast.success("Trattativa chiusa come persa: resta nello storico del cliente");
+      setClosingDeal(null);
+      loadDeals();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore nella chiusura");
     }
   };
 
@@ -406,11 +416,14 @@ export default function DealsPage() {
                             onClick={(e) => openEdit(e, deal)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon"
-                            className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => { e.stopPropagation(); setDeletingDeal(deal); }}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {deal.stageId !== lostStageId && (
+                            <Button variant="ghost" size="icon"
+                              className="cursor-pointer h-8 w-8 text-muted-foreground hover:text-destructive"
+                              title="Chiudi come persa (resta nello storico)"
+                              onClick={(e) => { e.stopPropagation(); setClosingDeal(deal); }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -432,18 +445,13 @@ export default function DealsPage() {
 
       <DealForm open={showForm} onClose={onClose} initialData={editingDeal} />
 
-      <Dialog open={!!deletingDeal} onOpenChange={(v) => !v && setDeletingDeal(null)}>
-        <DialogContent showCloseButton={false} className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Eliminare la trattativa?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Stai per eliminare <strong>{deletingDeal?.title}</strong> ({deletingDeal ? formatCurrencyShort(deletingDeal.value) : ""}) con i suoi preventivi. Verrà eliminata anche l&apos;opportunità collegata, che sparirà dallo storico del cliente. Questa azione è irreversibile. Per tenere lo storico, chiudila spostandola in «Vinta» o «Persa» (ti chiederà il motivo).
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingDeal(null)}>Annulla</Button>
-            <Button variant="destructive" className="cursor-pointer" onClick={confirmDelete}>Elimina</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CloseReasonDialog
+        open={!!closingDeal}
+        kind="trattativa"
+        title={closingDeal ? `${closingDeal.title} (${formatCurrencyShort(closingDeal.value)})` : ""}
+        onCancel={() => setClosingDeal(null)}
+        onConfirm={handleClose}
+      />
     </div>
   );
 }

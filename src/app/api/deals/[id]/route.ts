@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { canEditPartnerFee } from "@/lib/partner-fee";
 import { clampPct } from "@/lib/partner-fee-shared";
-import { getDeal, updateDeal, deleteDeal, isClosingMove } from "@/lib/db";
+import { getDeal, updateDeal, isClosingMove } from "@/lib/db";
 import { parseCloseReason } from "@/lib/close-reasons";
 import { requireAuth } from "@/lib/auth";
 
@@ -112,30 +112,10 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const auth = await requireAuth(_request);
-  if (auth.error) return auth.error;
-
-  const { id } = await params;
-
-  try {
-    const existing = await getDeal(id);
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Trattativa non trovata" },
-        { status: 404 }
-      );
-    }
-
-    await deleteDeal(id);
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: "Errore nell'eliminazione della trattativa" },
-      { status: 500 }
-    );
-  }
+// Deals are never deleted: close them as lost (POST /api/deals/[id]/close) so they stay in the history
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Le trattative non si eliminano: chiudile come perse, restano nello storico del cliente" },
+    { status: 405 }
+  );
 }

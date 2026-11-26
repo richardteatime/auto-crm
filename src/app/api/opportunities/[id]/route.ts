@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpportunity, updateOpportunity, deleteOpportunity, getDeal, deleteDeal } from "@/lib/db";
+import { getOpportunity, updateOpportunity } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
 export async function GET(
@@ -50,30 +50,10 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const auth = await requireAuth(_req);
-  if (auth.error) return auth.error;
-
-  const { id } = await params;
-  const existing = await getOpportunity(id);
-  if (!existing) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });
-  try {
-    // An opportunity turned into a deal takes the deal (and its quotes) with it.
-    // (deleteDeal deletes the opportunity too; deleteOpportunity ignores "already gone")
-    let dealDeleted = false;
-    if (existing.dealId && (await getDeal(existing.dealId))) {
-      await deleteDeal(existing.dealId);
-      dealDeleted = true;
-    }
-    await deleteOpportunity(id);
-    return NextResponse.json({ success: true, dealDeleted });
-  } catch {
-    return NextResponse.json(
-      { error: "Errore nell'eliminazione" },
-      { status: 500 }
-    );
-  }
+// Opportunities are never deleted: close them (POST /api/opportunities/[id]/close) so they stay in the history
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Le opportunità non si eliminano: chiudile come perse, restano nello storico del cliente" },
+    { status: 405 }
+  );
 }
