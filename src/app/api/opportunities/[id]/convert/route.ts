@@ -13,8 +13,8 @@ export async function POST(
 
   const opp = await getOpportunity(id);
   if (!opp) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });
-  if (opp.status === "trasformata") {
-    return NextResponse.json({ error: "Opportunità già trasformata in trattativa" }, { status: 400 });
+  if (opp.status !== "aperta") {
+    return NextResponse.json({ error: opp.status === "chiusa" ? "Opportunità già chiusa" : "Opportunità già trasformata in trattativa" }, { status: 400 });
   }
 
   const stages = await getStages();

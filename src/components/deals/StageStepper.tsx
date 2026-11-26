@@ -6,6 +6,7 @@ import { Check, Loader2, Trophy, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { burstConfetti } from "@/lib/confetti";
 import { cn } from "@/lib/utils";
+import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
 
 interface StepStage {
   id: string;
@@ -16,24 +17,32 @@ interface StepStage {
 }
 
 /** Clickable stage path: move the deal forward (or mark it lost) without opening the kanban */
-export function StageStepper({ dealId, stages, currentId }: { dealId: string; stages: StepStage[]; currentId: string }) {
+export function StageStepper({ dealId, dealTitle, stages, currentId }: { dealId: string; dealTitle?: string; stages: StepStage[]; currentId: string }) {
   const router = useRouter();
   const [current, setCurrent] = useState(currentId);
   const [pending, setPending] = useState<string | null>(null);
+  const [askClose, setAskClose] = useState<StepStage | null>(null);
 
   const path = stages.filter((s) => !s.isLost);
   const lost = stages.find((s) => s.isLost);
   const currentIndex = path.findIndex((s) => s.id === current);
   const isLostNow = lost?.id === current;
 
-  async function moveTo(stage: StepStage, el?: HTMLElement | null) {
+  async function moveTo(stage: StepStage, el?: HTMLElement | null, reason?: string) {
     if (stage.id === current || pending) return;
+    // Closing (won or lost) always asks why; who closes it is the logged-in user, set by the server
+    const currentStage = stages.find((x) => x.id === current);
+    const closingMove = (stage.isWon || stage.isLost) && !(currentStage?.isWon && stage.isWon) && !(currentStage?.isLost && stage.isLost);
+    if (closingMove && !reason) {
+      setAskClose(stage);
+      return;
+    }
     setPending(stage.id);
     try {
       const res = await fetch("/api/pipeline", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId, stageId: stage.id }),
+        body: JSON.stringify({ dealId, stageId: stage.id, ...(reason ? { reason } : {}) }),
       });
       if (!res.ok) throw new Error();
       setCurrent(stage.id);
@@ -41,6 +50,8 @@ export function StageStepper({ dealId, stages, currentId }: { dealId: string; st
         const r = el?.getBoundingClientRect();
         burstConfetti(r ? r.left + r.width / 2 : undefined, r ? r.top + r.height / 2 : undefined);
         toast.success("Trattativa vinta!", { icon: <Trophy className="size-4 text-emerald-500" /> });
+      } else if (stage.isLost) {
+        toast("Trattativa chiusa: resta nello storico del cliente");
       } else {
         toast(`Fase aggiornata: ${stage.name}`);
       }
@@ -111,6 +122,18 @@ export function StageStepper({ dealId, stages, currentId }: { dealId: string; st
           {isLostNow ? lost.name : "Segna come persa"}
         </button>
       )}
+      <CloseReasonDialog
+        open={!!askClose}
+        kind="trattativa"
+        outcome={askClose?.isWon ? "vinta" : "persa"}
+        title={dealTitle ?? "Trattativa"}
+        onCancel={() => setAskClose(null)}
+        onConfirm={async (reason) => {
+          const target = askClose;
+          setAskClose(null);
+          if (target) await moveTo(target, null, reason);
+        }}
+      />
     </div>
   );
 }

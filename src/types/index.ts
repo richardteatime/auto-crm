@@ -49,6 +49,11 @@ export interface Deal {
   isPaid?: boolean;
   /** Partner fee % (VAT excluded) for this deal; null = instance default */
   partnerFeePct?: number | null;
+  /** Set when the deal is closed (moved to a "won" or "lost" stage): outcome, why, who and when */
+  closedOutcome?: CloseOutcome | null;
+  closedReason?: string | null;
+  closedBy?: string | null;
+  closedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -108,7 +113,11 @@ export interface Activity {
   createdAt: Date;
 }
 
-export type OpportunityStatus = "aperta" | "trasformata";
+/** How a deal/opportunity was closed */
+export type CloseOutcome = "vinta" | "persa";
+
+/** "chiusa" = closed with a reason (won or lost); it stays in the customer history */
+export type OpportunityStatus = "aperta" | "trasformata" | "chiusa";
 
 export interface Opportunity {
   id: string;
@@ -120,6 +129,10 @@ export interface Opportunity {
   status: OpportunityStatus;
   value: number | null; // cents
   dealId: string | null;
+  closedOutcome?: CloseOutcome | null;
+  closedReason?: string | null;
+  closedBy?: string | null;
+  closedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

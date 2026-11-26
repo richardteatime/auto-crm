@@ -37,7 +37,7 @@ export async function PUT(
   if (body.notes !== undefined) patch.notes = body.notes;
   if (body.attachments !== undefined) patch.attachments = body.attachments;
   if (body.value !== undefined) patch.value = body.value != null ? Math.round(body.value * 100) : null;
-  if (body.status !== undefined) patch.status = body.status;
+  // status is not editable here: use /close (and DELETE /close to reopen) and /convert
 
   try {
     const result = await updateOpportunity(id, patch);
@@ -62,6 +62,7 @@ export async function DELETE(
   if (!existing) return NextResponse.json({ error: "Opportunità non trovata" }, { status: 404 });
   try {
     // An opportunity turned into a deal takes the deal (and its quotes) with it.
+    // (deleteDeal deletes the opportunity too; deleteOpportunity ignores "already gone")
     let dealDeleted = false;
     if (existing.dealId && (await getDeal(existing.dealId))) {
       await deleteDeal(existing.dealId);

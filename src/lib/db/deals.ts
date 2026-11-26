@@ -1,7 +1,7 @@
 import { databases, DB_ID, COLLECTIONS } from "@/lib/appwrite";
 import { ID, type Models } from "node-appwrite";
 import { Query } from "@/lib/query17";
-import type { Deal, DealWithContact, PipelineStage } from "@/types";
+import type { CloseOutcome, Deal, DealWithContact, PipelineStage } from "@/types";
 import { getContact } from "./contacts";
 import { getStage } from "./pipeline";
 import { unlinkLeadsFromDeal } from "./leads";
@@ -177,6 +177,9 @@ export async function updateDeal(
     recurringMonths: number | null;
     isPaid: boolean;
     partnerFeePct: number | null;
+    /** Why the deal is being closed (used when the stage becomes a "won" or "lost" one) */
+    closedReason: string | null;
+    closedBy: string | null;
   }>,
 ): Promise<DealWithContact> {
   // Resolve denormalized fields if contact or stage changed
@@ -192,7 +195,8 @@ export async function updateDeal(
     payload.expectedClose = toIsoDate(data.expectedClose);
   }
 
-  // If stage changed, check isWon
+  // If stage changed, check isWon / isLost
+  let closeSync: "closed" | "reopened" | null = null;
   if (data.stageId) {
     const stage = await getStage(data.stageId);
     if (stage?.isWon) {
@@ -203,6 +207,29 @@ export async function updateDeal(
     if (!stage?.isWon && existing?.wonAt) {
       payload.wonAt = null;
     }
+    // Closed (won or lost): keep outcome/why/who/when. Moving it back to an open stage reopens it.
+    const toOutcome = outcomeOfStage(stage);
+    const fromOutcome = outcomeOfStage(existing?.stageId ? await getStage(existing.stageId) : null);
+    if (toOutcome && toOutcome !== fromOutcome) {
+      payload.closedOutcome = toOutcome;
+      payload.closedAt = new Date().toISOString();
+      payload.closedReason = data.closedReason ?? null;
+      payload.closedBy = data.closedBy ?? null;
+      closeSync = "closed";
+    } else if (!toOutcome && fromOutcome) {
+      payload.closedOutcome = null;
+      payload.closedAt = null;
+      payload.closedReason = null;
+      payload.closedBy = null;
+      closeSync = "reopened";
+    } else if (!toOutcome) {
+      // not a closing move: never store a reason on an open deal
+      delete payload.closedReason;
+      delete payload.closedBy;
+    }
+  } else {
+    delete payload.closedReason;
+    delete payload.closedBy;
   }
 
   // If billingType changed to recurring and no recurringStartDate, set it
@@ -228,7 +255,62 @@ export async function updateDeal(
     id,
     payload,
   );
+
+  // Keep the linked opportunity in step: closing the deal (won or lost) closes it with the
+  // same outcome and reason, reopening the deal puts it back to "trasformata". Never deleted.
+  if (closeSync) {
+    await syncLinkedOpportunities(id, closeSync, {
+      outcome: (payload.closedOutcome as CloseOutcome | null) ?? null,
+      reason: (payload.closedReason as string | null) ?? null,
+      by: (payload.closedBy as string | null) ?? null,
+    });
+  }
   return fromDoc<DealWithContact>(doc);
+}
+
+function outcomeOfStage(stage: { isWon?: boolean; isLost?: boolean } | null | undefined): CloseOutcome | null {
+  return stage?.isWon ? "vinta" : stage?.isLost ? "persa" : null;
+}
+
+/**
+ * True when moving `deal` to `stageId` closes it as won or lost, or changes how it was
+ * closed (the caller must then give a reason). Moving to an open stage never needs one.
+ */
+export async function isClosingMove(
+  deal: { stageId: string } | null,
+  stageId: string,
+): Promise<boolean> {
+  if (!deal || deal.stageId === stageId) return false;
+  const [target, current] = await Promise.all([getStage(stageId), getStage(deal.stageId)]);
+  const to = outcomeOfStage(target);
+  return !!to && to !== outcomeOfStage(current);
+}
+
+async function syncLinkedOpportunities(
+  dealId: string,
+  mode: "closed" | "reopened",
+  info: { outcome: CloseOutcome | null; reason: string | null; by: string | null },
+): Promise<void> {
+  let docs: Models.Document[] = [];
+  try {
+    const res = await databases.listDocuments(DB_ID, COLLECTIONS.opportunities, [
+      Query.equal("dealId", dealId),
+      Query.limit(500),
+    ]);
+    docs = res.documents;
+  } catch {
+    return; // collection or attribute missing on this instance
+  }
+  const now = new Date().toISOString();
+  for (const opp of docs) {
+    const patch =
+      mode === "closed"
+        ? { status: "chiusa", closedOutcome: info.outcome, closedReason: info.reason, closedBy: info.by, closedAt: now, updatedAt: now }
+        : opp.status === "chiusa"
+          ? { status: "trasformata", closedOutcome: null, closedReason: null, closedBy: null, closedAt: null, updatedAt: now }
+          : null;
+    if (patch) await databases.updateDocument(DB_ID, COLLECTIONS.opportunities, opp.$id, patch);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -237,9 +319,11 @@ export async function updateDeal(
 
 /**
  * Delete a deal together with what only makes sense inside it:
- * its quotes are deleted; activities, calendar events, leads and
- * opportunities that point to it are kept but unlinked (an opportunity
- * goes back to "aperta").
+ * its quotes and the opportunity it came from are deleted (deleting an
+ * opportunity deletes its deal too); activities, calendar events and
+ * leads that point to it are kept but unlinked.
+ * To keep the history instead of deleting, close the deal/opportunity
+ * (with a reason): closed opportunities stay in the customer history.
  */
 export async function deleteDeal(id: string): Promise<void> {
   const linked = async (collection: string) => {
@@ -264,9 +348,7 @@ export async function deleteDeal(id: string): Promise<void> {
     }
   }
   for (const opp of await linked(COLLECTIONS.opportunities)) {
-    await databases
-      .updateDocument(DB_ID, COLLECTIONS.opportunities, opp.$id, { dealId: null, status: "aperta" })
-      .catch(() => undefined);
+    await databases.deleteDocument(DB_ID, COLLECTIONS.opportunities, opp.$id);
   }
 
   await databases.deleteDocument(DB_ID, COLLECTIONS.deals, id);

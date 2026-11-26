@@ -19,10 +19,13 @@ import {
   Download,
   Paperclip,
   TrendingUp,
+  XCircle,
+  RotateCcw,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 import { OpportunityForm, type OpportunityFormData } from "./OpportunityForm";
+import { CloseReasonDialog } from "@/components/shared/CloseReasonDialog";
 
 interface OppRow {
   id: string;
@@ -34,12 +37,17 @@ interface OppRow {
   status: string;
   value: number | null;
   dealId: string | null;
+  closedOutcome?: string | null;
+  closedReason?: string | null;
+  closedBy?: string | null;
+  closedAt?: number | string | Date | null;
   createdAt: number | Date;
 }
 
 const STATUS_CONFIG = {
   aperta:      { label: "Aperta",               variant: "secondary"   as const, className: "bg-blue-500/10 text-blue-700 border-blue-500/25 dark:bg-blue-950 dark:text-blue-300" },
   trasformata: { label: "Trasformata",          variant: "outline"     as const, className: "bg-green-500/10 text-green-700 border-green-500/25 dark:bg-green-950 dark:text-green-300" },
+  chiusa:      { label: "Chiusa",               variant: "outline"     as const, className: "bg-rose-500/10 text-rose-700 border-rose-500/25 dark:bg-rose-950 dark:text-rose-300" },
 };
 
 function parseAttachments(json: string | null): { name: string; url: string }[] {
@@ -70,6 +78,7 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
   const [deletingOpp, setDeletingOpp] = useState<OppRow | null>(null);
   const [convertingOpp, setConvertingOpp] = useState<OppRow | null>(null);
   const [converting, setConverting] = useState(false);
+  const [closingOpp, setClosingOpp] = useState<OppRow | null>(null);
 
   const load = useCallback(() => {
     fetch(`/api/opportunities?contactId=${contactId}`)
@@ -98,6 +107,38 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
     }
   };
 
+  // Close with a reason: the opportunity (and its deal) stay in the customer history as "Chiusa"
+  const handleClose = async (reason: string) => {
+    if (!closingOpp) return;
+    try {
+      const res = await fetch(`/api/opportunities/${closingOpp.id}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Errore nella chiusura");
+      toast.success(closingOpp.dealId ? "Opportunità e trattativa chiuse: restano nello storico" : "Opportunità chiusa: resta nello storico");
+      setClosingOpp(null);
+      load();
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore nella chiusura");
+    }
+  };
+
+  const handleReopen = async (o: OppRow) => {
+    try {
+      const res = await fetch(`/api/opportunities/${o.id}/close`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Errore nella riapertura");
+      toast.success("Opportunità riaperta");
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Errore nella riapertura");
+    }
+  };
+
   const handleConvert = async () => {
     if (!convertingOpp) return;
     setConverting(true);
@@ -122,6 +163,7 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
 
   const openOnly = list.filter((o) => o.status === "aperta");
   const convertedOnly = list.filter((o) => o.status === "trasformata");
+  const closedOnly = list.filter((o) => o.status === "chiusa");
 
   return (
     <>
@@ -158,14 +200,21 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
             <div className="space-y-2">
               {openOnly.length > 0 && (
                 <>
-                  {openOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} router={router} />)}
+                  {openOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
                 </>
               )}
               {convertedOnly.length > 0 && (
                 <>
                   {openOnly.length > 0 && <div className="border-t pt-2 mt-2" />}
                   <p className="text-xs text-muted-foreground font-medium mb-1">Trasformate in trattativa</p>
-                  {convertedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} router={router} />)}
+                  {convertedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
+                </>
+              )}
+              {closedOnly.length > 0 && (
+                <>
+                  {(openOnly.length > 0 || convertedOnly.length > 0) && <div className="border-t pt-2 mt-2" />}
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Chiuse (storico)</p>
+                  {closedOnly.map((o) => <OppCard key={o.id} opp={o} onEdit={openEdit} onDelete={setDeletingOpp} onConvert={setConvertingOpp} onClose={setClosingOpp} onReopen={handleReopen} router={router} />)}
                 </>
               )}
             </div>
@@ -189,7 +238,8 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
             {deletingOpp?.dealId
               ? " Verrà eliminata anche la trattativa collegata, con i suoi preventivi."
               : ""}{" "}
-            Questa azione è irreversibile.
+            Questa azione è irreversibile e sparisce dallo storico del cliente.
+            {deletingOpp?.status !== "chiusa" && " Per tenerla nello storico, usa «Chiudi»."}
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="cursor-pointer" onClick={() => setDeletingOpp(null)}>Annulla</Button>
@@ -197,6 +247,15 @@ export function OpportunityList({ contactId }: OpportunityListProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Close with reason */}
+      <CloseReasonDialog
+        open={!!closingOpp}
+        kind="opportunità"
+        title={closingOpp?.title ?? ""}
+        onCancel={() => setClosingOpp(null)}
+        onConfirm={handleClose}
+      />
 
       {/* Convert confirm */}
       <Dialog open={!!convertingOpp} onOpenChange={(v) => !v && setConvertingOpp(null)}>
@@ -223,16 +282,25 @@ function OppCard({
   onEdit,
   onDelete,
   onConvert,
+  onClose,
+  onReopen,
   router,
 }: {
   opp: OppRow;
   onEdit: (o: OppRow) => void;
   onDelete: (o: OppRow) => void;
   onConvert: (o: OppRow) => void;
+  onClose: (o: OppRow) => void;
+  onReopen: (o: OppRow) => void;
   router: ReturnType<typeof useRouter>;
 }) {
   const attachments = parseAttachments(opp.attachments);
-  const cfg = STATUS_CONFIG[opp.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
+  const won = opp.status === "chiusa" && opp.closedOutcome === "vinta";
+  const cfg = won
+    ? { label: "Chiusa · vinta", className: "bg-green-500/10 text-green-700 border-green-500/25 dark:bg-green-950 dark:text-green-300" }
+    : opp.status === "chiusa"
+      ? { ...STATUS_CONFIG.chiusa, label: "Chiusa · persa" }
+      : STATUS_CONFIG[opp.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.aperta;
   const isOpen = opp.status === "aperta";
 
   return (
@@ -272,11 +340,23 @@ function OppCard({
               ))}
             </div>
           )}
+          {opp.status === "chiusa" && (
+            <p className={`mt-2 rounded-md border px-2.5 py-2 text-[13px] leading-relaxed ${won ? "border-green-500/25 bg-green-500/[0.05]" : "border-rose-500/25 bg-rose-500/[0.05]"}`}>
+              <span className="text-muted-foreground">Motivo: </span>
+              {opp.closedReason || "non indicato"}
+              {(opp.closedBy || opp.closedAt) && (
+                <span className="block text-xs text-muted-foreground">
+                  {opp.closedBy ? `Chiusa da ${opp.closedBy}` : "Chiusa"}
+                  {opp.closedAt ? ` il ${formatDate(new Date(opp.closedAt))}` : ""}
+                </span>
+              )}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground mt-1">{formatDate(opp.createdAt)}</p>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {opp.status === "trasformata" && opp.dealId && (
+          {(opp.status === "trasformata" || opp.status === "chiusa") && opp.dealId && (
             <Button
               variant="ghost"
               size="sm"
@@ -297,6 +377,30 @@ function OppCard({
             >
               <ArrowRight className="h-3 w-3" />
               Converti
+            </Button>
+          )}
+          {opp.status !== "chiusa" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="cursor-pointer h-7 text-xs gap-1 text-muted-foreground hover:text-rose-600"
+              onClick={() => onClose(opp)}
+              title="Chiudi l'opportunità (resta nello storico)"
+            >
+              <XCircle className="h-3 w-3" />
+              Chiudi
+            </Button>
+          )}
+          {opp.status === "chiusa" && !opp.dealId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="cursor-pointer h-7 text-xs gap-1"
+              onClick={() => onReopen(opp)}
+              title="Riapri l'opportunità"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Riapri
             </Button>
           )}
           <Button
